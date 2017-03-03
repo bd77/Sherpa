@@ -28,7 +28,6 @@ from time import time
 
 from netCDF4 import Dataset
 from numpy import lib, zeros, sum, power, ones
-
 from sherpa_globals import path_result_cdf_test
 # path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
 from sherpa_auxiliaries import (create_emission_reduction_dict,
@@ -264,7 +263,6 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     mod1_res['latitude_array'] = latitude_array
     mod1_res['longitude_array'] = longitude_array
 
-
     return mod1_res
 
 if __name__ == '__main__':
@@ -285,14 +283,11 @@ if __name__ == '__main__':
     output_path = 'output/NO2eq/Europe/'
 
     # run module 1 with progress log
-    proglog_filename = path_result_cdf_test + 'proglog'
-    write_progress_log(proglog_filename, 25, 2)
+#     proglog_filename = path_result_cdf_test + 'proglog'
+#     write_progress_log(proglog_filename, 25, 2)
     start = time()
     module1(emissions, reduction_area, reduction_snap, base_conc_cdf, model_NO2eq, output_path)
-
     stop = time()
-    print('Module 1 run time: %s sec.' % (stop-start))
-    remove(proglog_filename)
 
     pass
 
