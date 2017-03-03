@@ -24,7 +24,7 @@ Enrico agrees with this nice explanation of module 1
 from netCDF4 import Dataset
 from numpy import lib, zeros, sum, power, ones
 from math import isnan
-from sherpa_globals import path_result_cdf_test
+# from sherpa_globals import path_result_cdf_test
 # path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
 from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window, read_progress_log, write_progress_log, deltaNOx_to_deltaNO2
 import sys
@@ -142,9 +142,9 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     window_ones = ones(window.shape)
     for i in range(n_lat_inner_win):
         for j in range(n_lon_inner_win):
-            if window[i,j] < borderweight:
-                window[i,j] = 0
-                window_ones[i,j] = 0
+            if window[i, j] < borderweight:
+                window[i, j] = 0
+                window_ones[i, j] = 0
        
     pad_delta_emission_dict = {}
     for precursor in precursor_lst:
@@ -274,14 +274,14 @@ if __name__ == '__main__':
     output_path = 'output/NO2eq/Europe/'
  
     # run module 1 with progress log
-    proglog_filename = path_result_cdf_test + 'proglog'
-    write_progress_log(proglog_filename, 25, 2)
+#     proglog_filename = path_result_cdf_test + 'proglog'
+#     write_progress_log(proglog_filename, 25, 2)
     start = time()
     module1(emissions, reduction_area, reduction_snap, base_conc_cdf, model_NO2eq, output_path) 
     
     stop = time()
-    print('Module 1 run time: %s sec.' % (stop-start))
-    remove(proglog_filename)
+    print('Module 1 run time: %s sec.' % (stop - start))
+#     remove(proglog_filename)
      
     pass
 
