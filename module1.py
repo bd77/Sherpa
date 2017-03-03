@@ -37,9 +37,14 @@ from sherpa_auxiliaries import (create_emission_reduction_dict,
 
 
 
-# function that applies reductions per snap sector and precursor to the emission netcdf
-def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf, path_reduction_txt, path_result_cdf, write_netcdf_output):
-    # create a dictionary with reductions per precursor and macro sector
+def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf,
+                          path_reduction_txt, path_result_cdf,
+                          write_netcdf_output):
+    """
+    Function that applies reductions per snap sector and precursor to the
+    emission netcdf.
+    Create a dictionary with reductions per precursor and macro sector
+    """
     emission_reduction_dict = create_emission_reduction_dict(path_reduction_txt)
 
     # open the emission netcdf
