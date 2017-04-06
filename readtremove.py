@@ -90,7 +90,7 @@ if __name__ == '__main__':
                     polltype='non-exhaust'
                     readtre(df, share, pollutant, polltype, directory)
                 # all others should only have exhaust
-                else:
+                elif share != 4: 
                     polltype='exhaust'
                     readtre(df, share, pollutant, polltype, directory)  
             # all other pollutants only have exhaust    
@@ -99,6 +99,7 @@ if __name__ == '__main__':
                     polltype=''
                     readtre(df, share, pollutant, polltype, directory)        
             else:
-                polltype='exhaust'
-                readtre(df, share, pollutant, polltype, directory)
+                if share != 4: 
+                    polltype='exhaust'
+                    readtre(df, share, pollutant, polltype, directory)
                 
