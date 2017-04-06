@@ -151,7 +151,7 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     last_progress_print = time()
 #     calculate weighted emissions for all precursors
 #     norm_delta_conc = zeros((n_lat, n_lon))
-    delta_conc = ones((n_lat, n_lon)) * float('nan')
+    delta_conc = zeros((n_lat, n_lon)) * float('nan')
     cell_counter = 0
     n_cell = n_lat * n_lon
 
