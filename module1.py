@@ -136,7 +136,7 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     latitude_array = rootgrp.variables['lat'][:, 0]
     n_lon = len(longitude_array)  # len(rootgrp.dimensions['longitude'])
     n_lat = len(latitude_array)  # len(rootgrp.dimensions['latitude'])  
-    inner_radius = 200 # int(getattr(rootgrp, 'Radius of influence'))
+    inner_radius = int(getattr(rootgrp, 'Radius of influence'))
     precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
     alpha = rootgrp.variables['alpha'][:, :, :]    
     omega = rootgrp.variables['omega'][:, :, :] 
@@ -158,14 +158,7 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     window = create_window(inner_radius)
     (n_lon_inner_win, n_lat_inner_win) = window.shape
     
-    # create flat window and a inner window
-    borderweight = window[inner_radius, 0]
-    
-    for i in range(n_lat_inner_win):
-        for j in range(n_lon_inner_win):
-            if window[i,j] < borderweight:
-                window[i,j] = 0
-       
+
     pad_delta_emission_dict = {}
     for precursor in precursor_lst:
         pad_delta_emission_dict[precursor] = lib.pad(delta_emission_dict[precursor], inner_radius, 'constant', constant_values=0)
