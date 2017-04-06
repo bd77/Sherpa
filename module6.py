@@ -22,6 +22,7 @@ from time import time
 import sys
 from sherpa_globals import alpha_potency
 from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window, deltaNOx_to_deltaNO2
+from os import rename
 
 # function that applies reductions per snap sector and precursor to the emission netcdf
 def create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array, path_reduction_txt):
@@ -238,34 +239,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     
 if __name__ == '__main__':
     
-    # run module 6
-    # lastest model on 2017/04/04: O:/Integrated_assessment/SHERPA/20170322_v18_SrrResults_PotencyBased/
-    model_path = 'O:/Integrated_assessment/SHERPA/20170322_v18_SrrResults_PotencyBased/'
-    emission_folder = model_path + '1_base_emissions/'
-    concentrations_folder = model_path + '2_base_concentrations/'
-    model_folder = model_path + '3_source_receptors/'
-    
-    pollutant = 'PM25'
-    path_emission_cdf = emission_folder + 'BC_emi_' + pollutant + '_Y.nc'
-    reduction_area = 'input/EMI_RED_ATLAS_NUTS1.nc'
-    reduction_snap = 'input/user_reduction_all50.txt'
-    if pollutant == 'NO2':
-        path_base_conc_cdf = concentrations_folder + 'BC_conc_NO2_NO2eq_Y_mgm3.nc'
-        path_model_cdf = model_folder + 'SR_NO2eq_Y_20170322_potencyBased.nc'
-    else:
-        path_base_conc_cdf = concentrations_folder + 'BC_conc_' + pollutant + '_Y.nc'
-        path_model_cdf = model_folder + 'SR_' + pollutant + '_Y_20170322_potencyBased.nc' #SR_PM10_Y_20170322_potencyBased
-        
-    output_path = 'output/test/'
-    target_cell_lat = 51.51    
-    target_cell_lon = -0.13
-     
-    # run module 1 with progress log
-    start = time()
-    module6(path_emission_cdf, reduction_area, target_cell_lat, target_cell_lon, reduction_snap, path_base_conc_cdf, path_model_cdf, output_path)
-    # print(DC)
-    stop = time()
-    print('Module 6 run time: %s sec.' % (stop-start))
+    # the testing is moved to test_module6.py    
      
     pass
 
