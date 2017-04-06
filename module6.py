@@ -62,16 +62,12 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
     alpha = rootgrp.variables['alpha'][:, :, :]    
     omega = rootgrp.variables['omega'][:, :, :] 
-    flatWeight = rootgrp.variables['flatWeight'][:, :, :]
-
     # put alpha and omega in a dictionary
     alpha_dict = {}
     omega_dict = {}
-    flatWeight_dict = {}
     for i in range(len(precursor_lst)):
         alpha_dict[precursor_lst[i]] = alpha[i, :, :]
         omega_dict[precursor_lst[i]] = omega[i, :, :]
-        flatWeight_dict[precursor_lst[i]] = flatWeight[i, :, :]
         
     # close model netcdf
     rootgrp.close()
@@ -120,16 +116,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     window = create_window(inner_radius)
     (n_lon_inner_win, n_lat_inner_win) = window.shape
     
-    # create flat window and a inner window
-    borderweight = window[inner_radius, 0]
-    
-    window_ones = ones(window.shape)
-    for i in range(n_lat_inner_win):
-        for j in range(n_lon_inner_win):
-            if window[i,j] < borderweight:
-                window[i,j] = 0
-                window_ones[i,j] = 0
-    
+    # dictionary with the concentration change due to an emission reduction in a nuts, keys are nuts codes
     delta_conc = {} 
     DC_target_arrray = zeros((n_lat, n_lon)) * float('nan')
         
@@ -166,20 +153,15 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
             # apply averaging window
             alpha_ij = alpha_dict[precursor][i_lat_target, i_lon_target]
             omega_ij = omega_dict[precursor][i_lat_target, i_lon_target]
-            flatWeight_ij = flatWeight_dict[precursor][i_lat_target, i_lon_target]
-            
-            # print('precursor: %s, alpha: %e, omega: %e, flatWeight: %e' % (precursor, alpha_ij, omega_ij, flatWeight_ij))
             
             if not(isnan(alpha_ij)):
                 
-                # apply the weight to the flat weighted emissions
-                weighted_emissions_flat = flatWeight_ij * sum_emissions_flat[precursor]  
                 
                 emissions_centre = pad_delta_emission_dict[precursor][i_lat_target:(i_lat_target + n_lon_inner_win), i_lon_target:(i_lon_target + n_lat_inner_win)]
                 
                 # weighted_emissions_centre = (power(weights_centre, omega_ij) * emissions_centre).sum()
-                weighted_emissions_centre = ((power(window, omega_ij) - window_ones * flatWeight_ij) * emissions_centre).sum()
-                delta_conc[nuts_code] = delta_conc[nuts_code] + alpha_ij * (weighted_emissions_centre + weighted_emissions_flat)
+                weighted_emissions_centre = ((power(window, omega_ij)) * emissions_centre).sum()
+                delta_conc[nuts_code] = delta_conc[nuts_code] + alpha_ij * (weighted_emissions_centre)
                 
         # In the case of NOx the NO2 concentrations have to be calculated with the NO2 fraction correlation
         if (path_model_cdf.find('NO2eq') > -1):
@@ -225,29 +207,26 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
 
 if __name__ == '__main__':
     
-    # module 1 test inputs
-    module = 1
-    # if it doesn't exist strart=0 and dividsor=1
-    progresslog = 'input/progress.log'
+    # run module 6
+    # lastest model on 2017/04/04: O:/Integrated_assessment/SHERPA/20170322_v18_SrrResults_PotencyBased/
+    model_path = 'O:/Integrated_assessment/SHERPA/20170322_v18_SrrResults_PotencyBased/'
+    emission_folder = model_path + '1_base_emissions/'
+    concentrations_folder = model_path + '2_base_concentrations/'
+    model_folder = model_path + '3_source_receptors/'
     
-    # run module 1 without progress log
-    start = time()
-    emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_NO2_Y.nc'
-    # emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
-    nuts2_netcdf = 'input/EMI_RED_ATLAS_NUTS2.nc'
-    target_cell_lat = 45.46         # Milan
-    target_cell_lon = 9.19          # Milan
-    path_reduction_txt = 'input/user_reduction_all50.txt'
-    # base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_NO2_NO2eq_Y_mgm3.nc'
-    base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc'
-    # model_NO2eq = 'input/20151116_SR_no2_pm10_pm25/SR_NO2eq_Y.nc'
-    model_PM25old = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
-    model_PM25new = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y_prctiles.nc'
-    output_path = 'output/NO2eq/Milan/'
+    pollutant = 'NO2'
+    path_emission_cdf = emission_folder + 'BC_emi_' + pollutant + '_Y.nc'
+    reduction_area = 'input/EMI_RED_ATLAS_NUTS0.nc'
+    reduction_snap = 'input/user_reduction_snap7.txt'
+    path_base_conc_cdf = concentrations_folder + 'BC_conc_NO2_NO2eq_Y_mgm3.nc'
+    path_model_cdf = model_folder + 'SR_NO2eq_Y_20170322_potencyBased.nc'
+    output_path = 'output/test/'
+    target_cell_lat = 51.51    
+    target_cell_lon = -0.13
      
     # run module 1 with progress log
     start = time()
-    module6(emissions, nuts2_netcdf, target_cell_lat, target_cell_lon, path_reduction_txt, base_conc_cdf, model_PM25new, output_path)
+    module6(path_emission_cdf, reduction_area, target_cell_lat, target_cell_lon, reduction_snap, path_base_conc_cdf, path_model_cdf, output_path)
     # print(DC)
     stop = time()
     print('Module 6 run time: %s sec.' % (stop-start))
