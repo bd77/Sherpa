@@ -17,7 +17,7 @@ for compatibility the header is 'potency' in the output txt
 
 # imports
 from netCDF4 import Dataset
-from numpy import lib, zeros, sum, power, ones, array, sqrt, savetxt
+from numpy import lib, zeros, sum, ones, array 
 from math import isnan
 # path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
 from time import time
@@ -27,128 +27,6 @@ from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_d
 
 # extra variables for the accelerator
 n_lowres = 3   # width and height of the aggregation of emmissions, this number has to be odd!
-
-class Emissions:
-    def __init__(self, n_lowres, delta_emission_dict):
-        self.dem = delta_emission_dict
-        self.n_lat = delta_emission_dict['PPM'].shape[0]
-        self.n_lon = delta_emission_dict['PPM'].shape[1]
-        self.n_lowres = n_lowres
-        self.agg_radius = (n_lowres - 1) / 2
-        self.aggregated_emissions = {}  
-        self.emissions_hires = {}    
-    
-    # generates or looks up hi and low resolution emissions for a precursor and coordinate
-    def getHiLowEmis(self, precursor, i_lat_target, i_lon_target):
-        
-        i_lat_mod = i_lat_target % n_lowres
-        i_lon_mod = i_lon_target % n_lowres
-        i_tuple_mod = (i_lat_mod, i_lon_mod)
-        
-        # check if for the modulus of the row-column index tuple some aggregations are done
-        if not(i_tuple_mod in self.aggregated_emissions.keys()):
-            self.aggregated_emissions[i_tuple_mod] = {}
-            self.emissions_hires[i_tuple_mod] = {}
-            
-            # define the breaks of the aggregation blocks along latitudes and longitudes
-            if i_lon_mod == self.agg_radius:
-                lon_breaks = [0]
-            else:
-                lon_breaks = [0, i_lon_mod - self.agg_radius]
-            # as long as the last element is smaller than n_lon, add a break
-            while lon_breaks[-1] < self.n_lon: 
-                next_break = lon_breaks[-1] + self.n_lowres   # last element + width of aggregation window
-                if next_break < self.n_lon:
-                    lon_breaks.append(next_break)
-                else:
-                    lon_breaks.append(self.n_lon)
-             
-            # same for latitudes
-            if i_lat_mod == self.agg_radius:
-                lat_breaks = [0]
-            else:
-                lat_breaks = [0, i_lat_mod - self.agg_radius]
-            while lat_breaks[-1] < self.n_lat: 
-                next_break = lat_breaks[-1] + self.n_lowres   # last element + width of aggregation window
-                if next_break < self.n_lat:
-                    lat_breaks.append(next_break)
-                else:
-                    lat_breaks.append(self.n_lat)
-            
-            self.aggregated_emissions[i_tuple_mod]['n_lat_agg'] = len(lat_breaks) - 1
-            self.aggregated_emissions[i_tuple_mod]['n_lon_agg'] = len(lon_breaks) - 1
-            self.aggregated_emissions[i_tuple_mod]['lat_breaks'] = lat_breaks
-            self.aggregated_emissions[i_tuple_mod]['lon_breaks'] = lon_breaks
-            
-        if not(precursor in (self.aggregated_emissions[i_tuple_mod]).keys()):
-            n_lat_agg = self.aggregated_emissions[i_tuple_mod]['n_lat_agg']
-            n_lon_agg = self.aggregated_emissions[i_tuple_mod]['n_lon_agg']
-            lat_breaks = self.aggregated_emissions[i_tuple_mod]['lat_breaks']
-            lon_breaks = self.aggregated_emissions[i_tuple_mod]['lon_breaks']
-            
-            self.aggregated_emissions[i_tuple_mod][precursor] = zeros((n_lat_agg, n_lon_agg))
-            self.emissions_hires[i_tuple_mod][precursor] = zeros((self.n_lat, self.n_lon))
-            for i_lat_agg in range(n_lat_agg):
-                for i_lon_agg in range(n_lon_agg):
-                    # select the block to be aggregated from delta_emissions[precursor]
-                    emis2aggregate = self.dem[precursor][lat_breaks[i_lat_agg]:lat_breaks[i_lat_agg + 1], lon_breaks[i_lon_agg]:lon_breaks[i_lon_agg + 1]]
-                    sum_emissions = emis2aggregate.sum()
-                    n_agg = emis2aggregate.size
-                    self.aggregated_emissions[i_tuple_mod][precursor][i_lat_agg, i_lon_agg] = sum_emissions
-                    # high resolution delta emissions are delta emissions minus average aggregated emissions
-                    self.emissions_hires[i_tuple_mod][precursor][lat_breaks[i_lat_agg]:lat_breaks[i_lat_agg + 1], lon_breaks[i_lon_agg]:lon_breaks[i_lon_agg + 1]] = emis2aggregate - sum_emissions / n_agg
-#                     print(self.aggregated_emissions[i_tuple_mod][precursor])
-#                     print(self.emissions_hires[i_tuple_mod][precursor])
-        
-        res_dict = {'emis_lowres': self.aggregated_emissions[i_tuple_mod][precursor], 'emis_hires': self.emissions_hires[i_tuple_mod][precursor]}
-        
-        return res_dict
-                        
-# Window class that returns aggregated weighting windows for a given omega
-class OmegaWindows:
-    def __init__(self, aggreg_size, hires_window_size, lowres_window_size):
-        self.aggreg_size = aggreg_size            # number of rows/columns that are aggregated
-        self.aggreg_radius = (aggreg_size - 1) / 2
-        
-        self.hires_window_size = hires_window_size
-        self.hires_window_radius = (hires_window_size - 1) / 2
-        self.hires_inverse_distance = zeros((self.hires_window_size, self.hires_window_size))
-        for iw in range(self.hires_window_size):
-            for jw in range(self.hires_window_size):
-                cell_dist = sqrt((float(iw - self.hires_window_radius)) ** 2 + (float(jw - self.hires_window_radius)) ** 2) 
-                self.hires_inverse_distance[iw, jw] = 1 / (1 + cell_dist)  
-        
-        self.lowres_window_size = lowres_window_size
-        self.lowres_window_radius = (lowres_window_size - 1) / 2
-        self.lowres_inverse_distance = zeros((self.lowres_window_size, self.lowres_window_size))
-        for iw in range(self.lowres_window_size):
-            for jw in range(self.lowres_window_size):
-                cell_dist = sqrt((float(iw - self.lowres_window_radius)) ** 2 + (float(jw - self.lowres_window_radius)) ** 2) 
-                self.lowres_inverse_distance[iw, jw] = 1 / (1 + cell_dist)  
-        
-        self.aggreg_lowres_window_size = self.lowres_window_size / self.aggreg_size
-        
-        self.hires_omega_windows = {} 
-        self.lowres_omega_windows = {}
-
-    def getOmegaWindow(self, omega):
-        if omega in self.hires_omega_windows.keys():
-            hires_omega_window = self.hires_omega_windows[omega]
-            lowres_omega_window = self.lowres_omega_windows[omega]
-        else:
-            self.hires_omega_windows[omega] = power(self.hires_inverse_distance, omega)
-            
-            # aggregate the omega window in blocks of n_lowres x n_lowres cells
-            lowres_omega_window = zeros((self.aggreg_lowres_window_size , self.aggreg_lowres_window_size))
-            for iw in range(self.aggreg_lowres_window_size):
-                for jw in range(self.aggreg_lowres_window_size):
-                    lowres_omega_window[iw, jw] = (power(self.lowres_inverse_distance[(iw * self.aggreg_size):((iw + 1) * self.aggreg_size), (jw * self.aggreg_size):((jw + 1) * self.aggreg_size)], omega)).mean()
-            self.lowres_omega_windows[omega] = lowres_omega_window
-            
-        res_dict = {'hires_omega_window': self.hires_omega_windows[omega], 'lowres_omega_window': lowres_omega_window} 
-        
-        return res_dict 
-            
 
 
 # function that applies reductions per snap sector and precursor to the emission netcdf
@@ -360,45 +238,6 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
 
 if __name__ == '__main__':
     
-    # test window function
-    testwin = OmegaWindows(3, 3, 9)
-    # print(testwin.hires_inverse_distance)
-    savetxt("C:/temp/hires_inverse_distance.csv", testwin.hires_inverse_distance, delimiter="\t")
-    savetxt("C:/temp/lowres_inverse_distance.csv", testwin.lowres_inverse_distance, delimiter="\t")
-    # print(testwin.lowres_inverse_distance)
-    omegawindows = testwin.getOmegaWindow(1)
-    print(omegawindows['hires_omega_window'])
-    savetxt("C:/temp/hires_omega_window.csv", omegawindows['hires_omega_window'], delimiter="\t")
-    savetxt("C:/temp/lowres_omega_window.csv", omegawindows['lowres_omega_window'], delimiter="\t")
-    print(omegawindows['lowres_omega_window'])
-    
-    
-    # test the Emissions class
-    delta_emission_dict = {}
-    delta_emission_dict['PPM'] = ones((380,480))
-    delta_emission_dict['PPM'][5,5] = 10
-    delta_emission_dict['PPM'][0,1] = 10
-    print(delta_emission_dict['PPM'])
-    print(delta_emission_dict['PPM'].sum())
-    
-    test = Emissions(3, delta_emission_dict)
-    start = time()
-    HiLowEmis_dict = test.getHiLowEmis('PPM', 5, 5)
-    HiEmis = HiLowEmis_dict['emis_hires']
-    LowEmis = HiLowEmis_dict['emis_lowres']
-    print(HiEmis.sum())
-    print(LowEmis.sum())
-    stop = time()
-    print('First call: %f' % (stop - start))
-    
-    start = time()
-    emis_low_res = test.getLowResEmis('PPM', 5, 5)
-    stop = time()
-    print('Second call: %f' % (stop - start))
-    
-    print(emis_low_res)
-    emis_low_res = test.getLowResEmis('PPM', 1, 1)
-    print(emis_low_res)
     
 #     # module 1 test inputs
 #     module = 1
