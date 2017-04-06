@@ -131,7 +131,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
                 window_ones[i,j] = 0
     
     delta_conc = {} 
-    DC_target_arrray = zeros((n_lat, n_lon))
+    DC_target_arrray = zeros((n_lat, n_lon)) * float('nan')
         
     # loop over all nuts in 
     for nuts_id in range(n_nuts):
@@ -232,8 +232,8 @@ if __name__ == '__main__':
     
     # run module 1 without progress log
     start = time()
-    # emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_NO2_Y.nc'
-    emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
+    emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_NO2_Y.nc'
+    # emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
     nuts2_netcdf = 'input/EMI_RED_ATLAS_NUTS2.nc'
     target_cell_lat = 45.46         # Milan
     target_cell_lon = 9.19          # Milan
