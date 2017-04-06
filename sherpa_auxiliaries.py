@@ -39,6 +39,7 @@ def create_emission_reduction_dict(path_reduction_txt):
     
     return emission_reduction_dict
 
+
 # function making a list of the precursors that are reduced
 def create_reduced_precursor_lst(emission_reduction_dict):
     reduced_precursor_lst = []
