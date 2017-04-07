@@ -7,7 +7,7 @@ Module to calculate the impact of measures
 
 INPUT:
      *to be completed/updated*
-    Need to add an input directory with the following files:
+     Need to add an input directory with the following files:
         input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc: using it to get the values of lat and lon, will not be necessary in the future
         input/population.mat: population file by Marco
         # input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc' : base case concentration
@@ -52,7 +52,7 @@ from module7_custom import read_nuts_area
 
 import module1 as shrp
 import module1ema as shrp1
-from healthia import calc_impacts
+#from healthia import calc_impacts
 
 # -----------------------------------------------------------------------------
 def save_obj(obj, name):
@@ -85,6 +85,8 @@ def write_reductions(path_reduction_txt, red):
     text_file.write("PPM	0	0	0	0	0	0	%s	0	0	0\n" % red[3])
     text_file.write("SOx	0	0	0	0	0	0	%s	0	0	0\n" % red[4])
     text_file.close()
+
+#    frame = pd.DataFrame(np.zeros(5, 10), index=('NOx', 'NMVOC', 'NH3', 'PPM', 'SOx'), )
 # -----------------------------------------------------------------------------
 
 def tiftosherpagrid(pollutant, variable, sector, aty, net, arr):
@@ -276,12 +278,10 @@ def aqmeasure(emi, gainsCO2, ser, act_all, act_fossil, area_sel, path_reduction_
     sector_lst = ['TRA_RD_LD4C','TRA_RD_HDB','TRA_RD_LD2','TRA_RD_LD4T','TRA_RD_HDT','TRA_RD_M4' ]
     nonfuels_lst = ['TYRE', 'ABRASION','BRAKE']
 
-
-
-    ef_inv = {}
     # calculate the implied emission factors, dividing the gridded emissions
     # by the gridded activities (only for the cells where the activity is not
     # zero) TODO: there should be a better way to do this over the stacked dic.
+    ef_inv = {}
     for pollutant in emi:
         for sector in emi[pollutant]:
             for aty in emi[pollutant][sector]:
@@ -304,8 +304,8 @@ def aqmeasure(emi, gainsCO2, ser, act_all, act_fossil, area_sel, path_reduction_
     # read csv file with the emission factors
     df = pd.read_csv('input/ef_red_sherpaeco.csv',  index_col=[0,1], names=['POLL','ACT'].extend(sector_lst), skipinitialspace=True)
     # second option (to be implemented**)- emission factors for the best available technology
-
     # read the precursors list (as in model1)
+
     rootgrp = Dataset(path_model_cdf_test, 'r')
     precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
     # create a dictionary with emissions per precursor, macrosector and postion (lat, lon)
@@ -315,9 +315,10 @@ def aqmeasure(emi, gainsCO2, ser, act_all, act_fossil, area_sel, path_reduction_
     em_bc ={} # emissions for the base case
     em_bc_t_percell = {}
     for precursor in precursor_lst:
-        for m_sector in m_sectorlist:
-            em_bc[precursor,m_sector-1] = np.sum(emission_dict[precursor][m_sector-1] * area * area_sel[(0)])
-        em_bc_t_percell[precursor]= np.sum(emission_dict[precursor][m_sector-1] * area * area_sel[(0)] for m_sector in m_sectorlist)
+        for m_sec in m_sectorlist:
+            em_bc[precursor,m_sec-1] = np.sum(emission_dict[precursor][m_sec-1] * area * area_sel[(0)])
+        em_bc_t_percell[precursor]= np.sum(emission_dict[precursor][m_sec-1] * area * area_sel[(0)] for m_sec in m_sectorlist)
+
     # calculate delta emissions and inventory emissions per cell (in the area of interest)
     delta_em_percell={}
     em_percell={}
@@ -595,33 +596,33 @@ if __name__ == '__main__':
      # -------------------------------------------------------------------------
 
     deltaconc='output/delta_concentration.nc'
-    deltayll_reg, deltayll_tot, delta_mort_tot, delta_mort_reg, delta_yll = calc_impacts(deltaconc, nc_selarea)
+    deltayll_reg, deltayll_tot, delta_mort_tot, delta_mort_reg, deltayll_spec_reg = calc_impacts(deltaconc, nc_selarea)
 
     deltaconc2='output2/delta_concentration.nc'
-    deltayll_reg2, deltayll_tot2, delta_mort_tot2, delta_mort_reg2, delta_yll2 = calc_impacts(deltaconc2, nc_selarea)
+    deltayll_reg2, deltayll_tot2, delta_mort_tot2, delta_mort_reg2, deltayll_spec_reg2 = calc_impacts(deltaconc2, nc_selarea)
 
     deltaconc3='output3/delta_concentration.nc'
-    deltayll_reg3, deltayll_tot3, delta_mort_tot3, delta_mort_reg3, delta_yll3 = calc_impacts(deltaconc3, nc_selarea)
+    deltayll_reg3, deltayll_tot3, delta_mort_tot3, delta_mort_reg3, deltayll_spec_reg3 = calc_impacts(deltaconc3, nc_selarea)
 
     # -------------------------------------------------------------------------
     # Output of results (todo)
     # -------------------------------------------------------------------------
 
-#    plot_url = py.plot_mpl(fig, filename='mpl-basic-histogram')
-    # create new netcdf file for results
-    nc_out = 'output/delta_yll.nc'
-    fh = Dataset(nc_out, mode='w', format='NETCDF3_CLASSIC')
-    fh.createDimension('latitude',  n_lat)
-    fh.createDimension('longitude', n_lon) #x
-    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
-    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
-    yllout = fh.createVariable('yll', 'f4', ('latitude', 'longitude'))
-    fh.variables['yll'].units = 'years'
-    fh.variables['yll'].long_name = 'years of life loss'
-    longitude[:] = lon_array
-    latitude[:] = lat_array
-    yllout[:] = delta_yll3 #area_sel[(0)]*100
-    fh.close()
+##    plot_url = py.plot_mpl(fig, filename='mpl-basic-histogram')
+#    # create new netcdf file for results
+#    nc_out = 'output/delta_yll.nc'
+#    fh = Dataset(nc_out, mode='w', format='NETCDF3_CLASSIC')
+#    fh.createDimension('latitude',  n_lat)
+#    fh.createDimension('longitude', n_lon) #x
+#    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
+#    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
+#    yllout = fh.createVariable('yll', 'f4', ('latitude', 'longitude'))
+#    fh.variables['yll'].units = 'years'
+#    fh.variables['yll'].long_name = 'years of life loss'
+#    longitude[:] = lon_array
+#    latitude[:] = lat_array
+#    yllout[:] = delta_yll3 #area_sel[(0)]*100
+#    fh.close()
 
 #    # create new netcdf file for results
 #    nc_out = 'output2/delta_yll.nc'

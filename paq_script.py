@@ -147,7 +147,7 @@ if __name__ == '__main__':
     deltayll_tot = {}  # the delta yll achieved in total
     delta_mort_tot = {}  # the delta deaths achieved in total
     delta_mort_reg = {}  # the delta deaths achieved in the target area
-    delta_yll = {}  # the array delta yll achieved per cell
+    deltayll_spec_reg = {}  # the array delta yll achieved per cell
 
     # Preapre all the areas of reduction
     redtuple = {}
@@ -170,7 +170,7 @@ if __name__ == '__main__':
         deltayll_tot[i] = {}
         delta_mort_tot[i] = {}
         delta_mort_reg[i] = {}
-        delta_yll[i] = {}
+        deltayll_spec_reg[i] = {}
         for cityind in np.arange(len(cities)):
             # read reduction areas netcdf fiels
             nc_redarea = 'workdir\\redarea{}_{}.nc'.format(
@@ -192,7 +192,7 @@ if __name__ == '__main__':
              deltayll_tot[i][tartuple[cityind][2]],
              delta_mort_tot[i][tartuple[cityind][2]],
              delta_mort_reg[i][tartuple[cityind][2]],
-             delta_yll[i][tartuple[cityind][2]]) = calc_impacts(
+             deltayll_spec_reg[i][tartuple[cityind][2]]) = calc_impacts(
                      deltaconc, nc_tararea[cityind])
 
     # impact of basecase (should maybe eslcude natural?)
@@ -200,19 +200,19 @@ if __name__ == '__main__':
     deltayll_tot_bc = {}
     delta_mort_tot_bc = {}
     delta_mort_reg_bc = {}
-    delta_yll_bc = {}
+    deltayll_spec_reg_bc = {}
 
     # impact of reductions at european level
     deltayll_reg_eu = {}
     deltayll_tot_eu = {}
     delta_mort_tot_eu = {}
     delta_mort_reg_eu = {}
-    delta_yll_eu = {}
+    deltayll_spec_reg_eu = {}
 
     for cityind in np.arange(len(cities)):
         (deltayll_reg_bc[cityind], deltayll_tot_bc[cityind],
          delta_mort_tot_bc[cityind], delta_mort_reg_bc[cityind],
-         delta_yll_bc[cityind]) = calc_impacts(
+         deltayll_spec_reg_bc[cityind]) = calc_impacts(
                  nc_antrconc, nc_tararea[cityind], spec='a')
         # run module 1 with progress log
         progresslog = 'input\\progress.log'
@@ -229,7 +229,7 @@ if __name__ == '__main__':
         # Evaluation of the impacts
         (deltayll_reg_eu[cityind], deltayll_tot_eu[cityind],
          delta_mort_tot_eu[cityind], delta_mort_reg_eu[cityind],
-         delta_yll_eu[cityind]) = calc_impacts(
+         deltayll_spec_reg_eu[cityind]) = calc_impacts(
                  deltaconc, nc_tararea[cityind], spec='d')
 
     # -------------------------------------------------------------------------
@@ -263,7 +263,41 @@ if __name__ == '__main__':
                 ('Base Case', '30% reduction'),
                 bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.savefig(
-         'output\\yll{}.png'.format(cities[cityind]), bbox_inches='tight', dpi=300)
+         'output\\yll{}.png'.format(
+                cities[cityind]), bbox_inches='tight', dpi=300)
+
+    print('Displaying results in YLL per 100000 ppl')
+    for cityind in np.arange(len(cities)):
+        yllreds = [
+                deltayll_spec_reg[i][tartuple[cityind][2]] for i in redlevels]
+        yllreddeltas = (deltayll_spec_reg_bc[cityind]-yllreds)
+
+        yllredplots = [
+                deltayll_spec_reg_bc[cityind],
+                deltayll_spec_reg_bc[cityind] - deltayll_spec_reg_eu[cityind]]
+
+        yllredplots[1:1] = yllreddeltas
+        N = len(yllredplots)
+        ind = np.arange(N)  # the x locations for the groups
+        width = 0.35       # the width of the bars
+
+        fig, ax = plt.subplots()
+        rects1 = ax.bar(ind[0], yllredplots[0], width, color='r')
+        rects1 = ax.bar(ind[1:], yllredplots[1:], width, color='g')
+
+        # add some text for labels, title and axes ticks
+        ax.set_ylabel('Years of life loss per 100k ppl [YLL per 100k ppl]')
+        ax.set_title(
+         'Years of life loss per 100k ppl in the FUA of {}'.format(
+                 cities[cityind]))
+        ax.set_xticks(ind)
+        ax.set_xticklabels((['BC', 'city', 'FUA', 'country', 'Europe']))
+        ax.legend(
+                ('Base Case', '30% reduction'),
+                bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.savefig(
+         'output\\yll_spec{}.png'.format(
+                 cities[cityind]), bbox_inches='tight', dpi=300)
 
     print('Displaying results in YLL, relative')
     for cityind in np.arange(len(cities)):
@@ -298,7 +332,6 @@ if __name__ == '__main__':
     plt.draw()
     fig1.savefig(
          'output\\yll_relative.png', bbox_inches='tight', dpi=300)
-
 
 
     print('Displaying results in Mortality')
