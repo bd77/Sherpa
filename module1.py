@@ -281,11 +281,10 @@ if __name__ == '__main__':
     proglog_filename = path_result_cdf_test + 'proglog'
     write_progress_log(proglog_filename, 25, 2)
     start = time()
-    # module1(emission_1611_test, area_1611_test, 'input/user_reduction_snap7.txt', model_1611_test, output_test_1611) #, proglog_filename)
+    module1(emission_1611_test, area_1611_test, 'input/user_reduction_snap7.txt', model_1611_test, output_test_1611) #, proglog_filename)
     # debugging Denise's error
-    france = '../cities/Paris/Paris_NUTS0.nc'
-    module1('../bug_correction_20161205/one_emission_source.nc', france, 'input/user_reduction_snap7.txt', model_1611_test, '../bug_correction_20161205/') #, proglog_filename)
-    
+    # france = '../cities/Paris/Paris_NUTS0.nc'
+    # module1('../bug_correction_20161205/one_emission_source.nc', france, 'input/user_reduction_snap7.txt', model_1611_test, '../bug_correction_20161205/') #, proglog_filename)
     stop = time()
     print('Module 1 run time: %s sec.' % (stop-start))
     remove(proglog_filename)
