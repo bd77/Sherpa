@@ -15,13 +15,14 @@ for compatibility the header is 'potency' in the output txt
 
 # imports
 from netCDF4 import Dataset
-from numpy import lib, zeros, sum, power, ones
+from numpy import lib, zeros, sum, power, ones, array
 from math import isnan
 # path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
 from time import time
 import sys
 from sherpa_globals import alpha_potency
-from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window
+from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window, deltaNOx_to_deltaNO2
+from os import rename
 
 # function that applies reductions per snap sector and precursor to the emission netcdf
 def create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array, path_reduction_txt):
@@ -62,19 +63,21 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
     alpha = rootgrp.variables['alpha'][:, :, :]    
     omega = rootgrp.variables['omega'][:, :, :] 
-    flatWeight = rootgrp.variables['flatWeight'][:, :, :]
-
     # put alpha and omega in a dictionary
     alpha_dict = {}
     omega_dict = {}
-    flatWeight_dict = {}
     for i in range(len(precursor_lst)):
         alpha_dict[precursor_lst[i]] = alpha[i, :, :]
         omega_dict[precursor_lst[i]] = omega[i, :, :]
-        flatWeight_dict[precursor_lst[i]] = flatWeight[i, :, :]
         
     # close model netcdf
     rootgrp.close()
+    
+    # a better way should be found, e.g. variable inside the netcdf
+    if (path_model_cdf.find('NO2eq') > -1):
+        NOx = True
+    else:
+        NOx = False
     
     # open the area netcdf and get lat lon indexes of target cell
     #-------------------------------------------------------------
@@ -112,32 +115,37 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     # read base concentrations and extract base case concentration in the target cell
     # -------------------------------------------------------------------------------
     rootgrp = Dataset(path_base_conc_cdf, 'r')
-    target_conc_basecase = rootgrp.variables['conc'][i_lat_target, i_lon_target]
+    if NOx == True:
+        # in case of NO2, also get the NO2 base case concentration
+        target_conc_basecase_no2 = array(rootgrp.variables['NO2'][i_lat_target, i_lon_target]) 
+        target_conc_basecase_nox = rootgrp.variables['conc'][i_lat_target, i_lon_target]       # in case of NO2, conc == NOx
+        # dictionary with the concentration change due to an emission reduction in a nuts, keys are nuts codes
+        delta_conc_no2 = {} 
+        delta_conc_nox = {}     # just in case we're doing NO2
+    else:
+        target_conc_basecase = rootgrp.variables['conc'][i_lat_target, i_lon_target]       # this is PM2.5 or PM10
+        # dictionary with the concentration change due to an emission reduction in a nuts, keys are nuts codes
+        delta_conc = {}
     # close model netcdf
     rootgrp.close()
     
+    # array to store delta concentration spatially in reduction area
+    DC_target_arrray = zeros((n_lat, n_lon))
+
     # make a window
     window = create_window(inner_radius)
     (n_lon_inner_win, n_lat_inner_win) = window.shape
-    
-    # create flat window and a inner window
-    borderweight = window[inner_radius, 0]
-    
-    window_ones = ones(window.shape)
-    for i in range(n_lat_inner_win):
-        for j in range(n_lon_inner_win):
-            if window[i,j] < borderweight:
-                window[i,j] = 0
-                window_ones[i,j] = 0
-    
-    delta_conc = {} 
-    DC_target_arrray = zeros((n_lat, n_lon))
-        
+            
     # loop over all nuts in 
     for nuts_id in range(n_nuts):
         # initialize delta_conc
         nuts_code = nuts_codes[nuts_id]
-        delta_conc[nuts_code] = 0
+        if NOx == True:
+            delta_conc_no2[nuts_code] = 0
+            delta_conc_nox[nuts_code] = 0
+        else:
+            delta_conc[nuts_code] = 0
+            
         # print the progress
         progress = float(nuts_id) / float(n_nuts) * 100
         sys.stdout.write('\r')
@@ -157,36 +165,44 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
         # apply source receptor relationships
         # -----------------------------------
         
-        # dictionary with sum of emissions over full domain per precursor
-        sum_emissions_flat = {}
         for precursor in precursor_lst:
-            sum_emissions_flat[precursor] = delta_emission_dict[precursor].sum()   
-                    
-        for precursor in precursor_lst:
-            # apply averaging window
+            # get the model coefficients
             alpha_ij = alpha_dict[precursor][i_lat_target, i_lon_target]
             omega_ij = omega_dict[precursor][i_lat_target, i_lon_target]
-            flatWeight_ij = flatWeight_dict[precursor][i_lat_target, i_lon_target]
-            
+            # if the model exists, use it
             if not(isnan(alpha_ij)):
+                # select the emissions inside the weighting window for the precursor
+                emissions_window = pad_delta_emission_dict[precursor][i_lat_target:(i_lat_target + n_lon_inner_win), i_lon_target:(i_lon_target + n_lat_inner_win)]
+                # apply the weighting factors and sum over the whole window
+                weighted_emissions_window = ((power(window, omega_ij)) * emissions_window).sum()
+                # for NO2 the SR model gives delta NOx concentration
+                if NOx == True:
+                    delta_conc_nox[nuts_code] = delta_conc_nox[nuts_code] + alpha_ij * weighted_emissions_window
+                # for PM2.5 and PM10 the delta concentration of the respective PM
+                else:
+                    delta_conc[nuts_code] = delta_conc[nuts_code] + alpha_ij * weighted_emissions_window
                 
-                # apply the weight to the flat weighted emissions
-                weighted_emissions_flat = flatWeight_ij * sum_emissions_flat[precursor]  
-                
-                emissions_centre = pad_delta_emission_dict[precursor][i_lat_target:(i_lat_target + n_lon_inner_win), i_lon_target:(i_lon_target + n_lat_inner_win)]
-                
-                # weighted_emissions_centre = (power(weights_centre, omega_ij) * emissions_centre).sum()
-                weighted_emissions_centre = ((power(window, omega_ij) - window_ones * flatWeight_ij) * emissions_centre).sum()
-                delta_conc[nuts_code] = delta_conc[nuts_code] + alpha_ij * (weighted_emissions_centre + weighted_emissions_flat)
-    
-        # create an output map with in each nuts the DC in the target cell
-        DC_target_arrray = DC_target_arrray + delta_conc[nuts_code] * reduction_area_array
+        # In the case of NOx, the NO2 concentration has to be calculated with the NO2 fraction correlation
+        if NOx == True:
+            delta_conc_no2[nuts_code] = deltaNOx_to_deltaNO2(delta_conc_nox[nuts_code], target_conc_basecase_nox, target_conc_basecase_no2)
+            # there is a choice to be made, report delta NO2 or NOx in the spatial result
+            # NOx
+            DC_target_arrray = DC_target_arrray + delta_conc_nox[nuts_code] * reduction_area_array
+            # or NO2
+            # DC_target_arrray = DC_target_arrray + delta_conc_no2[nuts_code] * reduction_area_array
+        else:
+            # create an output map with in each nuts the DC in the target cell
+            DC_target_arrray = DC_target_arrray + delta_conc[nuts_code] * reduction_area_array
         
     # close nuts cdf
     rootgrp_nuts.close()
     
     # sort nuts codes from delta_conc from high to low delta conc
-    sorted_nuts_codes = sorted(delta_conc, key=lambda i: delta_conc[i], reverse=True) 
+    if NOx == True:
+        sorted_nuts_codes_nox = sorted(delta_conc_nox, key=lambda i: delta_conc_nox[i], reverse=True)
+        sorted_nuts_codes_no2 = sorted(delta_conc_no2, key=lambda i: delta_conc_no2[i], reverse=True)
+    else:
+        sorted_nuts_codes = sorted(delta_conc, key=lambda i: delta_conc[i], reverse=True) 
     
     # write the result to a netcdf file
     path_DC_target_cdf = path_result_cdf + 'radius_result.nc'
@@ -206,36 +222,24 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     # write a result file
     f_res = open(path_result_cdf + 'radius_result.txt', 'w')
     f_res.write('nuts_code\t%\n')
-    for nuts_code in sorted_nuts_codes:
-        f_res.write('%s\t%e\n' % (nuts_code, delta_conc[nuts_code] / target_conc_basecase / (alpha_potency / 100) * 100)) # rel potential in percentage
+    if NOx == True:
+        # there is a choice to be made, report NO2 or NOx relative potential
+        # NOx
+        for nuts_code in sorted_nuts_codes_nox:
+            f_res.write('%s\t%e\n' % (nuts_code, delta_conc_nox[nuts_code] / target_conc_basecase_nox / (alpha_potency / 100) * 100)) # rel potential in percentage
+        # or NO2
+#         for nuts_code in sorted_nuts_codes_no2:
+            # f_res.write('%s\t%e\n' % (nuts_code, delta_conc_no2[nuts_code] / target_conc_basecase_no2 / (alpha_potency / 100) * 100)) # rel potential in percentage
+    # for PM2.5 or PM10
+    else:
+        for nuts_code in sorted_nuts_codes:
+            f_res.write('%s\t%e\n' % (nuts_code, delta_conc[nuts_code] / target_conc_basecase / (alpha_potency / 100) * 100)) # rel potential in percentage
     f_res.close()
 
-    # return delta_conc
-
+    
 if __name__ == '__main__':
     
-    # module 1 test inputs
-    module = 1
-    # if it doesn't exist strart=0 and dividsor=1
-    progresslog = 'input/progress.log'
-    
-    # run module 1 without progress log
-    start = time()
-    start = time()
-    emission_1611_test = 'input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
-    nuts2_netcdf = 'input/EMI_RED_ATLAS_NUTS2.nc'
-    target_cell_lat = 51.51     # 51.51
-    target_cell_lon = -0.13  # 9.19      #-0.13
-    path_base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc'
-    model_1611_test = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
-    path_result_cdf = 'output/'
-     
-    # run module 1 with progress log
-    start = time()
-    module6(emission_1611_test, nuts2_netcdf, target_cell_lat, target_cell_lon, 'input/user_reduction_snap7.txt', path_base_conc_cdf, model_1611_test, path_result_cdf)
-    # print(DC)
-    stop = time()
-    print('Module 6 run time: %s sec.' % (stop-start))
+    # the testing is moved to test_module6.py    
      
     pass
 
