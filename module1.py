@@ -23,13 +23,14 @@ Enrico agrees with this nice explanation of module 1
 '''
 
 # imports
-from netCDF4 import Dataset
-from numpy import lib, zeros, sum, power, sqrt
 from math import isnan
-# path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
-from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window, read_progress_log, deltaNOx_to_deltaNO2
 import sys
 from time import time
+from netCDF4 import Dataset
+from numpy import lib, zeros, sum, power, sqrt
+from sherpa_auxiliaries import (create_emission_reduction_dict, 
+    create_emission_dict, create_window, read_progress_log, 
+    deltaNOx_to_deltaNO2)
 
 # Window class that returns aggregated weighting windows for a given omega
 class OmegaPowerWindows:
@@ -55,7 +56,13 @@ class OmegaPowerWindows:
         return self.hires_omega_windows[omega] 
 
 # function that applies reductions per snap sector and precursor to the emission netcdf
-def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf, path_reduction_txt, path_result_cdf, write_netcdf_output):
+def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf, 
+                          path_reduction_txt, path_result_cdf, 
+		      write_netcdf_output):
+    """
+    Function that applies reductions per snap sector and precursor to the
+    emission netcdf.
+    """
     # create a dictionary with reductions per precursor and macro sector
     emission_reduction_dict = create_emission_reduction_dict(path_reduction_txt)
     
@@ -76,9 +83,6 @@ def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf, path_
         # make the sum over all snap sectors
         for snap in range(1, 11):
             delta_emission_dict[precursor][snap - 1, :, :] = emission_dict[precursor][snap - 1] * reduction_area * emission_reduction_dict[precursor][snap]
-#             print(snap)
-#             print(sum(delta_emission_dict[precursor][snap - 1, :, :]))
-    
 
     # before summing over all snap sectors write the delta emissions per precursor and snap to a netcdf
     # create an output netcdf with delta emissions
@@ -114,13 +118,9 @@ def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf, path_
               
     return delta_emission_dict
 
-
 # function definition of source receptor model
-
 def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf, *progresslog):
     
-    print('This is module 1 with the OmegaPowerClass upgrade!!!')
-
     # check if a progess log file was passed as argument
     if progresslog:
         progress_dict = read_progress_log(progresslog[0])
@@ -166,16 +166,9 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     # apply source receptor relationships
     # -----------------------------------
     last_progress_print = time()
-#     calculate weighted emissions for all precursors
-#     norm_delta_conc = zeros((n_lat, n_lon))
     delta_conc = zeros((n_lat, n_lon)) * float('nan')
     cell_counter = 0
     n_cell = n_lat * n_lon
-    
-    # dictionary with sum of emissions over full domain per precursor
-    sum_emissions_flat = {}
-    for precursor in precursor_lst:
-        sum_emissions_flat[precursor] = delta_emission_dict[precursor].sum()   
     
     # initialize a OmegaPowerWindows class
     win_pow_omega = OmegaPowerWindows(2 * inner_radius + 1)
@@ -201,13 +194,14 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
                     # if the model is available remove NaN value
                     if isnan(delta_conc[ie, je]):
                         delta_conc[ie, je] = 0
-                    
+                    # select the window of emissions around the target cell
                     emissions_centre = pad_delta_emission_dict[precursor][ie:(ie + n_lon_inner_win), je:(je + n_lat_inner_win)]
-                    
+                    # apply the weights to the emissions and sum them over the whole window
                     weighted_emissions_centre = (win_pow_omega.getOmegaPowerWindow(omega_ij) * emissions_centre).sum()
                     # sum the contribution of the precursor
                     delta_conc[ie, je] = delta_conc[ie, je] + alpha_ij * weighted_emissions_centre
             
+	  # update the cellcounter for the progress bar
             cell_counter += 1
     
     # In the case of NO2 the variable 'delta_conc' contains the NOx concentrations as NO2-equivalent.
@@ -219,7 +213,6 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
         base_conc_no2 = rootgrp.variables['NO2'][:]
         rootgrp.close() 
         delta_conc = deltaNOx_to_deltaNO2(delta_conc, base_conc_nox, base_conc_no2)
-    
     
     # create a result netcdf 
     # -----------------------
@@ -252,8 +245,7 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     mod1_res['n_lon'] = n_lon
     mod1_res['latitude_array'] = latitude_array
     mod1_res['longitude_array'] = longitude_array
-    
-    
+     
     return mod1_res
 
 if __name__ == '__main__':
