@@ -19,9 +19,8 @@ from sherpa_globals import (path_base_conc_cdf_test, path_salt_conc_cdf_test,
 from sherpa_auxiliaries_epe import gridint_toarray, write_nc
 
 
-def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
-                 spec='d', approx='e', miller=True):
-
+def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', miller=True,
+                 std_life_exp=70):
     """
     Health impacts of PM2.5 - WHO-Europe method (HRAPIE reccomendations)
 
@@ -38,11 +37,7 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
         - path_areasel_nc: path to netcdf file of area of interest
            (nc file with 100 in the cells of the area of interest)
         - code: country code, FUA code or city code (as defined in the
-           grid interesect files).. possible codes at the moment:
-             'CY', 'ES', 'HU', 'ME', 'NL', 'SI', 'AT', 'BE', 'BG', 'CH', 'CZ',
-             'DE', 'DK', 'EE', 'EL', 'FI', 'FR', 'HR', 'IE', 'IT',
-             'LT', 'LU', 'LV', 'MK', 'MT', 'NO', 'PL', 'PT', 'RO', 'SE', 'SK',
-             'TR', 'UK'
+           grid interesect files):
         - path_conc_nc: path to the file  with the concentrations
            (output of module1) or absolute concentration
         - spec='d' for 'delta' concentration or 'a' for 'absolute'
@@ -61,7 +56,15 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
 
     Required files:
         - path_mortbaseline: excel file with the data of the baseline
-          population: matlab file with the population distribution (LUISA)
+        - population: matlab file with the population distribution (LUISA)
+        - grid intersect files
+        Country codes for teh grid intesect are:
+             'CY', 'ES', 'HU', 'ME', 'NL', 'SI', 'AT', 'BE', 'BG', 'CH', 'CZ',
+             'DE', 'DK', 'EE', 'EL', 'FI', 'FR', 'HR', 'IE', 'IT',
+             'LT', 'LU', 'LV', 'MK', 'MT', 'NO', 'PL', 'PT', 'RO', 'SE', 'SK',
+             'TR', 'UK'.
+        However some of these countries have no or incomplete population data:
+                 'CH', 'MK', 'ME', 'NO', 'TR'. 'SE', 'NO',
 
     BIBLIOGRAPHY:
 
@@ -90,43 +93,11 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
         values) from:
         http://data.euro.who.int/hfamdb/ [Accessed Aprli 12, 2017].
 
-
     @author: peduzem
     """
 
-# -----------------------------------------------------------------------------
-# PM2.5 CONCENTRATION
-
-    if spec == 'a':
-        # base case PM25 conentration
-        rootgrp = Dataset(path_conc_nc, mode='r')
-        bc_pm25_conc = rootgrp.variables['conc'][:]
-#        bc_pm25_units = rootgrp.variables['conc'].units
-        rootgrp.close()
-
-        # Dust PM25 conentration to be removed for HIA
-        rootgrp = Dataset(path_dust_conc_cdf_test, mode='r')
-        pDUST25 = rootgrp.variables['pDUST-25'][:]
-#        pDUST25_units = rootgrp.variables['pDUST-25'].units
-        rootgrp.close()
-
-        # Salt PM25 conentration to be removed for HIA
-        rootgrp = Dataset(path_salt_conc_cdf_test, mode='r')
-        pSALT25 = rootgrp.variables['pSALT-25'][:]
-#        pSALT25_units = rootgrp.variables['pSALT-25'].units
-        rootgrp.close()
-
-        # Antropogenic concentration
-        pm25_conc = bc_pm25_conc - pSALT25 - pDUST25
-
-    elif spec == 'd':
-        fh_deltapm25 = Dataset(path_conc_nc, mode='r')
-        pm25_conc = fh_deltapm25.variables['delta_concentration'][:]
-#       pm25_delta = fh_deltapm25.variables['conc'][:]
-        fh_deltapm25.close()
-
-# -----------------------------------------------------------------------------
-# BASELINE POPULATION DATA FOR THE AREA OF INTEREST
+    # -----------------------------------------------------------------------------
+    # BASELINE POPULATION DATA
     # Load population file from LUISA (Marco)
     # (treated in "regridPop" matlab routine from Enrico).
     # The matlab file contains a structure called Anew,
@@ -137,12 +108,8 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
     Anew = A['Anew']
     Anew_T = Anew[np.newaxis]
     popall = np.fliplr(Anew_T)
-
-    rootgrp = Dataset(path_areasel_nc, mode='r')
-    area_area = rootgrp.variables['AREA'][:]
-    rootgrp.close()
-    #  Get information sepcific to the country of the are of interest
-    country = code[0:2]
+#    path_pop_nc = 'workdir/pop.nc'
+#    write_nc(popall, path_pop_nc, 'POP', '#')
 
     # Build Pandas dataframe with the baseline population data
     # distributed by age:
@@ -199,7 +166,7 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
     # (as provided by Marco)
     p30_ptot = (df_pop[np.asarray(cols30p)].sum(axis=1) /
                 df_pop[np.asarray(col_list[1:])].sum(axis=1))
-
+#    ptot = df_pop[np.asarray(col_list[1:])].sum(axis=1)
     # Calculting average values to use if the country selected is not in
     # the database. Average values calculating considering EU28 countries
     # which are in the WHO database
@@ -214,14 +181,64 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
     m_drate = drate.ix[intersect].mean(axis=0)
     m_p30_ptot = p30_ptot.ix[intersect].mean(axis=0)
     m_lyl = df_lyl.ix[intersect].mean(axis=0)
-
-    if country in list(df_mort.index):
-            # Scaling of the population in each grid cell
-            pop30plus = (popall * p30_ptot.ix[country])
-    else:
-            pop30plus = popall * m_p30_ptot
+    ptot_eu = df_pop.ix[intersect][col_list[1:]].sum(axis=1)
+    # total population by country in both list
 
 # -----------------------------------------------------------------------------
+# PM2.5 CONCENTRATION
+
+    if spec == 'a':
+        # base case PM25 conentration
+        rootgrp = Dataset(path_conc_nc, mode='r')
+        bc_pm25_conc = rootgrp.variables['conc'][:]
+#        bc_pm25_units = rootgrp.variables['conc'].units
+        rootgrp.close()
+
+        # Dust PM25 conentration to be removed for HIA
+        rootgrp = Dataset(path_dust_conc_cdf_test, mode='r')
+        pDUST25 = rootgrp.variables['pDUST-25'][:]
+#        pDUST25_units = rootgrp.variables['pDUST-25'].units
+        rootgrp.close()
+
+        # Salt PM25 conentration to be removed for HIA
+        rootgrp = Dataset(path_salt_conc_cdf_test, mode='r')
+        pSALT25 = rootgrp.variables['pSALT-25'][:]
+#        pSALT25_units = rootgrp.variables['pSALT-25'].units
+        rootgrp.close()
+
+        # Antropogenic concentration
+        pm25_conc = bc_pm25_conc - pSALT25 - pDUST25
+
+    elif spec == 'd':
+        fh_deltapm25 = Dataset(path_conc_nc, mode='r')
+        pm25_conc = fh_deltapm25.variables['delta_concentration'][:]
+#       pm25_delta = fh_deltapm25.variables['conc'][:]
+        fh_deltapm25.close()
+
+# -----------------------------------------------------------------------------
+    #  Get information sepcific to the country of the are of interest
+    country = code[0:2]
+
+    area_co = gridint_toarray(
+            'NUTS_Lv0', 'parea', country)
+    # path_areco_nc = 'workdir/areaco{}.nc'.format(country)
+    # write_nc(area_co, path_areco_nc, 'AREA', '%')
+    # total population in the country according to LUISA
+    pop30plus = np.zeros(np.shape(popall))
+    popallco = np.sum(popall * area_co/100)
+    if country in list(df_mort.index):
+        # Scaling factor to respect country totals as provided by WHO
+        # in each grid cell of the area of interest
+        scalefact = ptot_eu.ix[country] / popallco
+        # Scaling to only the population over 30 in each grid cell
+        # warning: this is valid only in the country
+        pop30plus = pop30plus + np.array((popall * scalefact *
+                                          p30_ptot.ix[country]))
+    else:
+        # Scaling to only the population over 30 in each grid cell
+        # warning: this is valid only in the country
+        pop30plus = pop30plus + np.array(popall * m_p30_ptot)
+
     # CONCENTRATION RESPONSE FUNCTION:
     # considering bounds for 95% CI
     if approx == 'l':
@@ -263,11 +280,6 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
                              pop30plus * m_drate
                              for i in range(len(beta))]))
 
-
-
-    # delta_mortality in total (this is an approximation as the drate and
-    # p30_ptot should change by country, not used)
-    # delta_mort_tot = [np.sum(delta_mort[i]) for i in range(len(beta))]
 # -----------------------------------------------------------------------------
     # ESTIMATE OF THE YLL
     if country in list(df_mort.index):
@@ -293,8 +305,11 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
             lyg = np.exp(8.161-(0.04478*df_le[2009].ix[country]))
             delta_yll = np.where(np.isnan(pm25_conc), 0, [pm25_conc *
                                  lyg/100000*pop30plus for i in range(pt)])
-# -----------------------------------------------------------------------------
-    # PRODUCE RESULTS
+
+    # PRODUCE RESULTS for the area of interest
+    rootgrp = Dataset(path_areasel_nc, mode='r')
+    area_area = rootgrp.variables['AREA'][:]
+    rootgrp.close()
     # delta_mortality in the area of interest
     delta_mort_reg = [
             np.sum(delta_mort[i]*area_area/100) for i in range(pt)]
@@ -315,42 +330,42 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, std_life_exp=70,
 
 if __name__ == '__main__':
 
-    # Target area:
+#    Target area:
+#    level = 'FUA_CODE'
+#    parea = 'parea'
+#    code = 'IT002L2'
     level = 'NUTS_Lv0'
     parea = 'parea'
-#    code = 'EL'
+    code = 'IT'
+#    ''
 
     # path to store the selected area
     path_areasel_nc = 'workdir/selarea.nc'
     # reduction area
-#    area_sel = gridint_toarray(
-#            level, parea, code)
+    area_sel = gridint_toarray(
+            level, parea, code)
 #
-#    write_nc(area_sel, path_areasel_nc, 'AREA', '%')
+    write_nc(area_sel, path_areasel_nc, 'AREA', '%')
 
     path_conc_nc = path_base_conc_cdf_test
 
-#    (deltayll_reg, delta_mort_reg, deltayll_spec_reg) = calc_impacts(
-#            path_base_conc_cdf_test, path_areasel_nc, code, spec='a',
-#            approx='e')
+    (deltayll_reg, delta_mort_reg, deltayll_spec_reg) = calc_impacts(
+            path_base_conc_cdf_test, path_areasel_nc, code, spec='a',
+            approx='e')
 
-    codes = ['CY', 'ES', 'HU', 'ME', 'NL', 'SI', 'AT', 'BE', 'BG', 'CH', 'CZ',
-             'DE', 'DK', 'EE', 'EL', 'FI', 'FR', 'HR', 'IE', 'IT',
-             'LT', 'LU', 'LV', 'MK', 'MT', 'NO', 'PL', 'PT', 'RO', 'SE', 'SK',
-             'TR', 'UK']
+#    codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI',
+#             'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL',
+#             'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
 
-    deltayll_reg = {}
-    delta_mort_reg = {}
-    deltayll_spec_reg = {}
-
-    for code in codes:
-        # reduction area
-        area_sel = gridint_toarray(
-            level, parea, code)
-
-        write_nc(area_sel, path_areasel_nc, 'AREA', '%')
-
-        (deltayll_reg[code], delta_mort_reg[code],
-         deltayll_spec_reg[code]) = calc_impacts(path_base_conc_cdf_test,
-                                                 path_areasel_nc, code,
-                                                 spec='a', approx='e')
+#
+#    for code in codes:
+#        # reduction area
+#        print(code)
+#        area_sel = gridint_toarray(
+#            level, parea, code)
+#
+#        write_nc(area_sel, path_areasel_nc, 'AREA', '%')
+#
+#        (deltayll_reg[code], delta_mort_reg[code],
+#         deltayll_spec_reg[code]) = calc_impacts(path_conc_nc, path_areasel_nc, code, spec='a', approx='e', miller=True,
+#                 std_life_exp=70)
