@@ -9,6 +9,7 @@ Collection of functions to evaluate the helath impact of AQ
 """
 from netCDF4 import Dataset  # for using netCDF files
 import numpy as np
+from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
 import pandas as pd
 import scipy.io as sio
 
@@ -16,7 +17,7 @@ from sherpa_globals import (path_base_conc_cdf_test, path_salt_conc_cdf_test,
                             path_dust_conc_cdf_test, path_pop_mat_test,
                             path_mortbaseline)
 
-from sherpa_auxiliaries_epe import gridint_toarray, write_nc
+from sherpa_auxiliaries_epe import gridint_toarray, write_nc, tiftogridgeneral
 
 
 def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', miller=True,
@@ -103,13 +104,14 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
     # The matlab file contains a structure called Anew,
     # I carried out the same operations as in Enrico's matlab file to adapt the
     # data to the SHERPA grid
-
-    A = sio.loadmat(path_pop_mat_test)
-    Anew = A['Anew']
-    Anew_T = Anew[np.newaxis]
-    popall = np.fliplr(Anew_T)
-#    path_pop_nc = 'workdir/pop.nc'
-#    write_nc(popall, path_pop_nc, 'POP', '#')
+    path_tiff = 'input/pop/7km_Qi_2010.tif'
+    popall = tiftogridgeneral(path_tiff)
+#    A = sio.loadmat(path_pop_mat_test)
+#    Anew = A['Anew']
+#    Anew_T = Anew[np.newaxis]
+#    popall = np.fliplr(Anew_T)
+#    path_pop_nc = 'workdir/popnew.nc'
+#    write_nc(arr, path_pop_nc, 'POP', '#')
 
     # Build Pandas dataframe with the baseline population data
     # distributed by age:
@@ -181,7 +183,7 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
     m_drate = drate.ix[intersect].mean(axis=0)
     m_p30_ptot = p30_ptot.ix[intersect].mean(axis=0)
     m_lyl = df_lyl.ix[intersect].mean(axis=0)
-    ptot_eu = df_pop.ix[intersect][col_list[1:]].sum(axis=1)
+#    ptot_eu = df_pop.ix[intersect][col_list[1:]].sum(axis=1)
     # total population by country in both list
 
 # -----------------------------------------------------------------------------
@@ -219,20 +221,20 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
     #  Get information sepcific to the country of the are of interest
     country = code[0:2]
 
-    area_co = gridint_toarray(
-            'NUTS_Lv0', 'parea', country)
+    # area_co = gridint_toarray(
+    #       'NUTS_Lv0', 'parea', country)
     # path_areco_nc = 'workdir/areaco{}.nc'.format(country)
     # write_nc(area_co, path_areco_nc, 'AREA', '%')
     # total population in the country according to LUISA
     pop30plus = np.zeros(np.shape(popall))
-    popallco = np.sum(popall * area_co/100)
+#    popallco = np.sum(popall * area_co/100)
     if country in list(df_mort.index):
         # Scaling factor to respect country totals as provided by WHO
         # in each grid cell of the area of interest
-        scalefact = ptot_eu.ix[country] / popallco
+        # scalefact = ptot_eu.ix[country] / popallco
         # Scaling to only the population over 30 in each grid cell
         # warning: this is valid only in the country
-        pop30plus = pop30plus + np.array((popall * scalefact *
+        pop30plus = pop30plus + np.array((popall *
                                           p30_ptot.ix[country]))
     else:
         # Scaling to only the population over 30 in each grid cell
@@ -330,42 +332,44 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
 
 if __name__ == '__main__':
 
-#    Target area:
-#    level = 'FUA_CODE'
-#    parea = 'parea'
-#    code = 'IT002L2'
+    # Target area:
+    #    level = 'FUA_CODE'
+    #    parea = 'parea'
+    #    code = 'IT002L2'
     level = 'NUTS_Lv0'
     parea = 'parea'
-    code = 'IT'
+#    code = 'IT'
 #    ''
 
     # path to store the selected area
     path_areasel_nc = 'workdir/selarea.nc'
-    # reduction area
-    area_sel = gridint_toarray(
-            level, parea, code)
-#
-    write_nc(area_sel, path_areasel_nc, 'AREA', '%')
-
-    path_conc_nc = path_base_conc_cdf_test
-
-    (deltayll_reg, delta_mort_reg, deltayll_spec_reg) = calc_impacts(
-            path_base_conc_cdf_test, path_areasel_nc, code, spec='a',
-            approx='e')
-
-#    codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI',
-#             'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL',
-#             'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
-
-#
-#    for code in codes:
-#        # reduction area
-#        print(code)
-#        area_sel = gridint_toarray(
+#    # reduction area
+#    area_sel = gridint_toarray(
 #            level, parea, code)
 #
-#        write_nc(area_sel, path_areasel_nc, 'AREA', '%')
+#    write_nc(area_sel, path_areasel_nc, 'AREA', '%')
+
+    path_conc_nc = path_base_conc_cdf_test
 #
-#        (deltayll_reg[code], delta_mort_reg[code],
-#         deltayll_spec_reg[code]) = calc_impacts(path_conc_nc, path_areasel_nc, code, spec='a', approx='e', miller=True,
-#                 std_life_exp=70)
+#    (deltayll_reg, delta_mort_reg, deltayll_spec_reg) = calc_impacts(
+#            path_base_conc_cdf_test, path_areasel_nc, code, spec='a',
+#            approx='e')
+
+    codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI',
+             'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL',
+             'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
+#    pop = {}
+    deltayll_reg = {}
+    deltayll_spec_reg = {}
+    delta_mort_reg = {}
+    for code in codes:
+        # reduction area
+#        print(code)
+        area_sel = gridint_toarray(
+            level, parea, code)
+#        pop[code]=np.sum(area_sel*arr/100)
+        write_nc(area_sel, path_areasel_nc, 'AREA', '%')
+#
+        (deltayll_reg[code], delta_mort_reg[code],
+         deltayll_spec_reg[code]) = calc_impacts(path_conc_nc, path_areasel_nc, code, spec='a', approx='e', miller=True,
+                 std_life_exp=70)

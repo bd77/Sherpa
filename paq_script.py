@@ -4,7 +4,8 @@ Created on Mon Mar 27 09:39:24 2017
 
 Script for the Partnership of Air Quality
 It provides the impact (yll or mortality) on the Functional Urban Area of
-different cities given a reduction of emission in the greater
+different cities given a reduction of emission at different levels: the city,
+the FUA, the country and the whole of Europe.
 
 @author: peduzem
 """
@@ -19,11 +20,12 @@ import pandas as pd
 
 
 from healthia import calc_impacts
-import module1 as shrp
-from sherpaeco import gridint_toarray, save_obj, load_obj
+import module1old as shrp # at the moment using old model and module!
+from sherpaeco import save_obj, load_obj
 from sherpa_auxiliaries import (create_emission_reduction_dict,
                                 create_emission_dict, create_window,
                                 read_progress_log, write_progress_log)
+from sherpa_auxiliaries_epe import (write_nc, gridint_toarray)
 from sherpa_globals import (path_area_cdf_test, path_model_cdf_test,
                             path_emission_cdf_test, path_result_cdf_test,
                             path_base_conc_cdf_test)
@@ -33,7 +35,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # Preparing the input data
     # -------------------------------------------------------------------------
-    print('preparing data')
+    print('preparing input data...')
     # Open model file, I just need it to load lons and lats etc.
     rootgrp = Dataset(path_model_cdf_test, 'r')
     lon_array = rootgrp.variables['lon'][0, :]
@@ -49,58 +51,53 @@ if __name__ == '__main__':
     area_units = rootgrp.variables['surface'].units
     rootgrp.close()
 
-    nc_dust = 'input\\pDUST-pSALT\\pDUST-25-basecase.nc'
-    rootgrp = Dataset(nc_dust, mode='r')
-    pDUST25 = rootgrp.variables['pDUST-25'][:]
-    pDUST25_units = rootgrp.variables['pDUST-25'].units
-    rootgrp.close()
+#    # Dust and sald PM25 conentrations to be removed for HIA
+#    nc_dust = 'input\\pDUST-pSALT\\pDUST-25-basecase.nc'
+#    rootgrp = Dataset(nc_dust, mode='r')
+#    pDUST25 = rootgrp.variables['pDUST-25'][:]
+#    pDUST25_units = rootgrp.variables['pDUST-25'].units
+#    rootgrp.close()
+#
+#    nc_salt = 'input\\pDUST-pSALT\\pSALT-25-basecase.nc'
+#    rootgrp = Dataset(nc_salt, mode='r')
+#    pSALT25 = rootgrp.variables['pSALT-25'][:]
+#    pSALT25_units = rootgrp.variables['pSALT-25'].units
+#    rootgrp.close()
 
-    nc_salt = 'input\\pDUST-pSALT\\pSALT-25-basecase.nc'
-    rootgrp = Dataset(nc_salt, mode='r')
-    pSALT25 = rootgrp.variables['pSALT-25'][:]
-    pSALT25_units = rootgrp.variables['pSALT-25'].units
-    rootgrp.close()
+#    rootgrp = Dataset(path_base_conc_cdf_test, mode='r')
+#    bc_conc = rootgrp.variables['conc'][:]
+#    bc_conc_units = rootgrp.variables['conc'].units
+#    rootgrp.close()
+#
+#    nc_antrconc='workdir\\antrconc.nc'
+#    fh = Dataset(nc_antrconc, mode='w', format='NETCDF3_CLASSIC')
+#    fh.createDimension('latitude', len(lat_array))
+#    fh.createDimension('longitude', len(lon_array))
+#    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
+#    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
+#    antrconc = fh.createVariable('conc', 'f8', ('latitude', 'longitude'))
+#    fh.variables['conc'].units =  bc_conc_units
+#    longitude[:] = lon_array
+#    latitude[:] = lat_array
+#    antrconc[:] = bc_conc - pSALT25 - pDUST25
+#    fh.close()
 
-    rootgrp = Dataset(path_base_conc_cdf_test, mode='r')
-    bc_conc = rootgrp.variables['conc'][:]
-    bc_conc_units = rootgrp.variables['conc'].units
-    rootgrp.close()
+    # Selection of the EU28 domain
+    eu28_codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES',
+                  'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT',
+                  'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
 
-    nc_antrconc='workdir\\antrconc.nc'
-    fh = Dataset(nc_antrconc, mode='w', format='NETCDF3_CLASSIC')
-    fh.createDimension('latitude', len(lat_array))
-    fh.createDimension('longitude', len(lon_array))
-    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
-    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
-    antrconc = fh.createVariable('conc', 'f8', ('latitude', 'longitude'))
-    fh.variables['conc'].units =  bc_conc_units
-    longitude[:] = lon_array
-    latitude[:] = lat_array
-    antrconc[:] = bc_conc - pSALT25 - pDUST25
-    fh.close()
+    area_eu28 = np.zeros((1, len(lat_array), len(lon_array)))
+    for eucode in eu28_codes:
+        area_eu28 = area_eu28 + (gridint_toarray(
+                                 'NUTS_Lv0', 'parea', eucode))
+#    area_eu28 = np.ones((1, len(lat_array), len(lon_array)))*100
 
-    # Selection of the EU domain TODO (could be done better)
-    area_eu = 'workdir\\redarea_eu'
-    fh = Dataset(area_eu, mode='w', format='NETCDF3_CLASSIC')
-    fh.createDimension('latitude', len(lat_array))
-    fh.createDimension('longitude', len(lon_array))
-    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
-    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
-    yllout = fh.createVariable('AREA', 'f8', ('latitude', 'longitude'))
-    fh.variables['AREA'].units = '%'
-    fh.variables['AREA'].long_name = '% cell area belonging to selected area'
-    longitude[:] = lon_array
-    latitude[:] = lat_array
-    yllout[:] = np.ones((1, len(lat_array), len(lon_array)))*100
-    fh.close()
-
-    # info on areas and percentage of grids in areas
-    grid_txt = 'input\\selection\\grid_intersect'
-    gcities_txt = 'input\\selection\\grid_int_gcities'
-    fua_txt = 'input\\selection\\\\grid_int_fua'
+    path_area_eu = 'workdir\\redarea_eu'
+    write_nc(area_eu28, path_area_eu, 'AREA', '%')
 
     # specify the path to the reduction
-    path_reduction_txt = 'input/paqred.txt'
+    path_reduction_txt = 'input\\paqred.txt'
 
     # list of cities in the Partenership of air quality
     # Cities:
@@ -116,6 +113,21 @@ if __name__ == '__main__':
     redfuacodes = tarcodes  # Corresponding codes for FUA
     redcocodes = ['FI', 'IT', 'RO', 'HR', 'DE', 'UK', 'CZ', 'NL']
     redlevels = ['GCITY_CODE', 'FUA_CODE', 'NUTS_Lv0']
+
+        # list of cities in the Partenership of air quality
+#    # Cities:
+#    cities = ['Helsinki'] #, 'Milano', 'Constanta', 'Grad Zagreb',
+#              #'Duisburg', 'London', 'Ostrava', 'Utrecht']
+#    # Corresponding codes for FUA (target areas)
+#    # NB: for Duisburg the FUA name is Ruhrgebiet
+#    tarcodes = ['FI001L2'] #, 'IT002L2', 'RO501L1', 'HR001L2', 'DE038L1',
+#                #'UK001L2', 'CZ003L1', 'NL004L2']
+#    # Corresponding codes for great cities (reduction areas)
+#    redgcodes = ['FI001K2'] #,, 'IT002K1', 'RO501C1', 'HR001C1', 'DE501C1',
+#                 #'UK001K2'] #,, 'CZ003C1', 'NL004C1']
+#    redfuacodes = tarcodes  # Corresponding codes for FUA
+#    redcocodes = ['FI'] #,, 'IT', 'RO', 'HR', 'DE', 'UK', 'CZ', 'NL']
+#    redlevels = ['GCITY_CODE', 'FUA_CODE', 'NUTS_Lv0']
 
     print('starting')
 
@@ -137,9 +149,8 @@ if __name__ == '__main__':
         # prepare the target areas, from the grid interesect using the
         # tartuple (target tuples)
         area_sel = gridint_toarray(tartuple[cityind][0], tartuple[cityind][1],
-                                   tartuple[cityind][2], lat_array, lon_array,
-                                   grid_txt, gcities_txt, fua_txt,
-                                   nc_tararea[cityind])
+                                   tartuple[cityind][2])
+        write_nc(area_sel, nc_tararea[cityind], 'AREA', '%')
 
     # initialize dictionaries to store:
     nc_redarea = {}  # path of netcdf where there are the reductions
@@ -158,9 +169,9 @@ if __name__ == '__main__':
         for cityind in np.arange(len(cities)):
             nc_redarea = 'workdir\\redarea{}_{}.nc'.format(
                     i, redtuple[i][cityind][2])
-            gridint_toarray(redtuple[i][cityind][0], redtuple[i][cityind][1],
-                            redtuple[i][cityind][2], lat_array, lon_array,
-                            grid_txt, gcities_txt, fua_txt, nc_redarea)
+            redarea = gridint_toarray(redtuple[i][cityind][0], redtuple[i][cityind][1],
+                            redtuple[i][cityind][2])
+            write_nc(redarea, nc_redarea, 'AREA', '%')
 
     # -------------------------------------------------------------------------
     # Running module1 and calculating impacts
@@ -181,19 +192,20 @@ if __name__ == '__main__':
             proglog_filename = path_result_cdf_test + 'proglog'
             write_progress_log(proglog_filename, 25, 2)
             start = time()
+#            shrp.module1(path_emission_cdf_test, nc_redarea,
+#                         path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
             shrp.module1(path_emission_cdf_test, nc_redarea,
                          path_reduction_txt, path_model_cdf_test, output)
             stop = time()
             print('Module 1 run time: %s sec.' % (stop-start))
             remove(proglog_filename)
             deltaconc = 'output\\delta_concentration.nc'
+
             # Evaluation of the impacts
             (deltayll_reg[i][tartuple[cityind][2]],
-             deltayll_tot[i][tartuple[cityind][2]],
-             delta_mort_tot[i][tartuple[cityind][2]],
              delta_mort_reg[i][tartuple[cityind][2]],
              deltayll_spec_reg[i][tartuple[cityind][2]]) = calc_impacts(
-                     deltaconc, nc_tararea[cityind])
+                     deltaconc, nc_tararea[cityind], tartuple[cityind][2][0:2])
 
     # impact of basecase (should maybe eslcude natural?)
     deltayll_reg_bc = {}
@@ -210,39 +222,40 @@ if __name__ == '__main__':
     deltayll_spec_reg_eu = {}
 
     for cityind in np.arange(len(cities)):
-        (deltayll_reg_bc[cityind], deltayll_tot_bc[cityind],
-         delta_mort_tot_bc[cityind], delta_mort_reg_bc[cityind],
+        (deltayll_reg_bc[cityind], delta_mort_reg_bc[cityind],
          deltayll_spec_reg_bc[cityind]) = calc_impacts(
-                 nc_antrconc, nc_tararea[cityind], spec='a')
+                 path_base_conc_cdf_test, nc_tararea[cityind], tartuple[cityind][2][0:2], spec='a')
         # run module 1 with progress log
         progresslog = 'input\\progress.log'
         output = 'output\\'
         proglog_filename = path_result_cdf_test + 'proglog'
         write_progress_log(proglog_filename, 25, 2)
         start = time()
-        shrp.module1(path_emission_cdf_test, area_eu,
+#        shrp.module1(path_emission_cdf_test, path_area_eu,
+#                     path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
+        shrp.module1(path_emission_cdf_test, path_area_eu,
                      path_reduction_txt, path_model_cdf_test, output)
         stop = time()
         print('Module 1 run time: %s sec.' % (stop-start))
         remove(proglog_filename)
         deltaconc = 'output\\delta_concentration.nc'
         # Evaluation of the impacts
-        (deltayll_reg_eu[cityind], deltayll_tot_eu[cityind],
-         delta_mort_tot_eu[cityind], delta_mort_reg_eu[cityind],
+        (deltayll_reg_eu[cityind], delta_mort_reg_eu[cityind],
          deltayll_spec_reg_eu[cityind]) = calc_impacts(
-                 deltaconc, nc_tararea[cityind], spec='d')
+                 deltaconc, nc_tararea[cityind], tartuple[cityind][2][0:2], spec='d')
 
     # -------------------------------------------------------------------------
     # Display results
     # -------------------------------------------------------------------------
     print('Displaying results in YLL')
     for cityind in np.arange(len(cities)):
+#        cityind = 0
         yllred = [deltayll_reg[i][tartuple[cityind][2]] for i in redlevels]
-        yllreddelta = (deltayll_reg_bc[cityind]-yllred)
+        yllreddelta = (deltayll_reg_bc[cityind][1] - [yllred[i][1] for i in np.arange(0,3)])
 
         yllredplot = [
-                deltayll_reg_bc[cityind],
-                deltayll_reg_bc[cityind] - deltayll_reg_eu[cityind]]
+                deltayll_reg_bc[cityind][1],
+                deltayll_reg_bc[cityind][1] - deltayll_reg_eu[cityind][1]]
 
         yllredplot[1:1] = yllreddelta
         N = len(yllredplot)
@@ -256,7 +269,7 @@ if __name__ == '__main__':
         # add some text for labels, title and axes ticks
         ax.set_ylabel('Years of life loss [YLL]')
         ax.set_title(
-         'Years of life loss in the FUA of {}'.format(cities[cityind]))
+         'Years of life loss in the FUA of {}, year 2010'.format(cities[cityind]))
         ax.set_xticks(ind)
         ax.set_xticklabels((['BC', 'city', 'FUA', 'country', 'Europe']))
         ax.legend(
@@ -268,27 +281,28 @@ if __name__ == '__main__':
 
     print('Displaying results in YLL per 100000 ppl')
     for cityind in np.arange(len(cities)):
+#        cityind = 0
         yllreds = [
                 deltayll_spec_reg[i][tartuple[cityind][2]] for i in redlevels]
-        yllreddeltas = (deltayll_spec_reg_bc[cityind]-yllreds)
-
+        yllreddeltas = (deltayll_spec_reg_bc[cityind][1]-[yllreds[i][1] for i in np.arange(0,3)])
+#
         yllredplots = [
-                deltayll_spec_reg_bc[cityind],
-                deltayll_spec_reg_bc[cityind] - deltayll_spec_reg_eu[cityind]]
-
+                deltayll_spec_reg_bc[cityind][1],
+                deltayll_spec_reg_bc[cityind][1] - deltayll_spec_reg_eu[cityind][1]]
+#
         yllredplots[1:1] = yllreddeltas
         N = len(yllredplots)
         ind = np.arange(N)  # the x locations for the groups
         width = 0.35       # the width of the bars
-
+#
         fig, ax = plt.subplots()
         rects1 = ax.bar(ind[0], yllredplots[0], width, color='r')
         rects1 = ax.bar(ind[1:], yllredplots[1:], width, color='g')
 
         # add some text for labels, title and axes ticks
-        ax.set_ylabel('Years of life loss per 100k ppl [YLL per 100k ppl]')
+        ax.set_ylabel('Specifi years of life loss [YLL per 100k ppl]')
         ax.set_title(
-         'Years of life loss per 100k ppl in the FUA of {}'.format(
+         'Years of life loss per 100k ppl (FUA, year 2010, 30% reductions)'.format(
                  cities[cityind]))
         ax.set_xticks(ind)
         ax.set_xticklabels((['BC', 'city', 'FUA', 'country', 'Europe']))
@@ -298,19 +312,51 @@ if __name__ == '__main__':
         plt.savefig(
          'output\\yll_spec{}.png'.format(
                  cities[cityind]), bbox_inches='tight', dpi=300)
+        plt.show()
+
+    print('Displaying results in YLL per 100000 ppl, in one figure')
+    for cityind in np.arange(len(cities)):
+#        cityind = 0
+        yllreds = [
+                deltayll_spec_reg[i][tartuple[cityind][2]] for i in redlevels]
+        yllreddeltas = (deltayll_spec_reg_bc[cityind][1]-[yllreds[i][1] for i in np.arange(0,3)])
+#
+        yllredplots = [
+                deltayll_spec_reg_bc[cityind][1],
+                deltayll_spec_reg_bc[cityind][1] - deltayll_spec_reg_eu[cityind][1]]
+#
+        yllredplots[1:1] = yllreddeltas
+        N = len(yllredplots)
+        ind = np.arange(N)  # the x locations for the groups
+        width = 0.35       # the width of the bars
+
+        ax = plt.subplot(111)
+        ax.set_ylabel('Specific years of life loss [YLL per 100k ppl]')
+        ax.set_title('Years of life loss per 100k ppl (FUA, year 2010, 30% reductions)')
+        ax.set_xticks(ind)
+        ax.set_xticklabels((['BC', 'city', 'FUA', 'country', 'Europe']))
+        plt.plot(ind, yllredplots, label='{}'.format(cities[cityind]), marker='o')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
+    fig1 = plt.gcf()
+    plt.show()
+    plt.draw()
+    fig1.savefig(
+         'output\\yll_spec_comp.png', bbox_inches='tight', dpi=300)
 
     print('Displaying results in YLL, relative')
     for cityind in np.arange(len(cities)):
         yllred = [deltayll_reg[i][tartuple[cityind][2]] for i in redlevels]
-        yllreddelta = ((deltayll_reg_bc[cityind]-yllred) /
-                       deltayll_reg_bc[cityind])
+        yllreddelta = (deltayll_reg_bc[cityind][1] - [yllred[i][1] for i in np.arange(0,3)])
+        yllreddeltarel= (yllreddelta /
+                       deltayll_reg_bc[cityind][1])
 
         yllredplotrel = [
-                deltayll_reg_bc[cityind]/deltayll_reg_bc[cityind],
-                (deltayll_reg_bc[cityind] -
-                 deltayll_reg_eu[cityind]) / deltayll_reg_bc[cityind]]
+                deltayll_reg_bc[cityind][1]/deltayll_reg_bc[cityind][1],
+                (deltayll_reg_bc[cityind][1] -
+                 deltayll_reg_eu[cityind][1]) / deltayll_reg_bc[cityind][1]]
 
-        yllredplotrel[1:1] = yllreddelta
+        yllredplotrel[1:1] = yllreddeltarel
 
         N = len(yllredplotrel)
         ind = np.arange(N)
@@ -319,11 +365,10 @@ if __name__ == '__main__':
 
         ax = plt.subplot(111)
 #        ax = plt.Axes
-        ax.set_ylabel('Relative years of life loss [YLL]')
-        ax.set_title('Relative years of life loss in the FUA with 30% reductions')
+        ax.set_ylabel('Relative years of life loss [YLL/YLL]')
+        ax.set_title('Relative years of life loss (FUA, year 2010, 30% reductions)')
         ax.set_xticks(ind)
         ax.set_xticklabels((['BC', 'city', 'FUA', 'country', 'Europe']))
-#
         plt.plot(ind, yllredplotrel, label='{}'.format(cities[cityind]), marker='o')
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 
@@ -338,8 +383,8 @@ if __name__ == '__main__':
 
     for cityind in np.arange(len(cities)):
         mortred = [
-                delta_mort_reg[i][tartuple[cityind][2]][1] for i in redlevels]
-        mortreddelta = (delta_mort_reg_bc[cityind][1]-mortred)
+                delta_mort_reg[i][tartuple[cityind][2]] for i in redlevels]
+        mortreddelta = (delta_mort_reg_bc[cityind][1]-[mortred[i][1] for i in np.arange(0,3)])
 
         mortredplot = [
                 delta_mort_reg_bc[cityind][1],
@@ -347,9 +392,9 @@ if __name__ == '__main__':
 
         mortredplot[1:1] = mortreddelta
         # lower bound
-        lmortred = [
-                delta_mort_reg[i][tartuple[cityind][2]][0] for i in redlevels]
-        lmortreddelta = (delta_mort_reg_bc[cityind][0]-lmortred)
+#        lmortred = [
+#                delta_mort_reg[i][tartuple[cityind][2]][0] for i in redlevels]
+        lmortreddelta = (delta_mort_reg_bc[cityind][0]-[mortred[i][0] for i in np.arange(0,3)])
 
         lmortredplot = [
                 delta_mort_reg_bc[cityind][0],
@@ -358,9 +403,9 @@ if __name__ == '__main__':
         lmortredplot[1:1] = lmortreddelta
 
         # upper bound
-        umortred = [
-                delta_mort_reg[i][tartuple[cityind][2]][2] for i in redlevels]
-        umortreddelta = (delta_mort_reg_bc[cityind][2]-umortred)
+#        umortred = [
+#                delta_mort_reg[i][tartuple[cityind][2]][2] for i in redlevels]
+        umortreddelta = (delta_mort_reg_bc[cityind][2]-[mortred[i][2] for i in np.arange(0,3)])
 
         umortredplot = [
                 delta_mort_reg_bc[cityind][2],
