@@ -37,7 +37,7 @@ import numpy as np  # for scientific operators
 from time import time  # for module1
 from os import remove  # for module1
 import pandas as pd  # conda install pandas
-import pickle  # to save results direclty as python objects
+
 # for plotting
 from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
 import matplotlib.pyplot as plt
@@ -46,23 +46,18 @@ import matplotlib.pyplot as plt
 from sherpa_auxiliaries import (create_emission_reduction_dict,
                                 create_emission_dict, create_window,
                                 read_progress_log, write_progress_log)
+from sherpa_auxiliaries_epe import (save_obj, load_obj, gridint_toarray,
+                                    write_nc)
+
 from sherpa_globals import (path_area_cdf_test, path_model_cdf_test,
-                            path_emission_cdf_test, path_result_cdf_test)
-from module7_custom import read_nuts_area
+                            path_emission_cdf_test, path_result_cdf_test,
+                            path_base_conc_cdf_test)
 
 import module1 as shrp
 import module1ema as shrp1
-#from healthia import calc_impacts
+from healthia import calc_impacts
 
-# -----------------------------------------------------------------------------
-def save_obj(obj, name):
-    with open('workdir/'+ name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-# -----------------------------------------------------------------------------
-def load_obj(name ):
-    with open('workdir/' + name + '.pkl', 'rb') as f:
-        return pickle.load(f)
-# -----------------------------------------------------------------------------
+
 def write_reductions(path_reduction_txt, red):
     """
     Function to write the reduction file, that is the percentage reduction
@@ -316,8 +311,8 @@ def aqmeasure(emi, gainsCO2, ser, act_all, act_fossil, area_sel, path_reduction_
     em_bc_t_percell = {}
     for precursor in precursor_lst:
         for m_sec in m_sectorlist:
-            em_bc[precursor,m_sec-1] = np.sum(emission_dict[precursor][m_sec-1] * area * area_sel[(0)])
-        em_bc_t_percell[precursor]= np.sum(emission_dict[precursor][m_sec-1] * area * area_sel[(0)] for m_sec in m_sectorlist)
+            em_bc[precursor,m_sec-1] = np.sum(emission_dict[precursor][m_sec-1] * area * (area_sel[(0)]/100))
+        em_bc_t_percell[precursor]= np.sum(emission_dict[precursor][m_sec-1] * area * area_sel[(0)]/100 for m_sec in m_sectorlist)
 
     # calculate delta emissions and inventory emissions per cell (in the area of interest)
     delta_em_percell={}
@@ -329,14 +324,14 @@ def aqmeasure(emi, gainsCO2, ser, act_all, act_fossil, area_sel, path_reduction_
                    # ef = ef_inv[pollutant,sector,aty,net] *(1 - df.loc[pollutant,aty][sector])
                     if aty not in nonfuels_lst:
                         if pollutant != 'CO2':
-                            delta_em_percell[pollutant,sector,aty,net]=act_all[sector][aty][net]*ef_inv[pollutant,sector,aty,net]*df.loc[pollutant,aty][sector]* area_sel[(0)]
-                            em_percell[pollutant,sector,aty,net]=act_all[sector][aty][net]*ef_inv[pollutant,sector,aty,net] * area_sel[(0)]
+                            delta_em_percell[pollutant,sector,aty,net]=act_all[sector][aty][net]*ef_inv[pollutant,sector,aty,net]*df.loc[pollutant,aty][sector]* (area_sel[(0)]/100)
+                            em_percell[pollutant,sector,aty,net]=act_all[sector][aty][net]*ef_inv[pollutant,sector,aty,net] * (area_sel[(0)]/100)
                         if pollutant=='CO2':
-                            delta_em_percell[pollutant,sector,aty,net]=act_fossil[sector][aty][net]*ef_inv[pollutant,sector,aty,net]*df.loc[pollutant,aty][sector]*area_sel[(0)]
-                            em_percell[pollutant,sector,aty,net]=act_fossil[sector][aty][net]*ef_inv[pollutant,sector,aty,net] * area_sel[(0)]
+                            delta_em_percell[pollutant,sector,aty,net]=act_fossil[sector][aty][net]*ef_inv[pollutant,sector,aty,net]*df.loc[pollutant,aty][sector]*area_sel[(0)]/100
+                            em_percell[pollutant,sector,aty,net]=act_fossil[sector][aty][net]*ef_inv[pollutant,sector,aty,net] * (area_sel[(0)]/100)
                     if aty in nonfuels_lst:
-                            delta_em_percell[pollutant,sector,aty,net]=ser[sector][aty][net]*ef_inv[pollutant,sector,aty,net]*df.loc[pollutant,aty][sector]*area_sel[(0)]
-                            em_percell[pollutant,sector,aty,net]=ser[sector][aty][net]*ef_inv[pollutant,sector,aty,net] * area_sel[(0)]
+                            delta_em_percell[pollutant,sector,aty,net]=ser[sector][aty][net]*ef_inv[pollutant,sector,aty,net]*df.loc[pollutant,aty][sector] * (area_sel[(0)]/100)
+                            em_percell[pollutant,sector,aty,net]=ser[sector][aty][net]*ef_inv[pollutant,sector,aty,net] * (area_sel[(0)]/100)
 
 
     # calculate delta emissions per pollutant and emissions per pollutant per cell and total from Marcos inventory
@@ -403,80 +398,6 @@ def aqmeasure(emi, gainsCO2, ser, act_all, act_fossil, area_sel, path_reduction_
 
     return delta_emission_dict, delta_emission_dict_per
 
-def gridint_toarray(level, parea, code, lat_array, lon_array, grid_txt, gcities_txt, fua_txt, nc_selarea):
-    """
-    Reads the grid intersect txt files and creates an array with the specified
-    dimensions with the fraction of each cell beleonging to the specified area
-    Produces also a netcdf with the percentage of each belonging to the area.
-    Needs to import the function from DENISEP
-    from module7_custom import read_nuts_area
-
-    INPUT:
-        grid_txt = 'input\\selection\\grid_intersect'
-        gcities_txt = 'input\\selection\\grid_int_gcities'
-        fua_txt = 'input\\selection\\\\grid_int_fua'
-        level = 'NUTS_Lv0'
-        parea = 'parea'
-        code = 'IT'
-        nc_selarea = 'workdir/selarea.nc'# path selected area
-
-    OUTPUT:
-        area_sel : array of the fractions (0-1) of each cell belonging
-        to the selected area
-        nc_selarea: netcdf file of the percentage (0-100) of each cell
-        belonging to the selected area
-
-
-    @author: peduzem
-    """
-
-    nuts_info = read_nuts_area(grid_txt, calcall=True)
-    nuts_info.update(read_nuts_area(gcities_txt, nullnut='LAND000'))
-    nuts_info.update(read_nuts_area(fua_txt, nullnut='LAND000'))
-
-    # get area of interest
-    narea = nuts_info[level][parea][code]
-    # get rows and columns indices
-    cols = [list(narea.keys())[i].split("_", 1)[1]
-            for i in range(0, len(list(narea.keys())))]
-    rows = [list(narea.keys())[i].split("_", 1)[0]
-            for i in range(0, len(list(narea.keys())))]
-
-    # convert them from str to int
-    rowsint = [int(i) for i in rows]
-    colsint = [int(i) for i in cols]
-
-    # create a matrix of the same size as sherpas grid
-    area_sel = np.zeros((1, len(lat_array), len(lon_array)))
-
-    # get the points that are not zeros from the gridintersect, columns are
-    # the x and rows are the y!
-    points = list(zip(np.zeros(len(colsint), dtype=int), colsint, rowsint))
-
-    # assign the values of area fraction (parea)
-    # roll both axis by one as the indeces in the grid interesect start from one
-    for point in points:
-        area_sel[point[0],(point[1]-1),(point[2]-1)] = narea.get('%d_%d'%((int(point[(2)])),int(point[(1)])))
-
-    # save the area of interest in a nc file so it can be used later by module 1
-    # **this will not be necessary as this file is created by/provided to Sherpa
-
-    fh = Dataset(nc_selarea, mode='w', format='NETCDF3_CLASSIC')
-    fh.createDimension('latitude',  len(lat_array))
-    fh.createDimension('longitude', len(lon_array)) #x
-    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
-    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
-    yllout = fh.createVariable('AREA', 'f8', ('latitude', 'longitude'))
-    fh.variables['AREA'].units = '%'
-    fh.variables['AREA'].long_name = '% cell area belonging to selected area'
-    longitude[:] = lon_array
-    latitude[:] = lat_array
-    yllout[:] = area_sel[(0)]*100
-    fh.close()
-
-    return area_sel
-
-
 # -------------------------------------------------------------------------
 # main program starts here
 # -------------------------------------------------------------------------
@@ -518,8 +439,8 @@ if __name__ == '__main__':
     path_reduction_txt='input/sherpaeco_reduction.txt'
 
     #reduction area
-    area_sel = gridint_toarray(level, parea, code, lat_array, lon_array, grid_txt,
-                               gcities_txt, fua_txt, nc_selarea)
+    area_sel = gridint_toarray(level, parea, code)
+    write_nc(area_sel, nc_selarea, 'AREA', '%')
 
     # -------------------------------------------------------------------------
 
@@ -561,7 +482,7 @@ if __name__ == '__main__':
     write_progress_log(proglog_filename, 25, 2)
     start = time()
     shrp.module1(path_emission_cdf_test, nc_selarea,
-                 path_reduction_txt, path_model_cdf_test, output)
+                 path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
 
     stop = time()
     print('Module 1 run time: %s sec.' % (stop-start))
@@ -574,7 +495,7 @@ if __name__ == '__main__':
     write_progress_log(proglog_filename, 25, 2)
     start = time()
     shrp1.module1(path_emission_cdf_test, nc_selarea,
-                  delta_emission_dict, path_model_cdf_test, output)
+                  delta_emission_dict, path_base_conc_cdf_test, path_model_cdf_test, output)
     stop = time()
     print('Module 1 run time: %s sec.' % (stop-start))
     remove(proglog_filename)
@@ -585,7 +506,7 @@ if __name__ == '__main__':
     write_progress_log(proglog_filename, 25, 2)
     start = time()
     shrp1.module1(path_emission_cdf_test, nc_selarea,
-                  delta_emission_dict_per, path_model_cdf_test, output)
+                  delta_emission_dict_per, path_base_conc_cdf_test, path_model_cdf_test, output)
     stop = time()
     print('Module 1 run time: %s sec.' % (stop-start))
     remove(proglog_filename)
@@ -595,14 +516,17 @@ if __name__ == '__main__':
      # (Cost) Benefit Analysis
      # -------------------------------------------------------------------------
 
-    deltaconc='output/delta_concentration.nc'
-    deltayll_reg, deltayll_tot, delta_mort_tot, delta_mort_reg, deltayll_spec_reg = calc_impacts(deltaconc, nc_selarea)
+    deltaconc = 'output/delta_concentration.nc'
+    deltayll_reg, delta_mort_reg, deltayll_spec_reg = calc_impacts(
+            deltaconc, nc_selarea, code)
 
-    deltaconc2='output2/delta_concentration.nc'
-    deltayll_reg2, deltayll_tot2, delta_mort_tot2, delta_mort_reg2, deltayll_spec_reg2 = calc_impacts(deltaconc2, nc_selarea)
+    deltaconc2 = 'output2/delta_concentration.nc'
+    deltayll_reg2, delta_mort_reg2, deltayll_spec_reg2 = calc_impacts(
+            deltaconc2, nc_selarea, code)
 
-    deltaconc3='output3/delta_concentration.nc'
-    deltayll_reg3, deltayll_tot3, delta_mort_tot3, delta_mort_reg3, deltayll_spec_reg3 = calc_impacts(deltaconc3, nc_selarea)
+    deltaconc3 = 'output3/delta_concentration.nc'
+    deltayll_reg3, delta_mort_reg3, deltayll_spec_reg3 = calc_impacts(
+            deltaconc3, nc_selarea, code)
 
     # -------------------------------------------------------------------------
     # Output of results (todo)
@@ -889,3 +813,21 @@ if __name__ == '__main__':
 #    co2em.close()
 
 #    np.sum(emi_area['NOx','TRA_RD_LD4C','GSL','urb']-em_new['NOx','TRA_RD_LD4C','GSL','urb'])
+
+
+#    H = area_sel[(0)]
+##
+#    fig = plt.figure(figsize=(6, 3.2))
+#
+#    ax = fig.add_subplot(111)
+#    ax.set_title('colorMap')
+#    plt.imshow(H)
+#    ax.set_aspect('equal')
+#
+#    cax = fig.add_axes([0.12, 0.1, 0.78, 0.8])
+#    cax.get_xaxis().set_visible(False)
+#    cax.get_yaxis().set_visible(False)
+#    cax.patch.set_alpha(0)
+#    cax.set_frame_on(False)
+#    plt.colorbar(orientation='vertical')
+#    plt.show()
