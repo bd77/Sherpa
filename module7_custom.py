@@ -253,8 +253,8 @@ def plot_bar(dfdata,varplot,ftx=16):
         varplot_left[ind]=varplot_left[ind-1]+addsum[dfdata.index[ind-1]]
     varplot_left[totalname]=0.
     colors={'PPM':'grey','SOx':'#ff0000','NOx': '#0000ff','NH3':'#b22222','NMVOC':'#8470ff',
-    'Traffic': '#0000ff','Industry':'#ff0000','Agriculture':'#b22222','Residential':'#32cd32',
-    'Offroad':'#8470ff','Other':'#bebebe','Salt':'#ccffe5','Dust':'#ffffcc'}
+    'Traffic': '#0000ff','Energy':'#999999','Industry':'#ff0000','Production':'#8B4789','Waste':'#00FFFF','Agriculture':'#b22222','Residential':'#32cd32',
+    'Offroad':'#8470ff','Extraction':'#00FF00','Other':'#bebebe','Salt':'#ccffe5','Dust':'#ffffcc'}
     # Create the general blog and the "subplots" i.e. the bars
     plt.close('all')
     f, ax1 = plt.subplots(1, figsize=(10,5))
@@ -359,43 +359,56 @@ REFERENCES
     
 '''    
 import pandas as pd  
-def read_nuts_area(filenuts,calcall=False,nullnut=None):
-    nuts_def= filenuts +'.txt'
-    nuts_info = pd.read_csv(nuts_def,delimiter="\t")
-    nuts_info=nuts_info.dropna(axis=1,how='all')
-    nutsnames=list(nuts_info.columns[~nuts_info.columns.isin(['POP','COL','ROW','Area [km2]','LAT','LON'])])
-    #optional 'nut' comprising all grid points
-    if calcall :
-        #nutsnames.insert(0, 'ALL')
-        nutsnames.insert(0, 'ALL_'+nutsnames[0])
-        nuts_info[nutsnames[0]]=nutsnames[0] 
-    nuts_info['grid']=['_'.join(str(i) for i in z) for z in zip(nuts_info['COL'],nuts_info['ROW'])]      
-    if 'Area [km2]' in nuts_info.columns:
-        nuts_area=pd.concat(map(lambda p: nuts_info['Area [km2]'],nutsnames),axis=1)
-        #nuts_area.index=nuts_info['grid']
-        nuts_area.columns=nutsnames  
-       #nuts_info=nuts_info[nutsnames]
-    else:
-        sys.exit("missing infos on grid cells area per nut")
-
-    #aggregate data for each nut, create a dictionary
+def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
     nuts_info_all={}
-    for nut in nutsnames:
-        #create a multindex
-        index = pd.MultiIndex.from_tuples(list(zip(nuts_info[nut],nuts_info['grid'])), names=['nutname','grid'])
-        nut_info=pd.Series(list(nuts_area[nut]), index=index)
-        nut_info=nut_info.to_frame(name='area')
-        #aggregate data on these nuts if necessary
-        nut_info_nut=nut_info.groupby(level=[0,1]).sum()    
-        #find total area
-        grid_area_tot=nut_info_nut.groupby(level=['grid']).sum()
-        nut_info_nut['parea']=nut_info_nut/grid_area_tot
-        nut_info_nut.loc[nut_info_nut['area']==0,'parea']=0.
-        #eventually remove the fillng code
-        if nullnut is not None:
-            nut_info_nut=nut_info_nut.drop(nullnut, level='nutname')
-        nuts_info_all[nut]=nut_info_nut
-            
+    if(filenuts != 'rect'):
+        nuts_def= filenuts +'.txt'
+        nuts_info = pd.read_csv(nuts_def,delimiter="\t")
+        nuts_info=nuts_info.dropna(axis=1,how='all')
+        nutsnames=list(nuts_info.columns[~nuts_info.columns.isin(['POP','COL','ROW','Area [km2]','LAT','LON'])])
+        #optional 'nut' comprising all grid points
+        if calcall :
+        #nutsnames.insert(0, 'ALL')
+            nutsnames.insert(0, 'ALL_'+nutsnames[0])
+            nuts_info[nutsnames[0]]=nutsnames[0] 
+        nuts_info['grid']=['_'.join(str(i) for i in z) for z in zip(nuts_info['COL'],nuts_info['ROW'])]      
+        if 'Area [km2]' in nuts_info.columns:
+            nuts_area=pd.concat(map(lambda p: nuts_info['Area [km2]'],nutsnames),axis=1)
+            #nuts_area.index=nuts_info['grid']
+            nuts_area.columns=nutsnames  
+           #nuts_info=nuts_info[nutsnames]
+        else:
+            sys.exit("missing infos on grid cells area per nut")
+    
+        #aggregate data for each nut, create a dictionary
+        for nut in nutsnames:
+            #create a multindex
+            index = pd.MultiIndex.from_tuples(list(zip(nuts_info[nut],nuts_info['grid'])), names=['nutname','grid'])
+            nut_info=pd.Series(list(nuts_area[nut]), index=index)
+            nut_info=nut_info.to_frame(name='area')
+            #aggregate data on these nuts if necessary
+            nut_info_nut=nut_info.groupby(level=[0,1]).sum()    
+            #find total area
+            grid_area_tot=nut_info_nut.groupby(level=['grid']).sum()
+            nut_info_nut['parea']=nut_info_nut/grid_area_tot
+            nut_info_nut.loc[nut_info_nut['area']==0,'parea']=0.
+            #eventually remove the fillng code
+            if nullnut is not None:
+                nut_info_nut=nut_info_nut.drop(nullnut, level='nutname')
+            nuts_info_all[nut]=nut_info_nut
+    else:
+        nuts_rect=nutsall
+        nuts_rect.index=nuts_rect.index.droplevel(level=0)
+        grid_inrect=nuts_rect.index 
+        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']>=rect_coord['ll']['lon']]
+        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']<=rect_coord['ur']['lon']]
+        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']>=rect_coord['ll']['lat']]
+        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']<=rect_coord['ur']['lat']]
+        nuts_rect=nuts_rect.loc[list(grid_inrect)]
+        nuts_rect['nutname'] = 'rect'
+        nuts_rect.set_index('nutname', append=True, inplace=True)
+        nuts_rect= nuts_rect.swaplevel(i=-2, j=-1, axis=0)
+        nuts_info_all['rect']=nuts_rect        
     return nuts_info_all
 '''
 NAME
@@ -464,10 +477,15 @@ REVISION HISTORY
 REFERENCES
     
 '''  
-def dc_snapaggregate(alldc_snaps):
+def dc_snapaggregate(alldc_snaps,aggr_src=True):
     #aggregate sources as required in e-rep
-    sources=pd.Series(['Traffic','Industry','Industry','Industry','Agriculture','Residential','Offroad','Other','Other','Other'],
-                        index=['Nsnaps07','Nsnaps01','Nsnaps03','Nsnaps04','Nsnaps10','Nsnaps02','Nsnaps08','Nsnaps05','Nsnaps06','Nsnaps09'])
+    if(aggr_src==True):
+        sources=pd.Series(['Traffic','Industry','Industry','Industry','Agriculture','Residential','Offroad','Other','Other','Other'],
+                            index=['Nsnaps07','Nsnaps01','Nsnaps03','Nsnaps04','Nsnaps10','Nsnaps02','Nsnaps08','Nsnaps05','Nsnaps06','Nsnaps09'])
+    else:
+        sources=pd.Series(['Traffic','Energy','Industry','Production','Agriculture','Residential','Offroad','Extraction','Industry','Waste'],
+                            index=['Nsnaps07','Nsnaps01','Nsnaps03','Nsnaps04','Nsnaps10','Nsnaps02','Nsnaps08','Nsnaps05','Nsnaps06','Nsnaps09'])
+        
     alldc=alldc_snaps
     alldc['source']=sources.loc[alldc_snaps.index]
     alldc.set_index('source', append=True, inplace=True) 
@@ -488,28 +506,32 @@ REFERENCES
 '''  
 def dc_increments(alldc,aggr_zones='city'):    #calculate increments
     alldc_inc={}
-    alldc_inc['ALL_NUTS_Lv0']=alldc['ALL_NUTS_Lv0']-alldc['NUTS_Lv0'] 
-    if aggr_zones=='city': 
-        if 'FUA_CODE' in alldc.columns:
-            alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']-alldc['FUA_CODE']
-            if 'GCITY_CODE' in alldc.columns: 
-                alldc_inc['FUA_CODE']=alldc['FUA_CODE']-alldc['GCITY_CODE']
-                alldc_inc['GCITY_CODE']=alldc['GCITY_CODE']
+    if(aggr_zones!='rect'):
+        alldc_inc['ALL_NUTS_Lv0']=alldc['ALL_NUTS_Lv0']-alldc['NUTS_Lv0'] 
+        if aggr_zones=='city': 
+            if 'FUA_CODE' in alldc.columns:
+                alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']-alldc['FUA_CODE']
+                if 'GCITY_CODE' in alldc.columns: 
+                    alldc_inc['FUA_CODE']=alldc['FUA_CODE']-alldc['GCITY_CODE']
+                    alldc_inc['GCITY_CODE']=alldc['GCITY_CODE']
+                else:
+                    alldc_inc['FUA_CODE']=alldc['FUA_CODE']               
             else:
-                alldc_inc['FUA_CODE']=alldc['FUA_CODE']               
-        else:
-           alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']
-    elif aggr_zones=='nuts':
-        alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']-alldc['NUTS_Lv1']
-        if 'NUTS_Lv2' in alldc.columns:
-            alldc_inc['NUTS_Lv1']=alldc['NUTS_Lv1']-alldc['NUTS_Lv2']
-            if 'NUTS_Lv3' in alldc.columns: 
-                alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']-alldc['NUTS_Lv3']
-                alldc_inc['NUTS_Lv3']=alldc['NUTS_Lv3']
+               alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']
+        elif aggr_zones=='nuts':
+            alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']-alldc['NUTS_Lv1']
+            if 'NUTS_Lv2' in alldc.columns:
+                alldc_inc['NUTS_Lv1']=alldc['NUTS_Lv1']-alldc['NUTS_Lv2']
+                if 'NUTS_Lv3' in alldc.columns: 
+                    alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']-alldc['NUTS_Lv3']
+                    alldc_inc['NUTS_Lv3']=alldc['NUTS_Lv3']
+                else:
+                    alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']               
             else:
-                alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']               
-        else:
-           alldc_inc['NUTS_Lv1']=alldc['NUTS_Lv1']
+               alldc_inc['NUTS_Lv1']=alldc['NUTS_Lv1']
+    else:
+        alldc_inc['ALL_NUTS_Lv0']=alldc['ALL_NUTS_Lv0']-alldc['rect']
+        alldc_inc['rect']=alldc['rect']
      
     alldc_inc=pd.DataFrame.from_dict(alldc_inc)
     return alldc_inc        
@@ -633,8 +655,10 @@ if __name__ == '__main__':
 
     ############################################### user input data
     pollutant='PM10' #may be '25' or '10'
-    testarea='Paris' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
-    aggr_zones='city' #may be 'city','nuts' or domain (inthis case the domain is also grid intersected) 
+    testarea='INTERCOMP3' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    aggr_zones='rect' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
+    rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
+    aggr_src=False #set to True for aggregatin sources as in erep
     include_natural=False #include or not natiral PM concentration
     outfig='png' #'pnd' of 'pdf'
     ############################################### 
@@ -649,6 +673,7 @@ if __name__ == '__main__':
     grid_txt=os.path.join(localdir, 'input','selection','grid_intersect')
     gcities_txt=os.path.join(localdir, 'input','selection','grid_int_gcities')
     fua_txt=os.path.join(localdir, 'input','selection','grid_int_fua')
+    rect_txt=os.path.join(localdir, 'input','selection','gridint_rect')
     #output directory
     outdir=os.path.join(localdir, 'output',sherpa_version,testarea)
     #list of true names for areas IDs
@@ -710,6 +735,9 @@ if __name__ == '__main__':
     nuts_info=read_nuts_area(grid_txt,calcall=True)
     nuts_info.update(read_nuts_area(gcities_txt,nullnut='LAND000'))
     nuts_info.update(read_nuts_area(fua_txt,nullnut='LAND000'))
+    if(aggr_zones=='rect'):
+        nuts_info.update(read_nuts_area('rect',nutsall=nuts_info['ALL_NUTS_Lv0'].copy()))
+
     
     #read list of receptors and check its consistency
     receptors=pd.read_csv(targets_txt,delimiter="\t",encoding = "ISO-8859-1")
@@ -735,6 +763,8 @@ if __name__ == '__main__':
     for k in area_names_long.keys():
         area_names[k]=area_names_long[k][1].apply(name_short)
     area_names['ALL_NUTS_Lv0']=pd.Series({'ALL_NUTS_Lv0' : 'Europe'+str(len(countries)), 'other' : 'other'},name='EU')
+    if(aggr_zones=='rect'):
+        area_names['rect']=pd.Series({'rect' : 'Domain', 'other' : 'other'},name='EU')
     totalname='Total'+str(len(countries))
     ########
     #optimize calculations removing unused data
@@ -750,6 +780,17 @@ if __name__ == '__main__':
     print('in emissions keeping ',len(modelled_emissions_idx), ' grid points used in SR model training')
     print('the considered emissions are from '+str(len(countries))+' european or near european countries')
     print(countries)
+    #check coherence with nuts_info grid points (must be all and ony the ones in emissions)
+    for area in nuts_info.keys():
+        index_diff=set(nuts_info[area].index.get_level_values(1)).difference(modelled_emissions_idx)
+        if len(index_diff)>0:
+            idx = pd.IndexSlice
+            print('There are '+str(len(index_diff)) +
+            ' points in area '+area+' which are not modelled an will be removed from area summing up')
+            #print(index_diff)
+            print(area_names[area].loc[nuts_info[area].loc[idx[:,index_diff],:].index.get_level_values(0)].value_counts())
+            #nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:]
+ 
         
     #remove not modelled grid points
     model_sum=model.loc['alpha'].sum()
@@ -770,8 +811,8 @@ if __name__ == '__main__':
         wantedorder=pd.Series( {'3' : 'GCITY_CODE', '2' : 'FUA_CODE', '1' :'NUTS_Lv0','0':'ALL_NUTS_Lv0'})
     elif aggr_zones=='nuts':
         wantedorder=pd.Series( {'4' : 'NUTS_Lv3','3' : 'NUTS_Lv2', '2' : 'NUTS_Lv1', '1' :'NUTS_Lv0','0':'ALL_NUTS_Lv0'})
-    elif aggr_zones=='domain':
-        wantedorder=pd.Series( { '1' :'domain','0':'ALL_NUTS_Lv0'})
+    elif aggr_zones=='rect':
+        wantedorder=pd.Series( { '1' :'rect','0':'ALL_NUTS_Lv0'})
 
     alldist_km=pd.concat(list(map(lambda st: haversine_vec(receptors.loc[st,'lon'],receptors.loc[st,'lat'],coordinates['lon'],coordinates['lat']),receptors.index)),axis=1)
     receptors['id']=receptors['id'].str.strip()
@@ -794,7 +835,7 @@ if __name__ == '__main__':
     dc={}
     dc_ppm={}
     target_allinfo={}
-    #calculate diftsnces first in order to save calculation time
+    #calculate diftsnces first in order to save calculation time, targets nedd to be in  memory limit of the machine (say at most about 10000)
     dists_array=distance.cdist(coordinates.loc[count_idx.index,['x','y']],coordinates.loc[emissions.columns,['x','y']], metric='euclidean')
 
     for ix,idx in enumerate(count_idx.index):
@@ -816,7 +857,7 @@ if __name__ == '__main__':
         #print ("time elapsed ",end-start)
 
         #aggregate dc per precursor, area, calculate increments and relative values
-        alldc=dc_snapaggregate(dc_areasum(dc[idx],narea))
+        alldc=dc_snapaggregate(dc_areasum(dc[idx],narea),aggr_src)
         dc_inc=dc_increments(alldc,aggr_zones)*100./concentration[idx].values[0] 
         area_present=dc_inc.columns
         dc_inc[totalname]= dc_inc.sum(axis=1)
