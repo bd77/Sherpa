@@ -407,8 +407,7 @@ def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
         nuts_rect=nuts_rect.loc[list(grid_inrect)]
         nuts_rect['nutname'] = 'rect'
         nuts_rect.set_index('nutname', append=True, inplace=True)
-        nuts_rect= nuts_rect.swaplevel(i=-2, j=-1, axis=0)
-        nuts_info_all['rect']=nuts_rect        
+        nuts_info_all['rect']=nuts_rect.swaplevel(i=-2, j=-1, axis=0)        
     return nuts_info_all
 '''
 NAME
@@ -781,6 +780,7 @@ if __name__ == '__main__':
     print('the considered emissions are from '+str(len(countries))+' european or near european countries')
     print(countries)
     #check coherence with nuts_info grid points (must be all and ony the ones in emissions)
+    info_grids={}
     for area in nuts_info.keys():
         index_diff=set(nuts_info[area].index.get_level_values(1)).difference(modelled_emissions_idx)
         if len(index_diff)>0:
@@ -788,8 +788,14 @@ if __name__ == '__main__':
             print('There are '+str(len(index_diff)) +
             ' points in area '+area+' which are not modelled an will be removed from area summing up')
             #print(index_diff)
-            print(area_names[area].loc[nuts_info[area].loc[idx[:,index_diff],:].index.get_level_values(0)].value_counts())
-            #nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:]
+            #print(area_names[area].loc[nuts_info[area].loc[idx[:,index_diff],:].index.get_level_values(0)].value_counts())
+            info_grids_area=coordinates.loc[index_diff]
+            info_grids_area=info_grids_area.merge(nuts_info[area].reset_index(level=0),how='left',left_index=True, right_index=True)
+            info_grids[area]=info_grids_area.merge(area_names[area].reset_index(level=0),how='left',left_on='nutname',right_on=0,left_index=True)
+            info_grids[area]=info_grids[area].set_index(info_grids_area.index)
+            info_grids[area]= info_grids[area].drop([0], 1)
+            print(info_grids[area])
+            nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:]
  
         
     #remove not modelled grid points
