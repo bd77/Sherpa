@@ -699,13 +699,13 @@ if __name__ == '__main__':
         dust= read_nc(dust_nc)
     
     #check consistency of model and emissions
-    if model.loc['coord'].equals(emissions.loc['coord']): 
+    if model.loc['coord'].astype(np.float32).equals(emissions.loc['coord'].astype(np.float32)): 
         print ('OK latitude and longitude in matrices emissions and model are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")    
 
     #check consistency of model and concentrations
-    if model.loc['coord'].equals(concentration.loc['coord']): 
+    if model.loc['coord'].astype(np.float32).equals(concentration.loc['coord'].astype(np.float32)): 
         print ('OK latitude and longitude in matrices model and conc are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")         
