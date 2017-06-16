@@ -646,10 +646,9 @@ REVISION HISTORY
 REFERENCES
     
 '''
-def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=None, *progresslog):
-    import sys
-    import os
+def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,outdir,aggr_zones, rect_coord=None, *progresslog):
     import pandas as pd  
+    import sys
     from mpl_toolkits.basemap import Basemap    
     import matplotlib.pyplot as plt
     from scipy.spatial import distance
@@ -660,45 +659,25 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
         progress_dict = {'start': 0.0, 'divisor': 1.0}
         write_netcdf_output = True
 
-    localdir= os.path.dirname(__file__) 
-    sherpadir=localdir
-    
+     
     ################default user definition
-    testarea='testarea' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     aggr_src=True #set to True for aggregatin sources as in erep
     include_natural=False #include or not natiral PM concentration
     outfig='png' #'pnd' of 'pdf'
     print_areainfo=False #if true check and print which grid points in fua/gcity are actually not modelled
     #############
  
-    #directory for emissions and SR relationship only
-    print('SHERPA input will be searched in '+os.path.join(localdir, 'input',sherpa_version))
-    print('with keyword '+sherpa_srkeyword+' for SR relationships')
-    print('while txt files for grid intersect nuts, fua etc will be searced in local input directory '+localdir)
 
  
-    pollconc=pollutant+'_Y'
-    if pollutant is 'NO2': 
-        pollconc='NO2_NO2eq_Y_mgm3'
-    emissions_nc=os.path.join(sherpadir, 'input',sherpa_version,'1_base_emissions','BC_emi_'+pollutant+'_Y.nc')
-    concentration_nc=os.path.join(sherpadir, 'input',sherpa_version,'2_base_concentrations','BC_conc_'+pollconc+'.nc')
-    model_nc=os.path.join(sherpadir, 'input',sherpa_version,'3_source_receptors','SR_'+pollconc+'_'+sherpa_srkeyword+'.nc')    #info on areas and percentage of grids in areas
-    grid_txt=os.path.join(localdir, 'input','selection','grid_intersect')
-    gcities_txt=os.path.join(localdir, 'input','selection','grid_int_gcities')
-    fua_txt=os.path.join(localdir, 'input','selection','grid_int_fua')
-    rect_txt=os.path.join(localdir, 'input','selection','gridint_rect')
-    #output directory
-    outdir=os.path.join(localdir, 'output')
+    grid_txt=intersect_dir+'/grid_intersect'
+    gcities_txt=intersect_dir+'/grid_int_gcities'
+    fua_txt=intersect_dir+'/grid_int_fua'
+    rect_txt=intersect_dir+'/gridint_rect'
     #list of true names for areas IDs
     codes_names=pd.Series({'NUTS_Lv0':'nuts0','NUTS_Lv1':'nuts1','NUTS_Lv2':'nuts2','NUTS_Lv3':'nuts3','FUA_CODE':'fua','GCITY_CODE':'gcities'})
-    codes_txt={k: localdir +'\\input\\selection\\' + codes_names[k] +'_names.txt'for k in codes_names.keys()}
+    codes_txt={k: intersect_dir+'/' + codes_names[k] +'_names.txt'for k in codes_names.keys()}
     #list of points used as receptors. Only 'id','lon','lat' and 'Station name' are required columns 
-    targets_txt=localdir +'\\input\\' + testarea + '_targets.txt'
     ############################################### 
-
-    #If not present create the output/testarea directory
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
     
     #read netcdf files, put the data in multindex dataframes and check consistency 
     emissions = read_nc(emissions_nc)
@@ -707,19 +686,20 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
 
     if include_natural:
         pmsize=pollutant[-2:]
-        salt_nc = os.path.join(dir, 'input','pDUST-pSALT',pmsize,'basecase.nc')
-        dust_nc = os.path.join(dir, 'input','pDUST-pSALT',pmsize,'basecase.nc')
+        salt_nc ='input/pDUST-pSALT',pmsize,'basecase.nc'
+        dust_nc = 'input/pDUST-pSALT',pmsize,'basecase.nc'
         salt= read_nc(salt_nc)
         dust= read_nc(dust_nc)
     
     #check consistency of model and emissions
-    if model.loc['coord'].equals(emissions.loc['coord']): 
+    if model.loc['coord'].astype(np.float32).equals(emissions.loc['coord'].astype(np.float32)): 
         print ('OK latitude and longitude in matrices emissions and model are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")    
 
     #check consistency of model and concentrations
-    if model.loc['coord'].equals(concentration.loc['coord']): 
+    if model.loc['coord'].astype(np.float32).equals(concentration.loc['coord'].astype(np.float32)):
+    #if model.loc['coord'].equals(concentration.loc['coord']): 
         print ('OK latitude and longitude in matrices model and conc are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")         
@@ -783,9 +763,9 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
     #optimize calculations removing unused data
     model=model.drop('coord',level=0)
     emissions=emissions.drop('coord',level=0)
-    concentration=concentration.drop('coord',level=0)
     #fake sum to remove one level
     concentration=concentration.groupby(level=[0]).sum()  
+    concentration=concentration.loc['conc']
  
     #remove not modelled points (SR was build only using reductons in points in grid intersect)
     modelled_emissions_idx=list(set(emissions.columns).intersection(nuts_info['NUTS_Lv0'].index.get_level_values(1)))
@@ -839,7 +819,8 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
     receptors['dist_km']=alldist_km.min()
     receptors['lon_grid']=pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lon'] for st in receptors.index})
     receptors['lat_grid']=pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lat'] for st in receptors.index})
-    receptors['model_conc']=pd.Series(concentration[receptors['target_idx']].values[0,])
+    receptors['model_conc']=concentration[receptors['target_idx']].values
+    print(receptors['target_idx'])
     count_idx=receptors.pivot(columns='target_idx', values='target_idx').count()
     if count_idx.max()>1:
         print('There are duplicates in target_idx:' + ', '.join(list(count_idx.loc[count_idx>1,].index)))
@@ -876,13 +857,13 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
 
         #aggregate dc per precursor, area, calculate increments and relative values
         alldc=dc_snapaggregate(dc_areasum(dc[idx],narea),aggr_src)
-        dc_inc=dc_increments(alldc,aggr_zones)*100./concentration[idx].values[0] 
+        dc_inc=dc_increments(alldc,aggr_zones)*100./concentration[idx] 
         area_present=dc_inc.columns
         dc_inc[totalname]= dc_inc.sum(axis=1)
         
         #aggregate results per precursor
         alldc_prec=dc_areasum(dc[idx],narea,liv=0)
-        dc_inc_p=dc_increments(alldc_prec,aggr_zones)*100./concentration[idx].values[0]
+        dc_inc_p=dc_increments(alldc_prec,aggr_zones)*100./concentration[idx]
         dc_inc_p[totalname]= dc_inc_p.sum(axis=1)
    
         wantedorder_present=pd.Series(list(filter(lambda x: x in area_present, wantedorder))).to_frame(name='areaid')
@@ -912,8 +893,8 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
         #add natural sources
         if include_natural:
             natural=pd.DataFrame(0, index=['Salt','Dust'], columns=dc_inc.columns)
-            natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx].values[0]
-            natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx].values[0]
+            natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx]
+            natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx]
             dc_inc=dc_inc.append(natural)
         #plots
         fig={}
@@ -960,6 +941,8 @@ def module7(sherpa_version,sherpa_srkeyword, pollutant, aggr_zones, rect_coord=N
 
     
 if __name__ == '__main__':
+    import sys
+    import os
     import time
     #from sherpa_auxiliaries import write_progress_log
 
@@ -972,18 +955,40 @@ if __name__ == '__main__':
     ############################################### user input data
     sherpa_version='20170322_v18_SrrResults_PotencyBased'
     sherpa_srkeyword='20170322_PotencyBased'
-    pollutant='PM10' #may be '25' or '10'
+    testarea='Covenant' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    pollutant='NOx' #may be '25' or '10' or NOx
     aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
  
     ############################################### 
     ############################################### input files
+    pollconc=pollutant+'_Y'
+    pollmodel=pollutant+'_Y'
+    if pollutant is 'NOx': 
+        pollutant='NO2'
+        pollconc='NO2_NO2eq_Y_mgm3'
+        pollmodel='NO2eq_Y'
+    elif pollutant is 'NO2': 
+        sys.exit('NO2 corrections are not implemented in this module (ask Bart)')
+    emissions='input/'+sherpa_version+'/1_base_emissions/BC_emi_'+pollutant+'_Y.nc'
+    concentration='input/'+sherpa_version+'/2_base_concentrations/BC_conc_'+pollconc+'.nc'
+    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'_'+sherpa_srkeyword+'.nc'   #info on areas and percentage of grids in areas
+    selection_dir='input/selection'
+    target_list='input/'+testarea+'_targets.txt'
+    outdir='output/'+sherpa_version+'/'+testarea
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
+    #directory for emissions and SR relationship only
+    print('SHERPA input will be searched in '+model)
+    print('with emissions in '+emissions)
+    print('with BC concentrations in conc variable in '+concentration)
+    print('while txt files for grid intersect nuts, fua etc will be searced in local input directory '+selection_dir)
 
     # run module 7 with progress log
     #proglog_filename = 'output/proglog'
-    write_progress_log(proglog_filename, 25, 2)
     start = time.perf_counter() 
-    out_dc=module7(sherpa_version,sherpa_srkeyword, pollutant,aggr_zones) #, proglog_filename)
+    out_dc=module7(emissions,concentration, model,selection_dir,target_list,outdir,aggr_zones) 
     stop = time.perf_counter() 
     print('Module 7 run time: %s sec.' % (stop-start))
     #remove(proglog_filename)
