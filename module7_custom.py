@@ -650,25 +650,27 @@ if __name__ == '__main__':
     sherpa_srkeyword='20170322_PotencyBased'
     print('SHERPA input will be searched in '+os.path.join(localdir, 'input',sherpa_version))
     print('with keyword '+sherpa_srkeyword+' for SR relationships')
-    print('while txt files for grid intersect nuts, fua etc will be searced in local input directory '+localdir)
+    print('while txt files for grid intersect nuts, fua etc will be searched in local input directory '+localdir)
 
     ############################################### user input data
-    pollutant='PM10' #may be '25' or '10'
-    testarea='INTERCOMP3' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
-    aggr_zones='rect' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
+    pollutant='NO2' #may be '25' or '10'
+    testarea='Covenant' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
     rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
-    aggr_src=False #set to True for aggregatin sources as in erep
+    aggr_src=True #set to True for aggregatin sources as in erep
     include_natural=False #include or not natiral PM concentration
     outfig='png' #'pnd' of 'pdf'
     ############################################### 
     ############################################### input files
 
     pollconc=pollutant+'_Y'
+    pollmodel=pollutant+'_Y'
     if pollutant is 'NO2': 
         pollconc='NO2_NO2eq_Y_mgm3'
+        pollmodel='NO2eq_Y'
     emissions_nc=os.path.join(sherpadir, 'input',sherpa_version,'1_base_emissions','BC_emi_'+pollutant+'_Y.nc')
     concentration_nc=os.path.join(sherpadir, 'input',sherpa_version,'2_base_concentrations','BC_conc_'+pollconc+'.nc')
-    model_nc=os.path.join(sherpadir, 'input',sherpa_version,'3_source_receptors','SR_'+pollconc+'_'+sherpa_srkeyword+'.nc')    #info on areas and percentage of grids in areas
+    model_nc=os.path.join(sherpadir, 'input',sherpa_version,'3_source_receptors','SR_'+pollmodel+'_'+sherpa_srkeyword+'.nc')    #info on areas and percentage of grids in areas
     grid_txt=os.path.join(localdir, 'input','selection','grid_intersect')
     gcities_txt=os.path.join(localdir, 'input','selection','grid_int_gcities')
     fua_txt=os.path.join(localdir, 'input','selection','grid_int_fua')
@@ -700,12 +702,14 @@ if __name__ == '__main__':
     
     #check consistency of model and emissions
     if model.loc['coord'].astype(np.float32).equals(emissions.loc['coord'].astype(np.float32)): 
+    #if model.loc['coord'].equals(emissions.loc['coord']): 
         print ('OK latitude and longitude in matrices emissions and model are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")    
 
     #check consistency of model and concentrations
-    if model.loc['coord'].astype(np.float32).equals(concentration.loc['coord'].astype(np.float32)): 
+    if model.loc['coord'].astype(np.float32).equals(concentration.loc['coord'].astype(np.float32)):
+    #if model.loc['coord'].equals(concentration.loc['coord']): 
         print ('OK latitude and longitude in matrices model and conc are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")         
@@ -769,9 +773,9 @@ if __name__ == '__main__':
     #optimize calculations removing unused data
     model=model.drop('coord',level=0)
     emissions=emissions.drop('coord',level=0)
-    concentration=concentration.drop('coord',level=0)
     #fake sum to remove one level
     concentration=concentration.groupby(level=[0]).sum()  
+    concentration=concentration.loc['conc']
  
     #remove not modelled points (SR was build only using reductons in points in grid intersect)
     modelled_emissions_idx=list(set(emissions.columns).intersection(nuts_info['NUTS_Lv0'].index.get_level_values(1)))
@@ -794,7 +798,7 @@ if __name__ == '__main__':
             info_grids[area]=info_grids_area.merge(area_names[area].reset_index(level=0),how='left',left_on='nutname',right_on=0,left_index=True)
             info_grids[area]=info_grids[area].set_index(info_grids_area.index)
             info_grids[area]= info_grids[area].drop([0], 1)
-            print(info_grids[area])
+            #print(info_grids[area])
             nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:]
  
         
@@ -826,7 +830,7 @@ if __name__ == '__main__':
     receptors['dist_km']=alldist_km.min()
     receptors['lon_grid']=pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lon'] for st in receptors.index})
     receptors['lat_grid']=pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lat'] for st in receptors.index})
-    receptors['model_conc']=pd.Series(concentration[receptors['target_idx']].values[0,])
+    receptors['model_conc']=concentration[receptors['target_idx']].values
     count_idx=receptors.pivot(columns='target_idx', values='target_idx').count()
     if count_idx.max()>1:
         print('There are duplicates in target_idx')
@@ -864,13 +868,14 @@ if __name__ == '__main__':
 
         #aggregate dc per precursor, area, calculate increments and relative values
         alldc=dc_snapaggregate(dc_areasum(dc[idx],narea),aggr_src)
-        dc_inc=dc_increments(alldc,aggr_zones)*100./concentration[idx].values[0] 
+        dc_inc=dc_increments(alldc,aggr_zones)*100./concentration[idx]
         area_present=dc_inc.columns
         dc_inc[totalname]= dc_inc.sum(axis=1)
         
         #aggregate results per precursor
         alldc_prec=dc_areasum(dc[idx],narea,liv=0)
-        dc_inc_p=dc_increments(alldc_prec,aggr_zones)*100./concentration[idx].values[0]
+        #dc_inc_p=dc_increments(alldc_prec,aggr_zones)*100./concentration[idx].values[0]
+        dc_inc_p=dc_increments(alldc_prec,aggr_zones)*100./concentration[idx]
         dc_inc_p[totalname]= dc_inc_p.sum(axis=1)
    
         wantedorder_present=pd.Series(list(filter(lambda x: x in area_present, wantedorder))).to_frame(name='areaid')
@@ -900,8 +905,8 @@ if __name__ == '__main__':
         #add natural sources
         if include_natural:
             natural=pd.DataFrame(0, index=['Salt','Dust'], columns=dc_inc.columns)
-            natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx].values[0]
-            natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx].values[0]
+            natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx]
+            natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx]
             dc_inc=dc_inc.append(natural)
         #plots
         fig={}
