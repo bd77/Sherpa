@@ -69,7 +69,6 @@ def gridint_toarray(level, parea, code):
         level = 'NUTS_Lv0' or GCITY_CODE or FUA_CODE
         parea = 'parea'
         code = 'IT' or corrisponding codes
-        nc_selarea = 'workdir/selarea.nc'# path selected area
 
     OUTPUT:
         area_sel : array of the percentage (0-100) of each cell belonging
