@@ -61,8 +61,7 @@ def gridint_toarray(level, parea, code):
     """
     Reads the grid intersect txt files and creates an array with the specified
     dimensions with the fraction of each cell beleonging to the specified area
-    Produces also a netcdf with the percentage of each cell
-    belonging to the area. Needs to import the function from DENISEP
+  . Needs to import the function from DENISEP
     from module7_custom import read_nuts_area
 
     INPUT:
