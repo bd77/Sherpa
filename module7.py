@@ -242,7 +242,7 @@ REVISION HISTORY
 REFERENCES
     
 '''
-def plot_bar(dfdata,varplot,totalname,ftx=16):  
+def plot_bar(dfdata,varplot,totalname,plot_opt='perc',x_label='% of total mass',leg_loc='lower right',ftx=16):
     dfdata=dfdata[varplot['areaid']].transpose()
     varnames=dfdata.columns
     areanames=varplot['areaname']
@@ -251,14 +251,18 @@ def plot_bar(dfdata,varplot,totalname,ftx=16):
     addsum=dfdata.sum(axis=1)
     for ind in range(1,len(dfdata.index)):
         varplot_left[ind]=varplot_left[ind-1]+addsum[dfdata.index[ind-1]]
-    varplot_left[totalname]=0.
+    if totalname in varplot['areaid'].values:
+        varplot_left[totalname]=0.
     colors={'PPM':'grey','SOx':'#ff0000','NOx': '#0000ff','NH3':'#b22222','NMVOC':'#8470ff',
     'Traffic': '#0000ff','Energy':'#999999','Industry':'#ff0000','Production':'#8B4789','Waste':'#00FFFF','Agriculture':'#b22222','Residential':'#32cd32',
     'Offroad':'#8470ff','Extraction':'#00FF00','Other':'#bebebe','Salt':'#ccffe5','Dust':'#ffffcc'}
     # Create the general blog and the "subplots" i.e. the bars
     plt.close('all')
     f, ax1 = plt.subplots(1, figsize=(10,5))
-    ax1.set_xlim([0, 100])
+    if plot_opt=='perc':
+        ax1.set_xlim([0, 100])
+    else:
+         ax1.set_xlim([0, addsum.sum()])
     for tick in ax1.xaxis.get_major_ticks():
         tick.label.set_fontsize(ftx) 
     # Set the bar width
@@ -271,7 +275,7 @@ def plot_bar(dfdata,varplot,totalname,ftx=16):
     tick_pos = [i+(bar_width/2) for i in bar_l] 
 
     # Create a bar plot, in position bar_1
-    ax1.barh(bar_l, 
+    ax1.barh(bar_l,
         # using the pre_score data
         dfdata[varnames[0]], 
         # set the width
@@ -286,7 +290,7 @@ def plot_bar(dfdata,varplot,totalname,ftx=16):
 
     # Create a bar plot, in position bar_1
     for ivar in range(1,len(varnames)):
-        ax1.barh(bar_l, 
+        ax1.barh(bar_l,
         # using the mid_score data
         dfdata[varnames[ivar]], 
         # set the width
@@ -304,9 +308,9 @@ def plot_bar(dfdata,varplot,totalname,ftx=16):
     plt.yticks(tick_pos, areanames,size=12)
 
 # Set the label and legends
-    ax1.set_xlabel("% of total mass",fontsize=ftx)
+    ax1.set_xlabel(x_label,fontsize=ftx)
     #ax1.set_ylabel("Areas")
-    plt.legend(loc='lower right')
+    plt.legend(loc=leg_loc)
 
 # Set a buffer around the edge
     plt.ylim([min(tick_pos)-bar_width, max(tick_pos)+bar_width])
@@ -554,7 +558,7 @@ def sherpa_model(pr,model_idx,alldists,emissiondelta,inner_radius=False):
     window_all=(1.+alldists)**(-model_idx.loc['omega'][pr])
     dc_cells=model_idx.loc['alpha'][pr]*(emidelta*window_all) 
     if inner_radius is not False : #if not zero then use info on flatweight
-        outer_cells=alldists[(alldists>inner_radius) & (emidelta.sum()>0)].index
+        outer_cells=emidelta.sum()[(alldists>inner_radius) & (emidelta.sum()>0)].index
         if len(outer_cells)>0:
        # print ("fo prec",pr,"applying flatweight on",len(outer_cells),"points in area, with",len(alldists[alldists>inner_radius].index),
        # "cells beyond inner radius but",len(alldists[emidelta.sum()==0].index),"zero delta emissions")
@@ -681,6 +685,7 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     
     #read netcdf files, put the data in multindex dataframes and check consistency 
     emissions = read_nc(emissions_nc)
+
     concentration = read_nc(concentration_nc) 
     model= read_nc(model_nc) 
 
@@ -707,12 +712,12 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     #get inner radios and check if the flat weight option is activated
     inner_radius = int(getattr(Dataset(model_nc,'r'), 'Radius of influence'))
     if 'flatWeight' in model.index.levels[0]:
-        print('Flatweight approximation is ON with Radius of influence of '+inner_radius)
+        print('Flatweight approximation is ON with Radius of influence of '+str(inner_radius) +' grid cells')
         if inner_radius >=200:
-            sys.exit("Something wrong, radius of influence is >=200")
+            sys.exit("Something wrong, radius of influence is >=200 grid cells")
     else:
         if inner_radius is not 200:
-            sys.exit("Something wrong, flatweight approximation is deactivated but inner_radius is not 200")   
+            sys.exit("Something wrong, flatweight approximation is deactivated but inner_radius is not 200 grid cells")   
         print('Flatweight approximation is OFF')
         inner_radius=False
  
@@ -773,7 +778,7 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     print('in emissions keeping ',len(modelled_emissions_idx), ' grid points used in SR model training')
     print('the considered emissions are from '+str(len(countries))+' european or near european countries')
     print(countries)
-    #check coherence with nuts_info grid points (must be all and ony the ones in emissions)
+    #check coherence with nuts_info grid points (must be all and only the ones in emissions)
     info_grids={}
     for area in nuts_info.keys():
         index_diff=set(nuts_info[area].index.get_level_values(1)).difference(modelled_emissions_idx)
@@ -803,6 +808,11 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     print ("in model keep ",list(precursors)," modelled precursors")
     model=model.loc[(slice(None),precursors),:]  
     emissions=emissions.loc[(precursors,slice(None)),:]
+    #get measurement unit for emissions
+    emi_units=list(map(lambda p: getattr(Dataset(emissions_nc,'r').variables[p], 'units'),precursors)) 
+    if len(set(emi_units))!=1:
+        sys.exit("not all prcursors have the same unit mass in emissions")
+        
 
     ###########
     #define the aggregation and increments calculation type depending on aggr_zones
@@ -820,7 +830,8 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     receptors['lon_grid']=pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lon'] for st in receptors.index})
     receptors['lat_grid']=pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lat'] for st in receptors.index})
     receptors['model_conc']=concentration[receptors['target_idx']].values
-    print(receptors['target_idx'])
+    print("the selected targets correspond to modelled grid points x_y ")
+    print(receptors['target_idx'].values)
     count_idx=receptors.pivot(columns='target_idx', values='target_idx').count()
     if count_idx.max()>1:
         print('There are duplicates in target_idx:' + ', '.join(list(count_idx.loc[count_idx>1,].index)))
@@ -855,6 +866,11 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
         end = time.perf_counter()
         #print ("time elapsed ",end-start)
 
+        #aggregate emissions per precursor and area
+        emi_sum=pd.concat(list(map(lambda p: dc_snapaggregate(dc_areasum(emissions.loc[p],narea),aggr_src),precursors)),axis=0,keys=precursors)
+        emi_inc=dc_increments(emi_sum,aggr_zones)
+        emi_inc[totalname]= emi_inc.sum(axis=1)
+        
         #aggregate dc per precursor, area, calculate increments and relative values
         alldc=dc_snapaggregate(dc_areasum(dc[idx],narea),aggr_src)
         dc_inc=dc_increments(alldc,aggr_zones)*100./concentration[idx] 
@@ -880,6 +896,7 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
 
         #build a dataframe with constant values in the smallest areas (excluding 'ALL_NUTS_Lv0' and 'NUTS_Lv0')
         smallareas=list(set(area_present)-set(['ALL_NUTS_Lv0','NUTS_Lv0']))
+        
         #avoid double counting of grid increments
         narea_inc=dc_increments(narea,aggr_zones)
         
@@ -904,13 +921,21 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
         plt.close('all')
         fig[3]=plot_bar(dc_inc_p,wantedorder_present,totalname)
         plt.close('all')
+        for ip,p in enumerate(precursors):
+            xlab=''.join([p,' emitted mass in ',emi_units[0]])
+            fig[4+ip]=plot_bar(emi_inc.loc[p][smallareas],wantedorder_present.loc[wantedorder_present['areaid'].isin(smallareas)],totalname,plot_opt='noperc',x_label=xlab,leg_loc='upper left')
+        plt.close('all')
+
         dc_inc.columns=wantedorder_present['areaname']
   
         for ids in list(receptors[receptors['target_idx']==idx].index):
           fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_map.'+outfig)
           fig[2].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+outfig)
           fig[3].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_prec_bars.'+outfig)
-          dc_inc.to_html(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.html',classes='table')
+          for ip,p in enumerate(precursors):
+              fig[4+ip].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_bars.'+outfig)
+          #dc_inc.to_html(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.html',classes='table')
+          dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.csv')
           dc_inc_all[ids]=dc_inc.transpose()
           target_allinfo[ids]=target_info.transpose()
     #summarize info on grid points
@@ -921,7 +946,8 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     b =receptors[['station name','target_idx','duplicates','model_conc','lon','lon_grid','lat','lat_grid','dist_km']].reset_index()
     summary= pd.merge(b, a)
     summary = summary.set_index(['id','area'])
-    summary.to_html(outdir+'\\AAA_summary_info.html',classes='table')
+    #summary.to_html(outdir+'\\AAA_summary_info.html',classes='table')
+    summary.to_csv(outdir+'\\AAA_summary_info.csv')
 
     reform = {(outerKey, innerKey): values for outerKey, innerDict in dc_inc_all.items() for innerKey, values in innerDict.items()}
     dc_inc_all=pd.DataFrame(reform).transpose()  
@@ -953,11 +979,11 @@ if __name__ == '__main__':
     
     # run module 1 without progress log
     ############################################### user input data
-    sherpa_version='20170322_v18_SrrResults_PotencyBased'
-    sherpa_srkeyword='20170322_PotencyBased'
-    testarea='Covenant' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
-    pollutant='NOx' #may be '25' or '10' or NOx
-    aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
+    sherpa_version='inputFlatWeightChimere_7km_nuts'
+    sherpa_srkeyword=''
+    testarea='EU' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    pollutant='PM25' #may be 'PM25' or 'PM10' or NOx
+    aggr_zones='nuts' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
  
     ############################################### 
@@ -968,11 +994,11 @@ if __name__ == '__main__':
         pollutant='NO2'
         pollconc='NO2_NO2eq_Y_mgm3'
         pollmodel='NO2eq_Y'
-    elif pollutant is 'NO2': 
-        sys.exit('NO2 corrections are not implemented in this module (ask Bart)')
+    elif pollutant not in ['PM10','PM25']: 
+        sys.exit(pollutant +'is not implemented in this module')
     emissions='input/'+sherpa_version+'/1_base_emissions/BC_emi_'+pollutant+'_Y.nc'
     concentration='input/'+sherpa_version+'/2_base_concentrations/BC_conc_'+pollconc+'.nc'
-    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'_'+sherpa_srkeyword+'.nc'   #info on areas and percentage of grids in areas
+    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'.nc'   #info on areas and percentage of grids in areas
     selection_dir='input/selection'
     target_list='input/'+testarea+'_targets.txt'
     outdir='output/'+sherpa_version+'/'+testarea
