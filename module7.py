@@ -215,11 +215,14 @@ def plot_dict(dc_dic,idx,coord_emissions,grid_grads=3,unit='%'):
     m.drawcountries();    
     # draw filled contours.
     x, y = m(lon, lat)
-    clevs = [5,10,15,20,25,30,35,40,45,50,55,60]
-    cs = m.contourf(x,y,dfmat,clevs);
+    #clevs = [5,10,15,20,25,30,35,40,45,50,55,60]
+    #clevs=[0.9,1.1,1.9,2.1,2.9,3.1,3.9,4.1]
+    clevs=[0,1,2,3,4]
+    #cs = m.contour(x,y,dfmat,clevs);
+    cs = m.contour(x,y,dfmat,clevs,linewidths=1,colors=('r', 'green', 'blue','grey','black'));
     # add colorbar.
-    cbar = m.colorbar(cs,location='bottom',pad="5%")
-    cbar.set_label(unit)
+    #cbar = m.colorbar(cs,location='bottom',pad="5%")
+    #cbar.set_label(unit)
     #drow target
     x,y = m(lon_0, lat_0)
     m.plot(x, y, 'x', markersize=6,color='k',fillstyle='none')
@@ -899,9 +902,17 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
         #avoid double counting of grid increments
         narea_inc=dc_increments(narea,aggr_zones)
         
+         
+        
         if len(smallareas)>0:
-            dc_inc_flat= pd.concat(list(map(lambda p: narea_inc[p]*(dc_inc[p].sum()),smallareas)),axis=1).sum(axis=1) 
-            dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns) 
+        #make a copy with 0 and 1 only for plotting
+            narea_bin=narea[smallareas].copy()
+            narea_bin=narea_bin.mask(narea_bin>0.5,1)
+            narea_bin=narea_bin.mask(narea_bin<=0.5,0)
+            narea_id=narea_bin.sum(axis=1)
+            
+            #dc_inc_flat= pd.concat(list(map(lambda p: narea_inc[p]*(dc_inc[p].sum()),smallareas)),axis=1).sum(axis=1) 
+            #dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns) 
         
         #set up appropriate names for the areas
         wantedorder_present=wantedorder_present.append(pd.Series({'areaid':totalname, 'areaname':totalname}), ignore_index=True)
@@ -919,7 +930,8 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
         fig[2]=plot_bar(dc_inc_p,wantedorder_present,totalname)
         plt.close('all')
         if len(smallareas)>0:
-            fig[3]=plot_dict(dc_inc_flat,idx,coordinates.loc[emissions.columns,])
+            #fig[3]=plot_dict(dc_inc_flat,idx,coordinates.loc[emissions.columns,])
+            fig[3]=plot_dict(narea_id,idx,coordinates.loc[emissions.columns,])
             plt.close('all')        
             for ip,p in enumerate(precursors):
                 xlab=''.join([p,' emitted mass in ',emi_units[0]])
@@ -981,11 +993,11 @@ if __name__ == '__main__':
     # run module 1 without progress log
     ############################################### user input data
     sherpa_version='inputFlatWeightChimere_7km_nuts'
-    testarea='testarea2' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    testarea='London' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     pollutant='PM25' #may be 'PM25' or 'PM10' or NOx
     aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
-    outfig='png' #'pnd' of 'pdf'
+    outfig='pdf' #'pnd' of 'pdf'
     ############################################### 
     ############################################### input files
     pollconc=pollutant+'_Y'
