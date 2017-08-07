@@ -650,7 +650,7 @@ REVISION HISTORY
 REFERENCES
     
 '''
-def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,outdir,aggr_zones, rect_coord=None, *progresslog):
+def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,outdir,aggr_zones,outfig='png',rect_coord=None, *progresslog):
     import pandas as pd  
     import sys
     from mpl_toolkits.basemap import Basemap    
@@ -667,7 +667,6 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     ################default user definition
     aggr_src=True #set to True for aggregatin sources as in erep
     include_natural=False #include or not natiral PM concentration
-    outfig='png' #'pnd' of 'pdf'
     print_areainfo=False #if true check and print which grid points in fua/gcity are actually not modelled
     #############
  
@@ -884,7 +883,7 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
    
         wantedorder_present=pd.Series(list(filter(lambda x: x in area_present, wantedorder))).to_frame(name='areaid')
         wantedorder_present['areaname']=pd.Series(list(target_info.loc[wantedorder_present['areaid'],'areaname']))
-        #check for duplicated names in nuts
+         #check for duplicated names in nuts
         if 'NUTS_Lv1' in wantedorder_present['areaid'].values:
             wantedorder_present.loc[wantedorder_present['areaid'].values=='NUTS_Lv1','areaname']='1_'+wantedorder_present.loc[wantedorder_present['areaid'].values=='NUTS_Lv1','areaname']
         if 'NUTS_Lv2' in wantedorder_present['areaid'].values:
@@ -896,13 +895,13 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
 
         #build a dataframe with constant values in the smallest areas (excluding 'ALL_NUTS_Lv0' and 'NUTS_Lv0')
         smallareas=list(set(area_present)-set(['ALL_NUTS_Lv0','NUTS_Lv0']))
-        
+         
         #avoid double counting of grid increments
         narea_inc=dc_increments(narea,aggr_zones)
         
         if len(smallareas)>0:
             dc_inc_flat= pd.concat(list(map(lambda p: narea_inc[p]*(dc_inc[p].sum()),smallareas)),axis=1).sum(axis=1) 
-        dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns) 
+            dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns) 
         
         #set up appropriate names for the areas
         wantedorder_present=wantedorder_present.append(pd.Series({'areaid':totalname, 'areaname':totalname}), ignore_index=True)
@@ -915,29 +914,31 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
             dc_inc=dc_inc.append(natural)
         #plots
         fig={}
-        fig[1]=plot_dict(dc_inc_flat,idx,coordinates.loc[emissions.columns,])
+        fig[1]=plot_bar(dc_inc,wantedorder_present,totalname)
         plt.close('all')
-        fig[2]=plot_bar(dc_inc,wantedorder_present,totalname)
+        fig[2]=plot_bar(dc_inc_p,wantedorder_present,totalname)
         plt.close('all')
-        fig[3]=plot_bar(dc_inc_p,wantedorder_present,totalname)
-        plt.close('all')
-        for ip,p in enumerate(precursors):
-            xlab=''.join([p,' emitted mass in ',emi_units[0]])
-            fig[4+ip]=plot_bar(emi_inc.loc[p][smallareas],wantedorder_present.loc[wantedorder_present['areaid'].isin(smallareas)],totalname,plot_opt='noperc',x_label=xlab,leg_loc='upper left')
+        if len(smallareas)>0:
+            fig[3]=plot_dict(dc_inc_flat,idx,coordinates.loc[emissions.columns,])
+            plt.close('all')        
+            for ip,p in enumerate(precursors):
+                xlab=''.join([p,' emitted mass in ',emi_units[0]])
+                fig[4+ip]=plot_bar(emi_inc.loc[p][smallareas],wantedorder_present.loc[wantedorder_present['areaid'].isin(smallareas)],totalname,plot_opt='noperc',x_label=xlab,leg_loc='upper left')
         plt.close('all')
 
         dc_inc.columns=wantedorder_present['areaname']
   
         for ids in list(receptors[receptors['target_idx']==idx].index):
-          fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_map.'+outfig)
-          fig[2].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+outfig)
-          fig[3].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_prec_bars.'+outfig)
-          for ip,p in enumerate(precursors):
-              fig[4+ip].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_bars.'+outfig)
-          #dc_inc.to_html(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.html',classes='table')
-          dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.csv')
-          dc_inc_all[ids]=dc_inc.transpose()
-          target_allinfo[ids]=target_info.transpose()
+            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+outfig)
+            fig[2].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_prec_bars.'+outfig)
+            if len(smallareas)>0:
+                fig[3].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_map.'+outfig)
+                for ip,p in enumerate(precursors):
+                    fig[4+ip].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_bars.'+outfig)
+              #dc_inc.to_html(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.html',classes='table')
+            dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.csv')
+            dc_inc_all[ids]=dc_inc.transpose()
+            target_allinfo[ids]=target_info.transpose()
     #summarize info on grid points
     reform = {(outerKey, innerKey): values for outerKey, innerDict in target_allinfo.items() for innerKey, values in innerDict.items()}
     target_allinfo=pd.DataFrame(reform).transpose() 
@@ -980,12 +981,11 @@ if __name__ == '__main__':
     # run module 1 without progress log
     ############################################### user input data
     sherpa_version='inputFlatWeightChimere_7km_nuts'
-    sherpa_srkeyword=''
-    testarea='EU' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    testarea='testarea2' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     pollutant='PM25' #may be 'PM25' or 'PM10' or NOx
-    aggr_zones='nuts' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
+    aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
- 
+    outfig='png' #'pnd' of 'pdf'
     ############################################### 
     ############################################### input files
     pollconc=pollutant+'_Y'
@@ -1014,7 +1014,7 @@ if __name__ == '__main__':
     # run module 7 with progress log
     #proglog_filename = 'output/proglog'
     start = time.perf_counter() 
-    out_dc=module7(emissions,concentration, model,selection_dir,target_list,outdir,aggr_zones) 
+    out_dc=module7(emissions,concentration, model,selection_dir,target_list,outdir,aggr_zones,outfig) 
     stop = time.perf_counter() 
     print('Module 7 run time: %s sec.' % (stop-start))
     #remove(proglog_filename)
