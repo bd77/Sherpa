@@ -9,25 +9,25 @@ Collection of functions to evaluate the helath impact of AQ
 """
 from netCDF4 import Dataset  # for using netCDF files
 import numpy as np
-from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
+# from osgeo import gdal, ogr, osr  # conda install -c conda-forge gdal
 import pandas as pd
-import scipy.io as sio
-
-from sherpa_globals import (path_base_conc_cdf_test, path_salt_conc_cdf_test,
-                            path_dust_conc_cdf_test, path_pop_mat_test,
-                            path_mortbaseline)
+# import scipy.io as sio
+import os as os
 
 from sherpa_auxiliaries_epe import gridint_toarray, write_nc, tiftogridgeneral
 
 
-def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', miller=True,
+def calc_impacts(path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
+                 path_dust_conc_cdf_test, path_salt_conc_cdf_test,
+                 code, spec='d',
+                 approx='e', miller=True,
                  std_life_exp=70):
     """
     Health impacts of PM2.5 - WHO-Europe method (HRAPIE reccomendations)
 
-    Concentration-Response-Function taken from the software from AirQ+ (WHO)
+    Concentration-Response-Function taken from the software AirQ+ (WHO)
 
-    YLLs as calculated considering the distribution of mortality and population
+    YLLs calculated considering the distribution of mortality and population
     by age and by country, where data is not available in the ICD-10 format
     YLLs can be calculated as a function of life expectancy for PM2.5 or
     considering average EU values.
@@ -35,12 +35,16 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
     NB: Hereafter a positive delta means a reduction!
 
     Input:
-        - path_areasel_nc: path to netcdf file of area of interest
-           (nc file with 100 in the cells of the area of interest)
-        - code: country code, FUA code or city code (as defined in the
-           grid interesect files):
         - path_conc_nc: path to the file  with the concentrations
            (output of module1) or absolute concentration
+        - path_areasel_nc: path to netcdf file of area of interest
+           (nc file with 100 in the cells of the area of interest)
+        - path_tiff: .tif population file (i.e. LUISA)
+        - path_mortbaseline: excel file with the data of the baseline
+        - path_dust_conc_cdf_test: concentration of natural dust
+        - path_salt_conc_cdf_test: concentration of sea salt
+        - code: country code, FUA code or city code (as defined in the
+           grid interesect files):
         - spec='d' for 'delta' concentration or 'a' for 'absolute'
         - std_life_exp=70: standard life expectancy to calculate the years of
            life loss, 70 is the value used by WHO in
@@ -57,7 +61,7 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
 
     Required files:
         - path_mortbaseline: excel file with the data of the baseline
-        - population: matlab file with the population distribution (LUISA)
+        - path_tiff: .tif file with the population distribution (LUISA)
         - grid intersect files
         Country codes for teh grid intesect are:
              'CY', 'ES', 'HU', 'ME', 'NL', 'SI', 'AT', 'BE', 'BG', 'CH', 'CZ',
@@ -99,19 +103,8 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
 
     # -----------------------------------------------------------------------------
     # BASELINE POPULATION DATA
-    # Load population file from LUISA (Marco)
-    # (treated in "regridPop" matlab routine from Enrico).
-    # The matlab file contains a structure called Anew,
-    # I carried out the same operations as in Enrico's matlab file to adapt the
-    # data to the SHERPA grid
-    path_tiff = 'input/pop/7km_Qi_2010.tif'
+    # Load population file from LUISA
     popall = tiftogridgeneral(path_tiff)
-#    A = sio.loadmat(path_pop_mat_test)
-#    Anew = A['Anew']
-#    Anew_T = Anew[np.newaxis]
-#    popall = np.fliplr(Anew_T)
-#    path_pop_nc = 'workdir/popnew.nc'
-#    write_nc(arr, path_pop_nc, 'POP', '#')
 
     # Build Pandas dataframe with the baseline population data
     # distributed by age:
@@ -150,12 +143,14 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
     #  Life years lost correponding to each mid point age
     lyl = std_life_exp - np.asarray(cols)
 
-    # average life year lost for each death older than 30 and younger
-    # than the std_life_exp, we can use this because the CRF does not depend on
-    # age
-
     def lylcal(x):
+        """
+        Life years loss caclculation: average life year lost for each death
+        older than 30 and younger than the std_life_exp, we can use this
+        because the CRF does not depend on age
+        """
         return np.sum(x[cols]*lyl/x['sum_sel'])
+
     df_lyl = df_mort.apply(lylcal, axis=1)
 
     # Death rate: all mortality and all population above 30
@@ -165,13 +160,13 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
 
     # Ratio between the population over 30 and the total population
     # HP: The population over 30 has the same distribution as all population
-    # (as provided by Marco)
+    # (as provided by LUISA)
     p30_ptot = (df_pop[np.asarray(cols30p)].sum(axis=1) /
                 df_pop[np.asarray(col_list[1:])].sum(axis=1))
 #    ptot = df_pop[np.asarray(col_list[1:])].sum(axis=1)
     # Calculting average values to use if the country selected is not in
     # the database. Average values calculating considering EU28 countries
-    # which are in the WHO database
+    # which are also in the WHO database
 
     eu28_codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES',
                   'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT',
@@ -332,44 +327,29 @@ def calc_impacts(path_conc_nc, path_areasel_nc, code, spec='d', approx='e', mill
 
 if __name__ == '__main__':
 
-    # Target area:
-    #    level = 'FUA_CODE'
-    #    parea = 'parea'
-    #    code = 'IT002L2'
+    from sherpa_globals import (path_tiff, path_mortbaseline,
+                                path_base_conc_cdf_test,
+                                path_dust_conc_cdf_test,
+                                path_salt_conc_cdf_test)
+
     level = 'NUTS_Lv0'
     parea = 'parea'
-#    code = 'IT'
-#    ''
-
-    # path to store the selected area
-    path_areasel_nc = 'workdir/selarea.nc'
-#    # reduction area
-#    area_sel = gridint_toarray(
-#            level, parea, code)
-#
-#    write_nc(area_sel, path_areasel_nc, 'AREA', '%')
-
     path_conc_nc = path_base_conc_cdf_test
-#
-#    (deltayll_reg, delta_mort_reg, deltayll_spec_reg) = calc_impacts(
-#            path_base_conc_cdf_test, path_areasel_nc, code, spec='a',
-#            approx='e')
-
     codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI',
              'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL',
              'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
-#    pop = {}
     deltayll_reg = {}
     deltayll_spec_reg = {}
     delta_mort_reg = {}
     for code in codes:
-        # reduction area
-#        print(code)
-        area_sel = gridint_toarray(
-            level, parea, code)
-#        pop[code]=np.sum(area_sel*arr/100)
-        write_nc(area_sel, path_areasel_nc, 'AREA', '%')
-#
+        path_areasel_nc = 'workdir\\{}{}.nc'.format(level, code)
+        if not os.path.exists(path_areasel_nc):
+                area_sel = gridint_toarray(level, parea, code)
+                write_nc(area_sel, path_areasel_nc, 'AREA', '%')
+
         (deltayll_reg[code], delta_mort_reg[code],
-         deltayll_spec_reg[code]) = calc_impacts(path_conc_nc, path_areasel_nc, code, spec='a', approx='e', miller=True,
-                 std_life_exp=70)
+         deltayll_spec_reg[code]) = calc_impacts(
+                 path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
+                 path_dust_conc_cdf_test, path_salt_conc_cdf_test,
+                 code, spec='a',
+                 approx='e', miller=True, std_life_exp=70)
