@@ -8,6 +8,12 @@ There are 2 outputs:
 - a text file with all nuts codes and the DC/C/alpha (relative potential) as percent due to a reduction in that nuts area
 - a map where each nuts has the value of the concentration change it causes in the target cell 
 
+
+
+
+
+
+
 for compatibility the header is 'potency' in the output txt
 
 @author: degraba
@@ -34,6 +40,8 @@ def create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array
        
     # calculate a dictionary with the emission reductions per pollutant, macrosector and position
     delta_emission_dict = {}
+	delta_emission_dict['units'] = {}
+
     for precursor in precursor_lst:
         delta_emission_dict[precursor] = zeros(emission_dict[precursor].shape)
         # calculate the emission reduction
@@ -45,7 +53,9 @@ def create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array
     # sum over all snap sectors
     for precursor in precursor_lst:
         delta_emission_dict[precursor] = sum(delta_emission_dict[precursor], axis=0)
-              
+        delta_emission_dict['units'][precursor] = emission_dict['units'][precursor]              
+
+
     return delta_emission_dict
 
 # function definition of source receptor model
@@ -53,16 +63,32 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     
     # read the model netcdf
     # ---------------------
+
+
+
+
+
+
+
+
+
+
+
     rootgrp = Dataset(path_model_cdf, 'r')
     longitude_array = rootgrp.variables['lon'][0, :]
     latitude_array = rootgrp.variables['lat'][:, 0]
     n_lon = len(longitude_array)  
     n_lat = len(latitude_array)  
+
+
     inner_radius = int(getattr(rootgrp, 'Radius of influence'))
+
+
     precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
     alpha = rootgrp.variables['alpha'][:, :, :]    
     omega = rootgrp.variables['omega'][:, :, :] 
     flatWeight = rootgrp.variables['flatWeight'][:, :, :]
+
 
     # put alpha and omega in a dictionary
     alpha_dict = {}
@@ -76,8 +102,16 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     # close model netcdf
     rootgrp.close()
     
+
+
+
+
+
+
+
     # open the area netcdf and get lat lon indexes of target cell
     #-------------------------------------------------------------
+
     rootgrp_nuts = Dataset(path_area_cdf, 'r')
     n_nuts = len(rootgrp_nuts.dimensions['nuts_id'])
     nuts_codes_raw = rootgrp_nuts.variables['NUTS'][:]
@@ -113,6 +147,10 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     # -------------------------------------------------------------------------------
     rootgrp = Dataset(path_base_conc_cdf, 'r')
     target_conc_basecase = rootgrp.variables['conc'][i_lat_target, i_lon_target]
+
+
+
+
     # close model netcdf
     rootgrp.close()
     
@@ -130,7 +168,10 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
                 window[i,j] = 0
                 window_ones[i,j] = 0
     
+
+
     delta_conc = {} 
+
     DC_target_arrray = zeros((n_lat, n_lon))
         
     # loop over all nuts in 
@@ -149,6 +190,25 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
         
         # calculate the delta emissions, dictionary per pollutant a matrix of dimension n_lat x n_lon
         delta_emission_dict = create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array, path_reduction_txt)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
        
         pad_delta_emission_dict = {}
         for precursor in precursor_lst:
@@ -175,6 +235,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
                 # apply the weight to the flat weighted emissions
                 weighted_emissions_flat = flatWeight_ij * sum_emissions_flat[precursor]  
                 
+
                 emissions_centre = pad_delta_emission_dict[precursor][i_lat_target:(i_lat_target + n_lon_inner_win), i_lon_target:(i_lon_target + n_lat_inner_win)]
                 
                 # weighted_emissions_centre = (power(weights_centre, omega_ij) * emissions_centre).sum()
@@ -187,6 +248,11 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
             base_conc_nox = array(rootgrp.variables['conc'][i_lat_target, i_lon_target])  
             base_conc_no2 = array(rootgrp.variables['NO2'][i_lat_target, i_lon_target])
             rootgrp.close() 
+
+
+
+
+
             delta_conc[nuts_code] = deltaNOx_to_deltaNO2(delta_conc[nuts_code], base_conc_nox, base_conc_no2)
            
     
@@ -213,15 +279,64 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     area = rootgrp.createVariable('AREA', 'f4', ('latitude', 'longitude',))
     area[:] = DC_target_arrray
     rootgrp.close()
+
     
     # write a result file
     f_res = open(path_result_cdf + 'radius_result.txt', 'w')
     f_res.write('nuts_code\t%\n')
+
+
+
+
     for nuts_code in sorted_nuts_codes:
         f_res.write('%s\t%e\n' % (nuts_code, delta_conc[nuts_code] / target_conc_basecase / (alpha_potency / 100) * 100)) # rel potential in percentage
     f_res.close()
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # return delta_conc
+
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     
@@ -231,20 +346,53 @@ if __name__ == '__main__':
     progresslog = 'input/progress.log'
     
     # run module 1 without progress log
+
     start = time()
     # emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_NO2_Y.nc'
     emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     nuts2_netcdf = 'input/EMI_RED_ATLAS_NUTS2.nc'
+
     target_cell_lat = 45.46         # Milan
     target_cell_lon = 9.19          # Milan
     path_reduction_txt = 'input/user_reduction_all50.txt'
+
+
+
     # base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_NO2_NO2eq_Y_mgm3.nc'
     base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc'
+
+
+
+
+
     # model_NO2eq = 'input/20151116_SR_no2_pm10_pm25/SR_NO2eq_Y.nc'
     model_PM25old = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
     model_PM25new = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y_prctiles.nc'
+
     output_path = 'output/NO2eq/Milan/'
      
+
+
     # run module 1 with progress log
     start = time()
     module6(emissions, nuts2_netcdf, target_cell_lat, target_cell_lon, path_reduction_txt, base_conc_cdf, model_PM25new, output_path)
