@@ -21,7 +21,6 @@ from netCDF4 import Dataset
 from numpy import lib, zeros, sum, power, ones, array, nan, nansum
 from math import isnan
 # path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
-from time import time
 import sys
 from sherpa_globals import alpha_potency
 from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window, deltaNOx_to_deltaNO2
@@ -165,7 +164,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
 
     delta_conc = {} 
     delta_conc_nox = {}     # just in case we're doning NO2
-    DC_target_arrray = zeros((n_lat, n_lon)) * float('nan')
+    DC_target_arrray = zeros((n_lat, n_lon))
         
     # loop over all nuts in 
     for nuts_id in range(n_nuts):
@@ -180,6 +179,9 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
         sys.stdout.flush()
     
         reduction_area_array = rootgrp_nuts.variables['AREA'][nuts_id,:,:] / 100.0
+
+        # calculate the delta emissions, dictionary per pollutant a matrix of dimension n_lat x n_lon
+        delta_emission_dict = create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array, path_reduction_txt)
         
         # check how many precursors are reduced. When only one is reduced a potency (DC/DE) will be calculated.
         DE = nan
@@ -199,10 +201,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
         if n_reduced_precursors > 1:
             DE = nan   
             unique_precursor = 'NA' 
-               
-        # calculate the delta emissions, dictionary per pollutant a matrix of dimension n_lat x n_lon
-        delta_emission_dict = create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array, path_reduction_txt)
-       
+                      
         pad_delta_emission_dict = {}
         for precursor in precursor_lst:
             pad_delta_emission_dict[precursor] = lib.pad(delta_emission_dict[precursor], inner_radius, 'constant', constant_values=0)
@@ -221,13 +220,10 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
             omega_ij = omega_dict[precursor][i_lat_target, i_lon_target]
             flatWeight_ij = flatWeight_dict[precursor][i_lat_target, i_lon_target]
             
-            # print('precursor: %s, alpha: %e, omega: %e, flatWeight: %e' % (precursor, alpha_ij, omega_ij, flatWeight_ij))
-            
             if not(isnan(alpha_ij)):
                 
                 # apply the weight to the flat weighted emissions
-                weighted_emissions_flat = flatWeight_ij * sum_emissions_flat[precursor]  
-                
+                weighted_emissions_flat = flatWeight_ij * sum_emissions_flat[precursor]                 
 
                 emissions_centre = pad_delta_emission_dict[precursor][i_lat_target:(i_lat_target + n_lon_inner_win), i_lon_target:(i_lon_target + n_lat_inner_win)]
                 
@@ -237,13 +233,10 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
                 
         # In the case of NOx the NO2 concentrations have to be calculated with the NO2 fraction correlation
         if (path_model_cdf.find('NO2eq') > -1):
-            rootgrp = Dataset(path_base_conc_cdf, 'r')
-            base_conc_nox = array(rootgrp.variables['conc'][i_lat_target, i_lon_target])  
-            base_conc_no2 = array(rootgrp.variables['NO2'][i_lat_target, i_lon_target])
-            rootgrp.close() 
-
-            delta_conc[nuts_code] = deltaNOx_to_deltaNO2(delta_conc[nuts_code], base_conc_nox, base_conc_no2)
-           
+            # store delta_conc_nox
+            delta_conc_nox[nuts_code] = delta_conc[nuts_code]
+            # update the delta_conc dictionary, delta_NOx is substituted by delta_NO2
+            delta_conc[nuts_code] = deltaNOx_to_deltaNO2(delta_conc_nox[nuts_code], target_conc_basecase, target_conc_basecase_no2)
     
         # create an output map with in each nuts the DC in the target cell
         DC_target_arrray = DC_target_arrray + delta_conc[nuts_code] * reduction_area_array
@@ -325,101 +318,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     return results_dict
 
 
-if __name__ == '__main__':
-    
-    # module 1 test inputs
-    module = 1
-    # if it doesn't exist strart=0 and dividsor=1
-    progresslog = 'input/progress.log'
-    
-    # run module 1 without progress log
-
-
-    start = time()
-    # emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_NO2_Y.nc'
-    emissions = 'input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    nuts2_netcdf = 'input/EMI_RED_ATLAS_NUTS2.nc'
-
-
-    target_cell_lat = 45.46         # Milan
-    target_cell_lon = 9.19          # Milan
-    path_reduction_txt = 'input/user_reduction_all50.txt'
-
-
-
-
-
-
-    # base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_NO2_NO2eq_Y_mgm3.nc'
-    base_conc_cdf = 'input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc'
-
-
-
-
-
-
-
-
-
-
-    # model_NO2eq = 'input/20151116_SR_no2_pm10_pm25/SR_NO2eq_Y.nc'
-    model_PM25old = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
-    model_PM25new = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y_prctiles.nc'
-
-
-    output_path = 'output/NO2eq/Milan/'
-     
-
-
-
-
-    # run module 1 with progress log
-    start = time()
-    module6(emissions, nuts2_netcdf, target_cell_lat, target_cell_lon, path_reduction_txt, base_conc_cdf, model_PM25new, output_path)
-    # print(DC)
-    stop = time()
-    print('Module 6 run time: %s sec.' % (stop-start))
-     
+if __name__ == '__main__':     
     pass
 
 

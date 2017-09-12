@@ -51,10 +51,10 @@ n_cities = len(city_dict)
 
 # which reductions to apply: all, perPrecursor, perSNAP, perSNAPandPrecursor
 user_reduction_folder = '../../reduction_input_files/'
-# user_reduction_subfolder = 'allSNAP_allPrec'
+user_reduction_subfolder = 'allSNAP_allPrec'
 # user_reduction_subfolder = 'allSNAP_perPrec'
 # user_reduction_subfolder = 'perSNAP_allPrec'
-user_reduction_subfolder = 'perSNAP_perPrec'
+# user_reduction_subfolder = 'perSNAP_perPrec'
 
 # list of snap sectors (reduction of all precursors together)
 snap_tag = user_reduction_subfolder.split('_')[0]
@@ -181,7 +181,7 @@ for model_name in model_dict.keys():
                 precursor = snap_prec.split('_')[1] 
                 
                 # in case of NO2 only calculate for precursor NOx
-                if pollutant_tag != 'NO2' or (pollutant_tag == 'NO2' and precursor == 'NOx'):
+                if pollutant_tag != 'NO2' or (pollutant_tag == 'NO2' and (precursor == 'NOx' or precursor == 'all')):
                 
                     # check if the city, source_area, snap combination is already calculated
                     start = timeit.timeit()
