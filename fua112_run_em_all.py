@@ -37,7 +37,7 @@ else:
 
 # read file with city_lats and city_lons
 # cityname    nuts0    codeid    lat    lon
-fcity = open('D:/SHERPA/FUA112/city_list_fua112.txt', 'r')
+fcity = open('../city_list_fua112.txt', 'r')
 fcity.readline()     # read header
 city_dict = {}
 while True:
@@ -50,7 +50,7 @@ n_cities = len(city_dict)
 
 
 # which reductions to apply: all, perPrecursor, perSNAP, perSNAPandPrecursor
-user_reduction_folder = 'D:/SHERPA/FUA112/reduction_input_files/'
+user_reduction_folder = '../../reduction_input_files/'
 # user_reduction_subfolder = 'allSNAP_allPrec'
 # user_reduction_subfolder = 'allSNAP_perPrec'
 # user_reduction_subfolder = 'perSNAP_allPrec'
@@ -63,7 +63,7 @@ precursor_tag = user_reduction_subfolder.split('_')[1]
 user_reduction_list = os.listdir(user_reduction_folder + user_reduction_subfolder)
 
 # read model information
-model_file = 'D:/SHERPA/FUA112/run_configuration/model_file.txt'
+model_file = '../model_configuration_file.txt'
 fmod = open(model_file, 'r')
 line = fmod.readline().rstrip()      # read header
 model_dict = {}
@@ -88,7 +88,7 @@ print(model_dict)
 # --------------------
 
 date_tag = date.today().strftime('%Y%m%d')
-results_path = 'D:/SHERPA/FUA112/results/%s_%s_%s_%s/' % (date_tag, snap_tag, precursor_tag, area_aggregation_tag)
+results_path = '../results/%s_%s_%s_%s/' % (date_tag, snap_tag, precursor_tag, area_aggregation_tag)
 if not(os.path.exists(results_path)):
     os.makedirs(results_path) 
     print('Results directory %s created.' % (results_path))   
@@ -110,8 +110,8 @@ for model_name in model_dict.keys():
     path_cell_surface_cdf = model_dict[model_name]['cell_surface_cdf']
     
     # and the reduction areas
-    reduc_area_agg_path = 'D:/SHERPA/FUA112/fua_area_cdfs/aggAreas_%s/' % (model_dict[model_name]['ctm'])
-    reduc_area_all_path = 'D:/SHERPA/FUA112/fua_area_cdfs/allAreas_%s/' % (model_dict[model_name]['ctm'])
+    reduc_area_agg_path = '../../fua_area_cdfs/aggAreas_%s/' % (model_dict[model_name]['ctm'])
+    reduc_area_all_path = '../../fua_area_cdfs/allAreas_%s/' % (model_dict[model_name]['ctm'])
 
     # check if the output file already exists to resume a calculation
     completed_runs = []

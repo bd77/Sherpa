@@ -1,24 +1,17 @@
 '''
 Created on Jun 23, 2015
 
+This script is a continuation of the released SHERPA version of 20170130.
+It was modified to generate a complete output (potentials, potencies, deltas) to create an
+air quality atlas for 112 cities
+
 Module 6 calculates for 1 cell the concentration change due to a 50 percent reductions in 
 the snap sectors defined in the input file 'path_reduction_txt'. Emission are reduced in
 each NUTS area in the input file 'path_area_cdf'
-There are 2 outputs:
-- a text file with all nuts codes and the DC/C/alpha (relative potential) as percent due to a reduction in that nuts area
-- a map where each nuts has the value of the concentration change it causes in the target cell 
-
-
-
-
-
-
-
-
-
-
-
-for compatibility the header is 'potency' in the output txt
+There are 3 outputs:
+- a text file with all nuts codes and the DC/C/alpha (relative potential), potential (DC/alpha), potency (DC/DE), DC, DE
+- (disabled) a map where each nuts has the value of the concentration change it causes in the target cell 
+- a dictionary with the same output as the text file.
 
 @author: degraba
 '''
@@ -104,7 +97,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     # close model netcdf
     rootgrp.close()
 
-   # read netcdf with cell surfaces
+    # read netcdf with cell surfaces
     rootgrp = Dataset(path_cell_surface_cdf, 'r')
     cell_surface_array = rootgrp.variables['surface'][:]
     cell_surface_units = rootgrp.variables['surface'].units # chimere > km2, emep > m2
