@@ -58,8 +58,10 @@ def create_emission_dict(path_emission_cdf, precursor_lst):
     rootgrp = Dataset(path_emission_cdf, 'r')
     
     emission_dict = {}
+    emission_dict['units'] = {}
     for precursor in precursor_lst:
         emission_dict[precursor] = rootgrp.variables[precursor][:, :, :]
+        emission_dict['units'][precursor] = rootgrp.variables[precursor].units
     
     # get snap, longitude and latitude arrays from emission file
     snap_array = range(1, 11)
