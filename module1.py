@@ -119,7 +119,7 @@ def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf,
     return delta_emission_dict
 
 # function definition of source receptor model
-def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf, *progresslog):
+def module8(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf, *progresslog):
     
     # check if a progess log file was passed as argument
     if progresslog:
@@ -201,7 +201,7 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
                     # sum the contribution of the precursor
                     delta_conc[ie, je] = delta_conc[ie, je] + alpha_ij * weighted_emissions_centre
             
-	  # update the cellcounter for the progress bar
+            # update the cellcounter for the progress bar
             cell_counter += 1
     
     # In the case of NO2 the variable 'delta_conc' contains the NOx concentrations as NO2-equivalent.
@@ -251,7 +251,6 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
 if __name__ == '__main__':
     
     # testing is know done in a separate script
-          
     pass
 
 
