@@ -16,9 +16,6 @@ from sherpa_globals import path_model_cdf_test, grid_txt, gcities_txt, fua_txt, 
 
 from sherpa_auxiliaries import (create_emission_dict)
 
-
-
-
 def tiftogridgeneral(path_tiff):
     gdal.UseExceptions()
     ds = None
@@ -49,11 +46,11 @@ def tiftogridgeneral(path_tiff):
 
 # -----------------------------------------------------------------------------
 def save_obj(obj, name):
-    with open('workdir/'+ name + '.pkl', 'wb') as f:
+    with open(name + '.pkl', 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 # -----------------------------------------------------------------------------
 def load_obj(name ):
-    with open('workdir/' + name + '.pkl', 'rb') as f:
+    with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
 # -----------------------------------------------------------------------------
 
@@ -86,6 +83,7 @@ def gridint_toarray(level, parea, code):
 
     # get area of interest
     narea = nuts_info[level][parea][code]
+
     # get rows and columns indices
     cols = [list(narea.keys())[i].split("_", 1)[1]
             for i in range(0, len(list(narea.keys())))]
@@ -113,24 +111,45 @@ def gridint_toarray(level, parea, code):
     return area_sel*100
 
 
-def write_nc(array, path_nc, name_var, unit_var):
-
+def write_nc(array, path_nc, name_var, unit_var, addnutsid=False):
+    ''' Function to write an array in a netcdf file,
+        input:
+            - array: data to write
+            - path_nc: path of netcdf file
+            - name_var: name for data in array
+            - unit_var: units for data in array
+            - addnutsid: if True the layer nuts_id is added so that the
+                nectcdf file is consistent with the ones provided
+                by terraria
+    @author: peduzem
+    '''
     rootgrp = Dataset(path_model_cdf_test, 'r')
     lon_array = rootgrp.variables['lon'][0, :]
     lat_array = rootgrp.variables['lat'][:, 0]
     rootgrp.close()
-
     fh = Dataset(path_nc, mode='w', format='NETCDF3_CLASSIC')
     fh.createDimension('latitude', len(lat_array))
     fh.createDimension('longitude', len(lon_array))
     latitude = fh.createVariable('latitude', 'f4', ('latitude',))
     longitude = fh.createVariable('longitude', 'f4', ('longitude',))
-    var = fh.createVariable(name_var, 'f4', ('latitude', 'longitude'))
-    fh.variables[name_var].units = unit_var
-    longitude[:] = lon_array
-    latitude[:] = lat_array
-    var[:] = array
+    if addnutsid is True:
+#        fh.createDimension('z', 10)
+        fh.createDimension('nuts_id', 1)
+        var = fh.createVariable(name_var, 'f4',
+                                ('nuts_id', 'latitude', 'longitude',))
+        nutsid = fh.createVariable('NUTS', 'i4', ('nuts_id',))
+        longitude[:] = lon_array
+        latitude[:] = lat_array
+        nutsid[0] = 1
+        var[0, :] = array
+    elif addnutsid is False:
+        longitude[:] = lon_array
+        latitude[:] = lat_array
+        var = fh.createVariable(name_var, 'f4', ('latitude', 'longitude'))
+        var[:] = array
+        fh.variables[name_var].units = unit_var
     fh.close()
+
 
 def bm_precompute(perreduction, sources):
     """
@@ -161,6 +180,7 @@ def bm_precompute(perreduction, sources):
         path_reduction_txt = 'workdir\\redbm_{}.txt'.format(precursor)
         df_red.ix[precursor] = perreduction
         df_red.to_csv(path_reduction_txt, sep='\t', index_label='POLL')
+    # -------------------------------------------------------------------------
     level = 'NUTS_Lv0'
     parea = 'parea'
     path_surf_nc = 'input/JRC01.nc'
