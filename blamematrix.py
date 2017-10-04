@@ -41,6 +41,8 @@ from module7_custom import read_nuts_area
 import module1 as shrp
 #import module1old as shrp # at the moment using old model and module!
 
+# @to do there is an error in the way I read the bm!! pm2.5 refers to all
+# precursors and not ppm
 
 def blamematrix(perreduction, sources, path_results, precursors):
     """
@@ -75,10 +77,11 @@ def blamematrix(perreduction, sources, path_results, precursors):
     for prec in precursors:
         # Calculate dataframes with population, spatial average normalized by
         # emission reduction, and spatial average not normalized.
-        df_avp, df_avc, df_c = bm_computation(dfemidelta, prec, sources)
+        df_avp, df_avc, df_c, df_cper = bm_computation(dfemidelta, prec, sources)
         df_avp.to_csv(path_results + 'bm_avp_{}.csv'.format(prec))
         df_avc.to_csv(path_results + 'bm_avc_{}.csv'.format(prec))
         df_c.to_csv(path_results + 'bm_c_{}.csv'.format(prec))
+        df_cper.to_csv(path_results + 'bm_cper_{}.csv'.format(prec))
 
 def bm_computation(dfemidelta, prec, sources):
     """
@@ -100,6 +103,7 @@ def bm_computation(dfemidelta, prec, sources):
     path_reduction_txt = 'workdir\\redbm_{}.txt'.format(prec)
     df_avp = pd.DataFrame(index=sources, columns=targets)
     df_avc = pd.DataFrame(index=sources, columns=targets)
+    df_cper = pd.DataFrame(index=sources, columns=targets)
     df_c = pd.DataFrame(index=sources, columns=targets)
     path_tiff = 'input/pop/7km_Qi_2010.tif'
     popall = tiftogridgeneral(path_tiff)
@@ -135,7 +139,8 @@ def bm_computation(dfemidelta, prec, sources):
         else:
             print('WARNING: Loading previously calculated module1 results')
         # -------------------------------------------------------------------------
-
+    # load basecase concentration
+    df_bc_conc = pd.read_csv(path_input + 'bc_SHERPA.csv', index_col=[0], header=None)
     for source in sources:
         print(prec)
         print(source)
@@ -163,9 +168,10 @@ def bm_computation(dfemidelta, prec, sources):
                                   ))
             df_c.ix[tar][source] = (np.sum((1000 *conc *
                                   area * surf / 100) / np.sum(area * surf/ 100)))
-    return df_avp, df_avc, df_c
+            df_cper.ix[tar][source] = ((df_c.ix[tar][source]/1000) / (np.asarray(df_bc_conc.ix[tar])[0]) * 100) # *1000)
+    return df_avp, df_avc, df_c, df_cper
 
-def bm_heatmap(df, name, precursor):
+def bm_heatmap(df, name, precursor, year):
     if name =='avp':
         unit = '(ng/m3)/Gg'
         title = 'Normalized concentration change (population average)'
@@ -175,6 +181,9 @@ def bm_heatmap(df, name, precursor):
     elif name == 'c':
         unit = 'ng/m3'
         title = 'Concentration change'
+    elif name == 'cper': # percentage average concentration change
+        unit = '%'
+        title = '% concentration change'
 
     fig, ax = plt.subplots(figsize=(10, 10))
     cbar_ax = fig.add_axes([.905, 0.125, .03, 0.755])
@@ -191,24 +200,12 @@ def bm_heatmap(df, name, precursor):
            'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT',
            'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'GB']
     df_diag = pd.Series(np.diag(df), index=[df.index, df.columns])
+
     if name == 'avc':
-        if precursor == 'PPM':
-            df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25dPPM.csv',
-                     index_col=[0])
-        if precursor == 'NOx':
-            df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25dNOx.csv',
-                     index_col=[0])
-        if precursor == 'SOx':
-            df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25dSOx.csv',
-                     index_col=[0])
-        if precursor == 'NMVOC':
-            df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25dNMVOC.csv',
-                     index_col=[0])
-        if precursor == 'NH3':
-            df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25dNH3.csv',
+        df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25d{}norm.csv'.format(precursor),
                      index_col=[0])
         # Heat map
-        df_avc_fasst_red=df_avc_fasst.ix[sourcesemep][sourcesemep]/0.15
+        df_avc_fasst_red=df_avc_fasst.ix[sourcesemep][sourcesemep]
         fig, ax = plt.subplots(figsize=(10, 10))
         cbar_ax = fig.add_axes([.905, 0.125, .03, 0.755])
         ax = sns.heatmap(df_avc_fasst_red, center=((vmin + vmax) / 2), vmax=vmax , annot=True, fmt='.1f', linewidths=.5, annot_kws={'size': 6}, cmap = cm.YlOrBr,
@@ -237,26 +234,59 @@ def bm_heatmap(df, name, precursor):
         plt.savefig(path_results + 'diag{}_{}.png'.format(name,precursor), dpi=300)
         plt.show()
 
+    if name == 'cper':
+        df_avc_fasst = pd.read_csv(path_input + 'EMEP.L00.PM25d{}cper.csv'.format(precursor),
+                     index_col=[0])
+        # Heat map
+        df_avc_fasst_red=df_avc_fasst.ix[sourcesemep][sourcesemep]
+        fig, ax = plt.subplots(figsize=(10, 10))
+        cbar_ax = fig.add_axes([.905, 0.125, .03, 0.755])
+        ax = sns.heatmap(df_avc_fasst_red, center=((vmin + vmax) / 2), vmax=vmax , annot=True, fmt='.1f', linewidths=.5, annot_kws={'size': 6}, cmap = cm.YlOrBr,
+                 cbar_kws={'label': ('PM25 \%. conc. change per {} em. change [{}]'.format(precursor,unit))}, ax=ax,  cbar_ax= cbar_ax)
+        titlefasst = 'EMEP norm., ' + title
+        ax.set_title(titlefasst)
+        ax.set_xlabel('Source countries')  #
+        ax.set_ylabel('Target countries')  #
+        plt.savefig(path_results + 'EMEPcper_{}.png'.format(precursor),dpi=300)
+        # barplot on the diagonal
+        df_fasst_diag = pd.Series(np.diag(df_avc_fasst_red), index=[df_avc_fasst_red.index, df_avc_fasst_red.columns])
+        fig, ax = plt.subplots(figsize=(10,10))
+        x_label = list(df.index.values)
+        x=np.arange(1, (len(df.index)+1))
+        y = df_diag.values
+        z = df_fasst_diag.values
+        ax = plt.subplot(111)
+        ax.set_title('Comparison of \% concentration changes (with EMEP norm.)')
+        rects1 = ax.bar(x, y,width=0.4,color='g',align='center')
+        rects2 = ax.bar(x-0.4, z,width=0.4,color='r',align='center')
+        ax.set_xlabel('Source/Target countries')
+        ax.set_ylabel('PM25 \%. conc. change per {} em. change [{}]'.format(precursor,unit))
+        ax.set_xticklabels(x_label, rotation='vertical')
+        ax.legend((rects1[0], rects2[0]), ('SHERPA-CHIMERE', 'EMEP norm.'))
+        plt.xticks(np.arange(min(x), max(x)+1, 1.0))
+        plt.savefig(path_results + 'diag{}_{}.png'.format(name,precursor), dpi=300)
+        plt.show()
+
     if name == 'c':
         if precursor == 'PPM':
             df_c_emep = pd.read_excel(
-                    path_results + 'input\\2010_SRmatrices_R1Status2012AppC.xls',
-                    sheetname = 'PM2.5', index_col=[0])
+                    path_results + 'input\\{}_SRmatrices_R1Status{}AppC.xls'.format(year, (year+2)),
+                    sheetname = 'PM2.5_PPM', index_col=[0])
         if precursor == 'NOx':
              df_c_emep = pd.read_excel(
-                    path_results + 'input\\2010_SRmatrices_R1Status2012AppC.xls',
+                    path_results + 'input\\{}_SRmatrices_R1Status{}AppC.xls'.format(year, (year+2)),
                     sheetname = 'PM2.5_NOx', index_col=[0])
         if precursor == 'SOx':
             df_c_emep = pd.read_excel(
-                    path_results + 'input\\2010_SRmatrices_R1Status2012AppC.xls',
+                    path_results + 'input\\{}_SRmatrices_R1Status{}AppC.xls'.format(year, (year+2)),
                     sheetname = 'PM2.5_SOx', index_col=[0])
         if precursor == 'NMVOC':
             df_c_emep = pd.read_excel(
-                    path_results + 'input\\2010_SRmatrices_R1Status2012AppC.xls',
+                    path_results + 'input\\{}_SRmatrices_R1Status{}AppC.xls'.format(year, (year+2)),
                     sheetname = 'PM2.5_NMVOC', index_col=[0])
         if precursor == 'NH3':
             df_c_emep = pd.read_excel(
-                    path_results + 'input\\2010_SRmatrices_R1Status2012AppC.xls',
+                    path_results + 'input\\{}_SRmatrices_R1Status{}AppC.xls'.format(year, (year+2)),
                     sheetname = 'PM2.5_NH3', index_col=[0])
         # Heat map
         df_c_emep_red=df_c_emep.ix[sourcesemep][sourcesemep]
@@ -300,51 +330,60 @@ if __name__ == '__main__':
 #        areacountry = gridint_toarray('NUTS_Lv0', 'parea', source)
 #        path_areacountry_nc = 'workdir\\area_{}.nc'.format(source)
 #        write_nc(areacountry, path_areacountry_nc, 'AREA', '%')
-
+    year = 2009 # year for EMEP data
     perreduction = 15
     precursors = ['PPM', 'NOx', 'NMVOC', 'SOx','NH3']
-
+    path_input = 'blamematrix\\input\\'
     path_results = 'blamematrix\\'
     blamematrix(perreduction, sources, path_results, precursors)
-## Normalized data:
-    path_input = 'blamematrix\\input\\'
+    ## Normalized data:
+
     sourcesemep=['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'GR', 'ES',
            'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT',
            'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'GB']
+
+    df_emepper_eu = pd.DataFrame(index=sourcesemep, columns=sourcesemep)
+    df_bc_conc = pd.read_csv(path_input + 'emepbc\\results2010.csv', index_col=[0], header=None)
+    # Read data from EMEP file
     for precu in precursors:
+#        if precu == 'PPM':
+#            df_c_emep = pd.read_excel(
+#                    path_input + '{}_SRmatrices_R1Status2011AppC.xls'.format(year),
+#                    sheetname = 'PM2.5', index_col=[0])
+#            df_c_emep_eu=df_c_emep.ix[sourcesemep][sourcesemep]
+#            df_e_emep = pd.read_excel(
+#                    path_input + 'emep_emissions.xlsx',
+#                    sheetname = 'PM2.5', index_col=[1])
+#            df_e_emep_eu = df_e_emep.ix[sourcesemep][year]
+#        else:
+        df_c_emep = pd.read_excel(
+            path_input + '{}_SRmatrices_R1Status{}AppC.xls'.format(year, (year+2)),
+            sheetname = 'PM2.5_{}'.format(precu), index_col=[0])
+        df_c_emep_eu=df_c_emep.ix[sourcesemep][sourcesemep]
+        df_e_emep = pd.read_excel(
+                path_input + 'emep_emissions.xlsx',
+                sheetname = '{}'.format(precu), index_col=[1])
+        df_e_emep_eu = df_e_emep.ix[sourcesemep][year]
 
-        if precu == 'PPM':
-            df_c_emep = pd.read_excel(
-                    path_input + '2010_SRmatrices_R1Status2012AppC.xls',
-                    sheetname = 'PM2.5', index_col=[0])
-            df_c_emep_eu=df_c_emep.ix[sourcesemep][sourcesemep]
-            df_e_emep = pd.read_excel(
-                    path_input + 'emep_emissions.xlsx',
-                    sheetname = 'PM2.5', index_col=[1])
-            df_e_emep_eu = df_e_emep.ix[sourcesemep][2010]
-        else:
-             df_c_emep = pd.read_excel(
-                    path_input + '2010_SRmatrices_R1Status2012AppC.xls',
-                    sheetname = 'PM2.5_{}'.format(precu), index_col=[0])
-             df_c_emep_eu=df_c_emep.ix[sourcesemep][sourcesemep]
-             df_e_emep = pd.read_excel(
-                    path_input + 'emep_emissions.xlsx',
-                    sheetname = '{}'.format(precu), index_col=[1])
-             df_e_emep_eu = df_e_emep.ix[sourcesemep][2010]
-        df_emepl_eu = df_c_emep_eu / df_e_emep_eu
-        df_emepl_eu.to_csv(path_input + 'EMEP.L00.PM25d{}.csv'.format(precu))
+        # Raw EMEP data (concentration change given 15% emission reduction )
+        df_c_emep_eu.to_csv(path_input + 'EMEP.L00.PM25d{}.csv'.format(precu))
 
-    names = ['avp', 'avc', 'c']
+        # Concentration change normalized to the emission reduction
+        df_emepnorm_eu = df_c_emep_eu / (np.asarray(df_e_emep_eu) * 0.15)
+        df_emepnorm_eu.to_csv(path_input + 'EMEP.L00.PM25d{}norm.csv'.format(precu))
+        for target in sourcesemep:
+            for source in sourcesemep:
+                df_emepper_eu.ix[target][source]= ((df_c_emep_eu.ix[target][source]/1000)/(np.asarray(df_bc_conc.ix[target])[0])) * 100# df_bc_conc.ix[:]*1000
+        df_emepper_eu.to_csv(path_input + 'EMEP.L00.PM25d{}cper.csv'.format(precu))
+
+    names = ['avp', 'avc', 'c', 'cper']
     for precu in precursors:
         print(precu)
         for name in names:
             print(name)
             df=pd.read_csv(path_results + 'bm_{}_{}.csv'.format(name, precu),
                      index_col=[0])
-            bm_heatmap(df, name, precu)
-
-
-
+            bm_heatmap(df, name, precu, year)
 
         # Heat map
 #        df_avc_emep_red=df_avc_emep.ix[sourcesemep][sourcesemep]
