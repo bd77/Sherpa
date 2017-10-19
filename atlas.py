@@ -2,13 +2,21 @@
 """
 Created on Mon Apr 24 17:15:49 2017
 Script used to produce the figures of the Atlas, starting from
-the excel resutls file from Bart,
-and the nc files for Bart.
+- the excel resutls file from Bart,
+- fonts (only regular and bold should be in the corresponding folder)
+- ASCI names and URAU code for cities (from Marco)
+- file with cities with core (onlyfua_city-fua_150fuas.xls from Marco)
+- sherpa logo 
+
+commented part creates the nc files for Bart.
 @author: peduzem
 """
 
+import matplotlib.font_manager as fm
+import matplotlib.image as image
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 from netCDF4 import Dataset
 import numpy as np
@@ -16,7 +24,6 @@ import numpy as np
 import pandas as pd
 
 from sherpa_globals import path_model_cdf_test
-
 
 def figsize(scale):
     '''Square figure size'''
@@ -43,33 +50,59 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # Inputs:
     # results path
-    path_results = 'D:\\sherpa.git\\Sherpa\\atlas\\'
+    path_results = 'D:\\sherpa.git\\Sherpa\\atlas2\\'
+    
     # path for Figure outputs
     path_figures = path_results + 'figures\\'
-    # results filename from Bart
-    filename = 'FUA112_source_apportionment_20170904.xlsx'
+    
+    # results file
+    filename = 'results150fuas.xlsx'
+    
+    # setting fonts
+    font_dirs = [path_results + 'ECSquareSansPro\\',]
+    font_files = fm.findSystemFonts(fontpaths=font_dirs)
+    font_list = fm.createFontList(font_files)
+    fm.fontManager.ttflist.extend(font_list)
+    mpl.rcParams['font.family'] = 'EC Square Sans Pro'
+    mpl.rcParams['font.variant'] = 'normal'
 
+    # setting figures
+    transparency = True # background
+    ext = '.png' # figure type (has to be png for transparent background)
+    
+    # -------------------------------------------------------------------------
+    # Other inputs:
     # ASCI names and URAU code fo cities (from Marco)
-    fuanames = pd.read_excel((path_results+'fua_asci_uraucodes2.xlsx'),
+    fuanames = pd.read_excel((path_results+'fua_asci_uraucodes151.xls'),
                              index_col=1)
 
-    # Other inputs:
     # Cities with which are big enough to be displayed with cores:
-    wcore = pd.read_excel(path_results+'onlyfua_city-fua.xls',
+    wcore = pd.read_excel(path_results+'onlyfua_city-fua_150fuas.xls',
                           sheetname='withcore', header=[0], index_col=[0],
                           na_values='nan').sortlevel()
     # precursor list
     precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PPM', 'SOx']
-    # sector aggregation:
-    aggr_dict = {'Industry': [1, 3, 4], 'Residential': [2],
-                 'Agriculture': [10], 'Transport': [7], 'Other': [5, 6, 8, 9]}
-    sect_aggr = list(aggr_dict.keys())
 
+    # sector aggregation (column 'snap' of reuslts file):
+    aggr_dict = {'Industry': [1, 3, 4], 'Residential': [2],
+                 'Agriculture': [10], 'Transport': [7], 'Other': [5, 6, 8, 9],
+                 'Natural': ['SALT', 'DUST']}
+    # sect_aggr = sorted(list(aggr_dict.keys()))
+    sect_aggr = ['Other', 'Transport', 'Agriculture', 'Industry',
+                 'Residential']
+    
+    # Set titles of the polar plots for each precursor
+    titlesdict = {'NH3': "NH$_\mathbf{3}$", 
+                  'SOx': "SO$_\mathbf{2}$", 
+                  'NMVOC': "VOC", 
+                  'PPM': 'PPM', 
+                  'NOx': "NO$_\mathbf{x}$"}
+    
     # -------------------------------------------------------------------------
     # Get data from Bart's results
     df = pd.read_excel((
             path_results + filename),
-            sheetname='chimere', skiprows=3, header=[1],
+            sheetname='data', skiprows=4, header=[1],
             index_col=[2, 3, 5, 4], na_values='nan').sortlevel()
     df.sort_index(inplace=True)
     # Cities in the results file
@@ -92,17 +125,18 @@ if __name__ == '__main__':
         emis_ag[city].sort_index(inplace=True)
         # Fill dataframe with aggregated values
         for key in aggr_dict.keys():
-            emis_ag[city].loc[(precursor_lst, key), 'core'] = (
-                    df['DE'].loc[city, (city+'_City'), :, aggr_dict[key]].sum(
-                            skipna=True, level=2).values*2)
-            # not all city have a commuting zone, if there is no commuting zone
-            # emission value is zero
-            try:
-                emis_ag[city].loc[(precursor_lst, key), 'comm'] = (
-                    df['DE'].loc[city, (city+'_Comm'), :, aggr_dict[key]].sum(
-                             skipna=True, level=2).values*2)
-            except(KeyError):  # for places without a commuting zone
-                emis_ag[city].loc[(precursor_lst, key), 'comm'] = 0
+            if key is not 'Natural':
+                emis_ag[city].loc[(precursor_lst, key), 'core'] = (
+                        df['DE'].loc[city, (city+'_City'), :, aggr_dict[key]].sum(
+                                skipna=True, level=2).values*2)
+                # not all city have a commuting zone, if there is no commuting zone
+                # emission value is zero
+                try:
+                    emis_ag[city].loc[(precursor_lst, key), 'comm'] = (
+                        df['DE'].loc[city, (city+'_Comm'), :, aggr_dict[key]].sum(
+                                 skipna=True, level=2).values*2)
+                except(KeyError):  # for places without a commuting zone
+                    emis_ag[city].loc[(precursor_lst, key), 'comm'] = 0
         # Emissions of Fua are the sum of city and commuting zone
         emis_ag[city]['fua'] = emis_ag[city].sum(axis=1)
 
@@ -110,30 +144,35 @@ if __name__ == '__main__':
     # Create polar polar plots for all precursor and all cities:
     # Prepare data
     index = aggr_dict.keys()
+      
     plt.close('all')
-    for prec in precursor_lst:
-        for city in cities:
+
+    for city in cities:
+#        city = 'Riga'  # @todo
+        for prec in precursor_lst:
             print(city)
 #            city = 'Berlin'
             # list of dataframe from which to make plots
             df_polar = []
-            # liverpool does not have a commuting zone, only the center
-            # should be considered
-            if city is not 'Liverpool':
-                # get data for FUA
-                df_fua = (emis_ag[city]['fua'].loc[
-                          prec, sect_aggr].unstack(level=1).T / 1000)
-                df_fua = df_fua.reindex(sect_aggr)
-                df_polar.append([df_fua.fillna(value=0)])
-                lableg = ['Greater city', 'City']
-                colors = ['blue', 'red']
-                colorsf = ['None', 'red']
-                hatch = ['', 3*'///']
-            if city is 'Liverpool':
+            # liverpool and Riga do not have a commuting zone, only the center
+            # should be considered. If the sum of the commuting zone is zero
+            # I remove it from the legend. 
+#            if city is 'Liverpool':
+            if emis_ag[city]['comm'].sum() == 0:
                 lableg = ['Greater city']
                 colors = ['red']
                 colorsf = ['red']
                 hatch = [3*'///']
+            if emis_ag[city]['comm'].sum() is not 0:
+                # get data for FUA units are ton, divide by 1000 for kton!
+                df_fua = (emis_ag[city]['fua'].loc[
+                          prec, sect_aggr].unstack(level=1).T / 1000) 
+                df_fua = df_fua.reindex(sect_aggr)
+                df_polar.append([df_fua.fillna(value=0)])
+                lableg = ['Greater city', 'City']
+                colors = ['#0070FF', 'red']
+                colorsf = ['None', 'red']
+                hatch = ['', 3*'///']
             # if city is big enough to consider the core separately
             if city in wcore.index:
                 df_city = (emis_ag[city]['core'].loc[
@@ -143,21 +182,21 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # Create polar plots
             # fontsize:
-            fts = 5
+            fts = 8
             # create figure
             fig = plt.figure(figsize=figsize(0.3))
             ax = fig.add_subplot(111, projection="polar")
             # create grid
             ax.grid(True)
-            ax.yaxis.grid(color='#aab0b7', lw=0.5)
-            ax.xaxis.grid(color='#aab0b7', lw=0.5)
+            ax.yaxis.grid(color='#aab0b7', lw=0.7)
+            ax.xaxis.grid(color='#aab0b7', lw=0.7)
             # set bored of figure area
             for spine in ax.spines.values():
                 spine.set_edgecolor('#aab0b7')
                 spine.set_zorder(0)
-                spine.set_linewidth(0.5)
+                spine.set_linewidth(1)
 
-            # Define angles of y axisi in polar plots
+            # Define angles of y axis in polar plots
             theta = (np.arange(len(df_polar[0][0])) /
                      float(len(df_polar[0][0]))*2.*np.pi)
 
@@ -174,12 +213,12 @@ if __name__ == '__main__':
             mpl.rcParams['hatch.color'] = 'red'
             for it, dfdata in enumerate(df_polar):
                 line, = ax.plot(theta, df_polar[it][0], color=colors[it],
-                                label=None, zorder=3, lw=0.7)
-                ax.fill(theta, df_polar[it][0], color=colorsf[it], alpha=0.3,
-                        zorder=3, lw=0.3)
+                                label=None, zorder=3, lw=1)
+#                ax.fill(theta, df_polar[it][0], color=colorsf[it], alpha=0.3,
+#                        zorder=3, lw=0.3)
                 ax.fill(theta, df_polar[it][0], edgecolor=colorsf[it],
                         alpha=0.3, hatch=hatch[it], zorder=3, color='None',
-                        lw=0.4)
+                        lw=0.2)
                 plots.append(line,)
 
             def _closeline(line):
@@ -188,6 +227,7 @@ if __name__ == '__main__':
                 y = np.concatenate((y, [y[0]]))
                 line.set_data(x, y)
             [_closeline(l) for l in plots]
+
 
             # maximums y value... so I can put the label
             maxy = max(df_polar[0][0][prec])
@@ -206,39 +246,63 @@ if __name__ == '__main__':
             yticks[0].label1.set_visible(False)
 
             # Substituting the axis label with a txt label otherwise
-            # the lable is below the grid (probably a bug)
+            # the lable is below the grid (probably a bug). 
+            # see my post on stackexchange: 
+            # https://stackoverflow.com/questions/46242088/axis-label-hidden-by-axis-in-plot
             for it in np.arange(len(theta)):
-                ax.text(theta[it], ylim*1.15, sect_aggr[it], va='center',
+                radlabel = sect_aggr[it][0]
+
+                ax.text(theta[it], ylim*1.15, radlabel, va='center',
                         ha='center', fontsize=(fts+2))
             ax.set_xticklabels('')
 
-            plt.legend(handles=plots, labels=lableg,
-                       bbox_to_anchor=(1.45, 0.2), fontsize=fts, frameon=False)
-
             ax.tick_params(axis='y', labelsize=fts, zorder=4)
+            plt.title(titlesdict[prec], fontsize=(fts+2),  #  \n [kton/y]
+                      y=0.9, x=0, weight='bold') 
 
-            plt.title("{} \n [kton/y]".format(prec), fontsize=(fts+2),
-                      y=0.9, x=0, weight='bold')
             citynospace = city.translate({ord(c): None for c in ' \n\t\r'})
-
             plt.savefig((path_figures + fuanames.loc[city, 'URAU_CODE'] +
                          '_{}'.format(citynospace) +
-                         '_emi_FUA_{}'.format(prec)+'.png'),
-                        dpi=1000, bbox_inches='tight', transparent=True)
+                         '_emi_FUA_{}'.format(prec) + ext),
+                        dpi=500, transparent=transparency) # , bbox_inches='tight'
             plt.show()
 
+
+        figleg = plt.figure(figsize=figsize(0.25))
+        axleg = fig.add_subplot()
+        axleg = plt.subplot()
+        axleg.set_axis_off()#create the axes
+        #do patches and labels
+        axleg.legend(handles=plots, labels=lableg, fontsize=fts+2, loc = 'center', frameon=False)  #legend alone in the figure
+        plt.savefig((path_figures + fuanames.loc[city, 'URAU_CODE'] +
+                         '_{}'.format(citynospace) +
+                         '_legend'+ ext),
+                        dpi=500, bbox_inches='tight', transparent=transparency)
+        plt.show()
+
     # -------------------------------------------------------------------------
-    # Get the source allocaltion data and put it in a dic of multindex
+    # Added this to generate the report in latex, it is not necessary anymore
+#    f1 = open(path_results + 'nameandcode.dat', 'w')
+#    for city in cities:
+#        citynospace = city.translate({ord(c): None for c in ' \n\t\r'})
+#        f1.write(fuanames.loc[city, 'URAU_CODE'] +
+#                 '/' + '{}'.format(citynospace) + '/' + fuanames.loc[city, 'URAU_CODE'][0:2]+ ',\n')
+#    f1.close()
+
+    # -------------------------------------------------------------------------
+    # Get the source allocation data and put it in a dic of multindex
     # dataframes
     # Dictionary of dataframes:
     dc_ag = {}  # Dictionary of dataframes to store data
     # name of states corresponding to each city
     df_names = pd.read_excel(path_results + filename,
                              sheetname='cities', index_col=[0])
+    im = image.imread(path_results + 'sherpa_icon_256x256.png')
+    
     # indicator for source allocation (column name)
     ind = 'relative_potential'
     for city in cities:
-#        city = 'Liverpool'
+#        city = 'Wien'
         print(city)
         # create Dataframe
         columns = ['City', 'Comm', 'National', 'International']
@@ -246,21 +310,26 @@ if __name__ == '__main__':
                                    columns=columns)
         dc_ag[city].sort_index(inplace=True)
 
-        # Get name of country to rename index to read for international contr.:
+        # Get name of country to rename index to read for transbaoundary contr.:
         for col in columns[0:4]:
-#            col = 'City'
             if col == 'International':
-                name = df_names['country'].loc[city]
+                name = '{}_'.format(df_names['country'].loc[city])
             else:
-                name = city
+                name = '{}_'.format(city)
             for key in aggr_dict.keys():
+
                 try:
-                    dc_ag[city].loc[key, col] = sum(df[ind].loc[city,'{}_{}'.format(name, col), :, aggr_dict[key]].values)
+                    dc_ag[city].loc[key, col] = sum(df[ind].loc[city,'{}{}'.format(name, col), :, aggr_dict[key]].values)
                 except(KeyError):
                     dc_ag[city][col] = 0
+                    print(col, 'key error')
+#                    
 
         dc_ag[city]['Total'] = dc_ag[city].sum(axis=1)
+        dc_ag[city].loc['Natural', 'Total'] = sum(df[ind].loc[city,'Nature', :, aggr_dict['Natural']].values)
+
         if city not in wcore.index:
+            print('City not with core')
             dc_ag[city]['Greater city'] = dc_ag[city][['City',
                                                        'Comm']].sum(axis=1)
             del dc_ag[city]['City']
@@ -270,49 +339,92 @@ if __name__ == '__main__':
             dc_ag[city] = dc_ag[city][['Greater city', 'National',
                                       'International', 'Total']]
             dc_ag[city].loc['bottom'] = [0, nat, intern, 0]
-            dc_ag[city].loc['no control'] = [0, 0, 0,
-                                             (100-dc_ag[city]['Total'].sum())]
+            totsum = dc_ag[city]['Total'].sum()
+            if dc_ag[city]['Total'].sum() <= 100:
+                ncontrol_fill = 100 - dc_ag[city]['Total'].sum()
+                dc_ag[city].loc['External'] = [0, 0, 0, (ncontrol_fill)]
+            elif dc_ag[city]['Total'].sum() > 100:
+                dc_ag[city] = dc_ag[city] * 100/dc_ag[city]['Total'].sum()
+                print('WARNING: rescaling all values 100')
         else:
             ci = dc_ag[city]['City'].sum()
             nat = ci+dc_ag[city]['Comm'].sum()
             intern = nat + dc_ag[city]['National'].sum()
             dc_ag[city].loc['bottom'] = [0, ci, nat, intern, 0]
-            dc_ag[city].loc['no control'] = [0, 0, 0, 0,
-                                             (100-dc_ag[city]['Total'].sum())]
+            totsum = dc_ag[city]['Total'].sum()
+            if dc_ag[city]['Total'].sum() <= 100:
+                ncontrol_fill = 100 - dc_ag[city]['Total'].sum()
+                dc_ag[city].loc['External'] = [0, 0, 0, 0, (ncontrol_fill)]
+            elif (dc_ag[city]['Total'].sum()) > 100:
+                dc_ag[city] = dc_ag[city] * 100/dc_ag[city]['Total'].sum()
+                print('WARNING: rescaling all values 100')
 
         plt.close('all')
         fts = 10
-        f, ax1 = plt.subplots(1, figsize=figsizer(1))
+        f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
         ax1.yaxis.grid(color='black')
 
-        colors = {'PPM': 'blue', 'SOx': 'gold', 'NOx': 'red', 'NH3': 'green',
-                  'NMVOC': '#black', 'Transport': 'red', 'Energy': 'blue',
+        # Setting colors dictionary
+        colors = {'Transport': 'red', 'Energy': 'blue',
                   'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
-                  'Agriculture': 'green', 'Residential': 'blue',
+                  'Agriculture': 'green', 'Residential': '#0070FF',
                   'Offroad': '#8470ff', 'Extraction': '#00FF00',
-                  'Other': 'skyblue', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
-                  'no control': '#dddddd', 'bottom': 'None'}
-
+                  'Other': '#B266FF', 'Natural': '#606060', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
+                  'External': '#929591', 'bottom': 'None'} # pink #FF66FF #9933FF
+        
+        l = dc_ag[city].index
         index = []
         index.append('bottom')
-        index.extend(sect_aggr)
-        ncontrol = ['no control']
+        index.extend([l[4], l[1], l[0], l[3], l[2], l[5]])
+        ncontrol = ['External']
         index.extend(ncontrol)
 
         type_colors = [colors[k] for k in index]
-        if city == 'Liverpool':
-            del dc_ag[city]['Comm']
+        # remove commuting zone and rest of the country contributions for the 
+        # few cases that don't have the corresponding contribution i.e. 
+        # liverpool 
+        for col in dc_ag[city].columns:
+            if sum(dc_ag[city][col].loc[sect_aggr]) <= 0:
+                del dc_ag[city][col]
+        dc_ag[city].rename(columns={'International':'Transboundary'}, inplace=True)  
+        # make plot
         dc_ag[city].reindex(index).T.plot(kind='barh', stacked=True,
                                color=type_colors, xticks=None, legend=False,
-                               ax=ax1,fontsize=fts)
+                               ax=ax1, fontsize=fts, width = 0.8)
 
+        # set limit for y axis
+        ax1.set_xlim(right=100)
+        # instert SHERPA logo
+        newax = f.add_axes([0.68, 0.126, 0.2, 0.2], anchor='SE') #
+        newax.imshow(im, zorder=-1)
+        newax.axis('off')
+        
+        # First letters in the bars:
+        ypos = len(dc_ag[city].reindex(index).columns)-1
+        xposcum = 0          
+        for letlabind in (np.arange(len(index)-1)+1):
+            xpos = xposcum + dc_ag[city].reindex(index)['Total'][letlabind]/2
+            xposcum = xposcum + dc_ag[city].reindex(index)['Total'][letlabind]
+            letter = index[letlabind][0]
+            # place latter only if there is enough space
+            if dc_ag[city].reindex(index)['Total'][letlabind] >= 5:
+                ax1.text(xpos, ypos, letter, va= 'center',  ha= 'center', fontsize=(fts+2))
+        
+        minorLocator = MultipleLocator(5)    
+       # for the minor ticks, use no labels; default NullFormatter
+        ax1.xaxis.set_minor_locator(minorLocator)
+        
         handles, labels = ax1.get_legend_handles_labels()
-        labels = labels[1:7]
-        handles = handles[1:7]
-        ax1.legend(handles, labels, fontsize=fts-4, frameon=False)
+        labels = labels[1:]
+        handles = handles[1:]
+        # remove external from the legend if it is not there
+        if totsum >= 100:
+            labels[:-1]
+            handles = handles[:-1]
         ax1.set_xlabel('Percentage of total mass', fontsize=fts)
+#        ax1.set_xlim([0,100])
         ytlab = [label.get_text() for label in ax1.get_yticklabels()]
-        dict_ytlab = {'Comm': 'Commuting \n Zone',
+        dict_ytlab = {'Comm': 'Commuting\n Zone',
                       'National': 'Rest of \n the country'}
         for i, ytick in enumerate(ytlab):
             if ytick in dict_ytlab.keys():
@@ -321,61 +433,125 @@ if __name__ == '__main__':
         ax1.set_yticklabels(ytlab)
         citynospace = city.translate({ord(c): None for c in ' \n\t\r'})
         plt.savefig((path_figures+fuanames.loc[city, 'URAU_CODE'] +
-                    '_{}'.format(citynospace)+'_conc_FUA.png'),
-                    dpi=1000, bbox_inches='tight', transparent=True)
-        plt.show()
+                    '_{}'.format(citynospace)+'_conc_FUA' + ext),
+                    dpi=500, bbox_inches='tight', transparent=transparency)
+
+
+
+        figlegconc = plt.figure(figsize=figsize(0.25))
+        axlegconc = figlegconc.add_subplot()
+        axlegconc = plt.subplot()
+        axlegconc.set_axis_off()
+        #do patches and labels
+        for labit in np.arange(len(labels)):
+            labels[labit]= labels[labit][0] +' - '+labels[labit]
+            
+        axlegconc.legend(handles=handles, labels=labels, fontsize=fts, loc = 'center', frameon=False)  #legend alone in the figure
+        plt.savefig((path_figures + fuanames.loc[city, 'URAU_CODE'] +
+                         '_{}'.format(citynospace) +
+                         '_conc_leg'+ ext),
+                        dpi=500, bbox_inches='tight', transparent=transparency)
 
     # -------------------------------------------------------------------------
-    # Create netcdf files for bart
-    from sherpa_auxiliaries_epe import gridint_toarray, write_nc
-    import os as os
-
-    rootgrp = Dataset(path_model_cdf_test, 'r')
-    lon_array = rootgrp.variables['lon'][0, :]
-    lat_array = rootgrp.variables['lat'][:, 0]
-    rootgrp.close()
-
-    # Make nc file for Bart to use
-    path_results = 'D:\\sherpa.git\\Sherpa\\atlas\\ncfiles\\'
-    # ASCI names and URAU code fo cities (from Marco)
-    gcity_map = pd.read_table('atlas\\151_fuas_cities_urau.txt',
-                              index_col=['FUA_CODE', 'ASCII_NAME'])
-    fuanames = pd.read_excel(('atlas\\fua_asci_uraucodes151.xls'),
-                             index_col=1)
-    for city in fuanames.index:
-        print('making nc file for', city)
-#        city = 'Paris'
-#        city2 = 'Antwerpen'
-        urau_code = fuanames.loc[city]['URAU_CODE']  # URAU_CODE == FUA_CODE
-#        urau_code2 = fuanames.loc[city2]['URAU_CODE']
-
-        cityc_codes = gcity_map.loc[urau_code]['URAU_COD_2']
-#        cityc_codes2= gcity_map.loc[urau_code2]['URAU_COD_2']
-#        cityc_codes2= np.array(gcity_map.loc[urau_code2]['URAU_COD_2'])
-        # City area:
-        # create a matrix of the same size as sherpas grid
-        area_core = np.zeros((1, len(lat_array), len(lon_array)))
-        path_area = path_results+'{}_City.nc'.format(city)
-        if not os.path.exists(path_area):
-            for code in cityc_codes:
-                print(code)
-                area_city = gridint_toarray('GCITY_CODE', 'parea', code)
-                area_core = area_core + area_city
-            write_nc(area_core, path_area, 'AREA', '%', addnutsid=True)
-
-        # Commuting zone area:
-        path_area = path_results+'{}_Comm.nc'.format(city)
-        if not os.path.exists(path_area):
-            area_fua = gridint_toarray('FUA_CODE', 'parea', urau_code)
-            area_comm = area_fua - area_core
-            write_nc(area_comm, path_area, 'AREA', '%', addnutsid=True)
-
-        # Rest of the country area
-        path_area = path_results+'{}_National.nc'.format(city)
-        if not os.path.exists(path_area):
-            area_country = gridint_toarray('NUTS_Lv0', 'parea',urau_code[:2])
-            area_national = area_country - area_fua
-            write_nc(area_national, path_area, 'AREA', '%', addnutsid=True)
+#    # Create netcdf files for bart
+#    from sherpa_auxiliaries_epe import gridint_toarray, write_nc
+#    import os as os
+#
+#    rootgrp = Dataset(path_model_cdf_test, 'r')
+#    lon_array = rootgrp.variables['lon'][0, :]
+#    lat_array = rootgrp.variables['lat'][:, 0]
+#    rootgrp.close()
+#
+#    # Make nc file for Bart to use
+#    path_results = 'D:\\sherpa.git\\Sherpa\\atlas\\ncfiles\\'
+#    # ASCI names and URAU code fo cities (from Marco)
+#    gcity_map = pd.read_table('atlas\\151_fuas_cities_urau.txt',
+#                              index_col=['FUA_CODE', 'ASCII_NAME'])
+#    fuanames = pd.read_excel(('atlas\\fua_asci_uraucodes151.xls'),
+#                             index_col=1)
+#    for city in fuanames.index:
+#        print('making nc file for', city)
+##        city = 'Paris'
+##        city2 = 'Antwerpen'
+#        urau_code = fuanames.loc[city]['URAU_CODE']  # URAU_CODE == FUA_CODE
+##        urau_code2 = fuanames.loc[city2]['URAU_CODE']
+#
+#        cityc_codes = gcity_map.loc[urau_code]['URAU_COD_2']
+##        cityc_codes2= gcity_map.loc[urau_code2]['URAU_COD_2']
+##        cityc_codes2= np.array(gcity_map.loc[urau_code2]['URAU_COD_2'])
+#        # City area:
+#        # create a matrix of the same size as sherpas grid
+#        area_core = np.zeros((1, len(lat_array), len(lon_array)))
+#        path_area = path_results+'{}_City.nc'.format(city)
+#        if not os.path.exists(path_area):
+#            for code in cityc_codes:
+#                print(code)
+#                area_city = gridint_toarray('GCITY_CODE', 'parea', code)
+#                area_core = area_core + area_city
+#            write_nc(area_core, path_area, 'AREA', '%', addnutsid=True)
+#
+#        # Commuting zone area:
+#        path_area = path_results+'{}_Comm.nc'.format(city)
+#        if not os.path.exists(path_area):
+#            area_fua = gridint_toarray('FUA_CODE', 'parea', urau_code)
+#            area_comm = area_fua - area_core
+#            write_nc(area_comm, path_area, 'AREA', '%', addnutsid=True)
+#
+#        # Rest of the country area
+#        path_area = path_results+'{}_National.nc'.format(city)
+#        if not os.path.exists(path_area):
+#            area_country = gridint_toarray('NUTS_Lv0', 'parea',urau_code[:2])
+#            area_national = area_country - area_fua
+#            write_nc(area_national, path_area, 'AREA', '%', addnutsid=True)
+#
+## -------------------------------------------------------------------------
+#    # Create netcdf files for bart 2
+#
+#    from sherpa_auxiliaries_epe import gridint_toarray, write_nc
+#    import os as os
+#    rootgrp = Dataset(path_model_cdf_test, 'r')
+#    lon_array = rootgrp.variables['lon'][0, :]
+#    lat_array = rootgrp.variables['lat'][:, 0]
+#    rootgrp.close()
+#
+#    path_results = 'D:\\sherpa.git\\Sherpa\\bart\\ncfiles\\'
+#    d_nuts1 = {'BE1': 'REGION DE BRUXELLES-CAPITALE-BRUSSELS HOOFDSTEDELIJK GEWEST',
+#               'BE2': 'VLAAMS GEWEST',
+#               'BE3': 'REGION WALLONNE',
+#               'DEA': 'NORDRHEIN-WESTFALEN',
+#               'FR3': 'NORD - PAS-DE-CALAIS',
+#               'NL3': 'WEST-NEDERLAND',
+#               'NL4': 'ZUID-NEDERLAND',
+#               'UKH': 'EAST OF ENGLAND',
+#               'UKJ': 'SOUTH EAST (ENGLAND)',
+#               'UKI': 'LONDON'}
+#
+#
+#    for key in d_nuts1.keys():
+#        path_area = path_results+'{}.nc'.format(d_nuts1[key])
+#        if not os.path.exists(path_area):
+#             area_nuts1 = gridint_toarray('NUTS_Lv1', 'parea', key)
+#             write_nc(area_nuts1, path_area, 'AREA', '%', addnutsid=True)
+## -------------------------------------------------------------------------
+#
+#    path_results = 'D:\\sherpa.git\\Sherpa\\bart\\ncfiles\\'
+#    pd_nuts0 = pd.read_table('D:\\sherpa.git\\Sherpa\\bart\\nuts0_names.txt', index_col='NUTS_Lv0')
+#    area_total = np.zeros((1, len(lat_array), len(lon_array)))
+#    path_area = path_results+'complement.nc'
+#    if not os.path.exists(path_area):
+#        for nuts in pd_nuts0.index.values:
+#            print(nuts)
+#            area_nut = gridint_toarray('NUTS_Lv0', 'parea', nuts)
+#            area_total = area_total + area_nut
+#
+#    write_nc(area_total, path_area, 'AREA', '%', addnutsid=True)
+#
+#    path_area = path_results+'complementnuts1.nc'
+#    for key in d_nuts1.keys():
+#        print(key)
+#        area_nuts1 = gridint_toarray('NUTS_Lv1', 'parea', key)
+#        area_total = area_total - area_nuts1
+#    write_nc(area_total, path_area, 'AREA', '%', addnutsid=True)
 
     # -------------------------------------------------------------------------
 
