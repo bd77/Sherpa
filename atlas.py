@@ -8,6 +8,7 @@ Script used to produce the figures of the Atlas, starting from
 - file with cities with core (onlyfua_city-fua_150fuas.xls from Marco)
 - sherpa logo 
 
+- supporting files can be found in M:\Integrated_assessment\Ema\atlas\scriptsf
 commented part creates the nc files for Bart.
 @author: peduzem
 """
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     # Set titles of the polar plots for each precursor
     titlesdict = {'NH3': "NH$_\mathbf{3}$", 
                   'SOx': "SO$_\mathbf{2}$", 
-                  'NMVOC': "VOC", 
+                  'NMVOC': "NMVOC", 
                   'PPM': 'PPM', 
                   'NOx': "NO$_\mathbf{x}$"}
     
