@@ -16,6 +16,7 @@ commented part creates the nc files for Bart.
 import matplotlib.font_manager as fm
 import matplotlib.image as image
 import matplotlib as mpl
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
@@ -28,7 +29,7 @@ from sherpa_globals import path_model_cdf_test
 
 def figsize(scale):
     '''Square figure size'''
-    fig_width_pt = 390  # Get this from LaTeX using \the\textwidth
+    fig_width_pt = 450  # Get this from LaTeX using \the\textwidth
     inches_per_pt = 1.0/72.27                       # Convert pt to inch
 #    golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio
     fig_width = fig_width_pt * inches_per_pt * scale    # width in inches
@@ -60,16 +61,15 @@ if __name__ == '__main__':
     filename = 'results150fuas.xlsx'
     
     # setting fonts
-    font_dirs = [path_results + 'ECSquareSansPro\\',]
-    font_files = fm.findSystemFonts(fontpaths=font_dirs)
-    font_list = fm.createFontList(font_files)
-    fm.fontManager.ttflist.extend(font_list)
-    mpl.rcParams['font.family'] = 'EC Square Sans Pro'
-    mpl.rcParams['font.variant'] = 'normal'
-
+    setfont = 'corporate'
+#    setfont = 'verdana'
+#    setfont = 'garamond'
     # setting figures
-    transparency = True # background
+    transparency = False # background
     ext = '.png' # figure type (has to be png for transparent background)
+    
+    spi_fc = (233/255, 246/255, 252/255) 
+    cnc_fc = (173/255, 223/255, 244/255) 
     
     # -------------------------------------------------------------------------
     # Other inputs:
@@ -81,6 +81,23 @@ if __name__ == '__main__':
     wcore = pd.read_excel(path_results+'onlyfua_city-fua_150fuas.xls',
                           sheetname='withcore', header=[0], index_col=[0],
                           na_values='nan').sortlevel()
+
+    # other settings: 
+    if setfont == 'corporate':        
+        font_dirs = [path_results + 'ECSquareSansPro\\',]
+        font_files = fm.findSystemFonts(fontpaths=font_dirs)
+        font_list = fm.createFontList(font_files)
+        fm.fontManager.ttflist.extend(font_list)
+        mpl.rcParams['font.family'] = 'EC Square Sans Pro'
+        mpl.rcParams['font.variant'] = 'normal'
+    elif setfont == 'verdana':
+        mpl.rcParams['font.family'] = 'sans-serif'
+        mpl.rcParams['font.sans-serif'] = ['Verdana']
+    elif setfont == 'garamond':
+        mpl.rcParams['font.family'] = 'Garamond'
+
+
+
     # precursor list
     precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PPM', 'SOx']
 
@@ -96,7 +113,7 @@ if __name__ == '__main__':
     titlesdict = {'NH3': "NH$_\mathbf{3}$", 
                   'SOx': "SO$_\mathbf{2}$", 
                   'NMVOC': "NMVOC", 
-                  'PPM': 'PPM', 
+                  'PPM': 'PPM$_\mathbf{2.5}$', 
                   'NOx': "NO$_\mathbf{x}$"}
     
     # -------------------------------------------------------------------------
@@ -147,9 +164,10 @@ if __name__ == '__main__':
     index = aggr_dict.keys()
       
     plt.close('all')
-
+    h_plots = {} # handle for plots (for legend)
+    h_lableg = {} # handle for labels (for legend)
     for city in cities:
-#        city = 'Riga'  # @todo
+#        city = 'Wien'  # @todo
         for prec in precursor_lst:
             print(city)
 #            city = 'Berlin'
@@ -185,7 +203,7 @@ if __name__ == '__main__':
             # fontsize:
             fts = 8
             # create figure
-            fig = plt.figure(figsize=figsize(0.3))
+            fig = plt.figure(figsize=figsize(0.3), dpi=1000)
             ax = fig.add_subplot(111, projection="polar")
             # create grid
             ax.grid(True)
@@ -256,29 +274,45 @@ if __name__ == '__main__':
                 ax.text(theta[it], ylim*1.15, radlabel, va='center',
                         ha='center', fontsize=(fts+2))
             ax.set_xticklabels('')
-
+            
+            fig.set_facecolor(spi_fc)
+            ax.set_facecolor(spi_fc)
+            
             ax.tick_params(axis='y', labelsize=fts, zorder=4)
-            plt.title(titlesdict[prec], fontsize=(fts+2),  #  \n [kton/y]
-                      y=0.9, x=0, weight='bold') 
+            
+
+            
+            # axes coordinates are 0,0 is bottom left and 1,1 is upper right
+
+            ax.text(2,  ylim*1.3, titlesdict[prec], va='center',
+                        ha='center', fontsize=(fts+2), weight='bold')
+
+            
+#            plt.title(titlesdict[prec], fontsize=(fts+2),  #  \n [kton/y]
+#                      y=0.9, x=0, weight='bold') 
 
             citynospace = city.translate({ord(c): None for c in ' \n\t\r'})
             plt.savefig((path_figures + fuanames.loc[city, 'URAU_CODE'] +
                          '_{}'.format(citynospace) +
                          '_emi_FUA_{}'.format(prec) + ext),
-                        dpi=500, transparent=transparency) # , bbox_inches='tight'
-            plt.show()
+                        dpi=1000, facecolor=spi_fc, bbox_inches='tight', pad_inches=0.15) # , transparent=transparency spi_fc, 
+#            plt.show()
 
 
-        figleg = plt.figure(figsize=figsize(0.25))
+        figleg = plt.figure(figsize=figsize(0.1))#
         axleg = fig.add_subplot()
         axleg = plt.subplot()
         axleg.set_axis_off()#create the axes
         #do patches and labels
+        figleg.set_facecolor(spi_fc)
+        axleg.set_facecolor(spi_fc)
+        h_plots[city] = plots # handle for plots (for legend)
+        h_lableg[city] = lableg
         axleg.legend(handles=plots, labels=lableg, fontsize=fts+2, loc = 'center', frameon=False)  #legend alone in the figure
         plt.savefig((path_figures + fuanames.loc[city, 'URAU_CODE'] +
                          '_{}'.format(citynospace) +
                          '_legend'+ ext),
-                        dpi=500, bbox_inches='tight', transparent=transparency)
+                        bbox_inches='tight', facecolor=spi_fc) #, transparent=transparency,  dpi=1000, 
         plt.show()
 
     # -------------------------------------------------------------------------
@@ -298,12 +332,12 @@ if __name__ == '__main__':
     # name of states corresponding to each city
     df_names = pd.read_excel(path_results + filename,
                              sheetname='cities', index_col=[0])
-    im = image.imread(path_results + 'sherpa_icon_256x256.png')
+    im = image.imread(path_results + 'sherpa_icon_name_256x256.png')
     
     # indicator for source allocation (column name)
     ind = 'relative_potential'
     for city in cities:
-#        city = 'Wien'
+#        city = 'Liege'
         print(city)
         # create Dataframe
         columns = ['City', 'Comm', 'National', 'International']
@@ -361,18 +395,34 @@ if __name__ == '__main__':
                 print('WARNING: rescaling all values 100')
 
         plt.close('all')
+        
         fts = 10
         f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
         ax1.yaxis.grid(color='black')
-
+#        #ORIGINAL
+#        colors = {'Transport': 'red', 'Energy': 'blue',
+#                  'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
+#                  'Agriculture': 'green', 'Residential': '#0070FF',
+#                  'Offroad': '#8470ff', 'Extraction': '#00FF00',
+#                  'Other': '#B266FF', 'Natural': '#606060', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
+#                  'External': '#929591', 'bottom': 'None'}
+        #PROVA1
         # Setting colors dictionary
         colors = {'Transport': 'red', 'Energy': 'blue',
                   'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
-                  'Agriculture': 'green', 'Residential': '#0070FF',
+                  'Agriculture': '#33FF99', 'Residential': '#0080FF',
                   'Offroad': '#8470ff', 'Extraction': '#00FF00',
-                  'Other': '#B266FF', 'Natural': '#606060', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
-                  'External': '#929591', 'bottom': 'None'} # pink #FF66FF #9933FF
+                  'Other': '#ee82ee', 'Natural': '#ffe7ba', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
+                  'External': '#cdcdb4', 'bottom': 'None'} # pink #FF66FF #9933FF 
         
+#        #PROVA2
+#        # Setting colors dictionary
+#        colors = {'Transport': 'red', 'Energy': 'blue',
+#                  'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
+#                  'Agriculture': '#B2FF66', 'Residential': '#99CCFF',
+#                  'Offroad': '#8470ff', 'Extraction': '#00FF00',
+#                  'Other': '#ee82ee', 'Natural': '#ffe7ba', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
+#                  'External': '#cdcdb4', 'bottom': 'None'} 
         l = dc_ag[city].index
         index = []
         index.append('bottom')
@@ -400,7 +450,7 @@ if __name__ == '__main__':
         newax.imshow(im, zorder=-1)
         newax.axis('off')
         
-        # First letters in the bars:
+#        # First letters in the bars:
         ypos = len(dc_ag[city].reindex(index).columns)-1
         xposcum = 0          
         for letlabind in (np.arange(len(index)-1)+1):
@@ -408,7 +458,8 @@ if __name__ == '__main__':
             xposcum = xposcum + dc_ag[city].reindex(index)['Total'][letlabind]
             letter = index[letlabind][0]
             # place latter only if there is enough space
-            if dc_ag[city].reindex(index)['Total'][letlabind] >= 5:
+            if dc_ag[city].reindex(index)['Total'][letlabind] >= 5 and np.isnan(xpos) == False:
+                print(letlabind, xposcum, xpos)
                 ax1.text(xpos, ypos, letter, va= 'center',  ha= 'center', fontsize=(fts+2))
         
         minorLocator = MultipleLocator(5)    
@@ -420,7 +471,7 @@ if __name__ == '__main__':
         handles = handles[1:]
         # remove external from the legend if it is not there
         if totsum >= 100:
-            labels[:-1]
+            labels = labels[:-1]
             handles = handles[:-1]
         ax1.set_xlabel('Percentage of total mass', fontsize=fts)
 #        ax1.set_xlim([0,100])
@@ -433,9 +484,11 @@ if __name__ == '__main__':
 
         ax1.set_yticklabels(ytlab)
         citynospace = city.translate({ord(c): None for c in ' \n\t\r'})
+        f.set_facecolor(cnc_fc)
+        ax1.set_facecolor(cnc_fc)
         plt.savefig((path_figures+fuanames.loc[city, 'URAU_CODE'] +
                     '_{}'.format(citynospace)+'_conc_FUA' + ext),
-                    dpi=500, bbox_inches='tight', transparent=transparency)
+                    dpi=1000, bbox_inches='tight', facecolor=cnc_fc, pad_inches=0.20)
 
 
 
@@ -446,12 +499,14 @@ if __name__ == '__main__':
         #do patches and labels
         for labit in np.arange(len(labels)):
             labels[labit]= labels[labit][0] +' - '+labels[labit]
-            
-        axlegconc.legend(handles=handles, labels=labels, fontsize=fts, loc = 'center', frameon=False)  #legend alone in the figure
+        figlegconc.set_facecolor(spi_fc)
+        axlegconc.set_facecolor(spi_fc)    
+        axlegconc.legend(handles=handles+h_plots[city], labels=labels+h_lableg[city], fontsize=fts, loc = 'center', frameon=False)  #legend alone in the figure
         plt.savefig((path_figures + fuanames.loc[city, 'URAU_CODE'] +
                          '_{}'.format(citynospace) +
                          '_conc_leg'+ ext),
-                        dpi=500, bbox_inches='tight', transparent=transparency)
+                        dpi=1000, bbox_inches='tight', facecolor=spi_fc)
+        
 
     # -------------------------------------------------------------------------
 #    # Create netcdf files for bart
