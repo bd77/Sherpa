@@ -94,7 +94,7 @@ def baseline_nc(path_tiff, path_mortbaseline, path_dust_conc_cdf_test,
     # BASELINE POPULATION DATA and other PRECOMPUTATION
     # Load population file from LUISA
     popall = tiftogridgeneral(path_tiff)
-    write_nc(popall, path_healthbl, 'ppl', '-', addnutsid=True)
+#    write_nc(popall, path_healthbl, 'ppl', '-', addnutsid=True)
     
     # READ EXCEL FILE WITH BASELINE DATA FROM THE WHO
     # Baseline morality

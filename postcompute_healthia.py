@@ -257,9 +257,16 @@ if __name__ == '__main__':
     
     main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_salt_conc_cdf_test, path_healthbl, path_result_cdf_test)
     
+    
+    ## only for thesting (to be removed) this is the aggregation that 
+    ## java will do in the post compute 
+    
     level = 'NUTS_Lv0'
-    code = 'AT'
-    path_areasel_nc = 'workdir\\{}{}f8.nc'.format(level, code)
+    code = 'CY'
+            
+    path_areasel_nc = 'workdir\\area_{}.nc'.format(code)
+
+            
     path_healthres = path_result_cdf_test + 'healthimp.nc'
     delta_mort = {}
     rootgrp = Dataset(path_healthres, 'r')
@@ -276,4 +283,3 @@ if __name__ == '__main__':
     delta_mort_reg = [
             np.sum(delta_mort[i]*area_area/100) for i in range(pt)]
     area = np.sum(area_area)
-    area2 = np.sum(area_co['AT'])
