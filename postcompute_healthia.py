@@ -3,8 +3,9 @@
 Created on Wed Mar 22 14:32:28 2017
     
     Health impacts of PM2.5 - WHO-Europe method (HRAPIE reccomendations)
-    to calculate mortality according to the Concentration-Response-Function
-    (exact values from the software AirQ+ (WHO))
+    to calculate mortality according to the Risk Rates
+    
+    (exact values for beta from the software AirQ+ (WHO))
 
     Corresonding YLLs or days of life lost are calculated considering the 
     distribution of mortality and population by age and by country, 
@@ -15,6 +16,10 @@ Created on Wed Mar 22 14:32:28 2017
     NB: A positive delta means a reduction!
     
     - Methodology:
+    
+    Estimating Local Mortality Burdens associated with Particulate Air 
+    Pollution 2014 Public Health England
+    
     World Health Organization Europe, 2013. Health risks of air pollution
     in Europe - HRAPIE project - Recommendations for concentration–response
     functions for cost–benefit analysis of particulate matter, ozone and
@@ -23,18 +28,20 @@ Created on Wed Mar 22 14:32:28 2017
     Holland, M., 2014. Cost-benefit Analysis of Final Policy Scenarios
     for the EU Clean Air Package Version. Version 2
 
-- Concentration-response function
+    Relative Risk function
     World Health Organization Europe, 2017. AirQ+: software tool for health
     risk assessment of air pollution.
-
-- Data for baseline population (path_mortbaseline):
-    ICD codes: ICD-10: A00-B99,C00-D48,D50-D89,E00-E88,F01-F99,G00-G98,
-    H00-H59,H60-H93,I00-I99,J00-J98,K00-K92,L00-L98,M00-M99,N00-N98,
-    O00-O99,P00-P96,Q00-Q99,R00-R99
-    Age: '30 - 85 +'
-    Sex: Both
-    http://data.euro.who.int/dmdb/ [Accessed December 13, 2016].
-
+     
+    Implementation of the HRAPIE Recommendations for European Air Pollution 
+    CBA work 2014 EMRC  (Holland)
+      
+    Data for baseline population (path_mortbaseline):
+        ICD codes: ICD-10: A00-B99,C00-D48,D50-D89,E00-E88,F01-F99,G00-G98,
+        H00-H59,H60-H93,I00-I99,J00-J98,K00-K92,L00-L98,M00-M99,N00-N98,
+        O00-O99,P00-P96,Q00-Q99,R00-R99
+        Age: '30 - 85 +'
+        Sex: Both
+        http://data.euro.who.int/dmdb/ [Accessed December 13, 2016].
 
     @author: peduzem
     """
@@ -42,12 +49,12 @@ Created on Wed Mar 22 14:32:28 2017
 
 from netCDF4 import Dataset  
 import numpy as np
+import json
 
 import os as os
 
-from sherpa_globals import (path_base_conc_cdf_test, path_dust_conc_cdf_test,
-                            path_salt_conc_cdf_test, path_result_cdf_test,
-                            path_healthbl, path_model_cdf_test)
+from sherpa_globals import (path_result_cdf_sherpa,
+                            path_healthbl, json_path)
 
 def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
     """
@@ -55,22 +62,22 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
     input : 
         - pop30plus = array with the distribution of the population over 30
         years of age
-        - pm25_conc = array with the concentration of PM2.5
+        - pm25_conc = array with the concentration of PM2.5 (delta or total)
         - ar_drate = array with the distribution of baseline death rate
         (from all cause mortality)
         - ar_lyl = array with the average years of life lost per death 
         over 30 years of age
-        - approx = 'e' for exponential and 'l' for linear
+        - approx = 'e' for exponential and 'l' for linear ('e' is not used)
     output :
-        - delta_mort = array with mortality
-        - delta_dll = array with the days of life lost per year
-        - detla_dll_spec = array with the days of life lost per person per year
+        - mort = array with mortality
+        - dll = array with the days of life lost per year
+        - dll_spec = array with the days of life lost per person per year
     @author: peduzem
     """
 # -----------------------------------------------------------------------------
     # create empty arrays to store results
-    delta_mort = np.zeros(np.shape(pop30plus))
-    delta_dll = np.zeros(np.shape(pop30plus))
+    mort = np.zeros(np.shape(pop30plus))
+    dll = np.zeros(np.shape(pop30plus))
     
 # -----------------------------------------------------------------------------
     # CONCENTRATION RESPONSE FUNCTION:
@@ -78,15 +85,16 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
     # considering bounds for 95% CI
     if approx == 'l':
         # linear approximation
-        mrr = 1.06  # 'middle' value
-        lrr = 1.04  # lower bound
-        hrr = 1.083  # higher bound
+        mrr = 0.06  # 'middle' value
+        lrr = 0.04  # lower bound
+        hrr = 0.083  # higher bound
         # crf = 0.006 from HRAPIE project
-        af = np.asarray([(lrr-1)/lrr, (mrr-1)/mrr, (hrr-1)/hrr]) / 10
-        pt = len(af)
-        delta_mort = delta_mort + (np.where(np.isnan(pm25_conc), 0, (
-                     [af[i]*pm25_conc*pop30plus*ar_drate
-                     for i in range(len(af))]))) 
+        rr = [lrr, mrr, hrr]
+        pt = len(rr)
+        mort = mort + (np.where(np.isnan(pm25_conc), 0, (
+                     [(rr[i]*pm25_conc/10)/(1+rr[i]*pm25_conc/10)*pop30plus*ar_drate
+                     for i in range(len(rr))]))) 
+  
     elif approx == 'e':
         # Taken from AirQ+ (WHO)
         # cutoff = 10 # microg/m3 # Taken from AirQ+ (WHO)
@@ -96,7 +104,7 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
         hbeta = 0.007973496801885352  # higher bound
         beta = [lbeta, mbeta, hbeta]
         pt = len(beta)
-        delta_mort = delta_mort + (np.where(
+        mort = mort + (np.where(
                     np.isnan(pm25_conc), 0, (
                             [(1-(np.exp(-beta[i]*pm25_conc))) *
                              pop30plus * ar_drate
@@ -105,19 +113,19 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
 # -----------------------------------------------------------------------------
     # ESTIMATE OF THE YLL (Not in the Guidelines)
     # days of life lost per year 
-    delta_dll = delta_dll + (np.where(np.isnan(pm25_conc), 0,
-                             [delta_mort[i] * ar_lyl * 365
+    dll = dll + (np.where(np.isnan(pm25_conc), 0,
+                             [mort[i] * ar_lyl * 365
                              for i in range(pt)])) 
     # days of life lost per person per year 
-    delta_dll_spec = [np.divide(delta_dll[i], pop30plus, out=np.zeros_like(delta_dll[i]), where=pop30plus!=0) for i in range(pt)] 
+    dll_spec = [np.divide(dll[i], pop30plus, out=np.zeros_like(dll[i]), where=pop30plus!=0) for i in range(pt)] 
     
 # -----------------------------------------------------------------------------
     # return results    
-    return delta_mort, delta_dll, delta_dll_spec
+    return mort, dll, dll_spec
 
 
 
-def main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_salt_conc_cdf_test, path_healthbl, path_result_cdf_test):
+def main_healthimpact(path_healthbl, path_result_cdf_sherpa, json_path):
     """
     Main functin that calculates the health impacts given the paths: 
     input: 
@@ -128,34 +136,30 @@ def main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_sal
         - path_result_cdf_test: path of the delta concentrations
            (output of module1) 
     """
-    # base case PM25 conentration
-    rootgrp = Dataset(path_base_conc_cdf_test, mode='r')
-    bc_pm25_conc = rootgrp.variables['conc'][:]
-#        bc_pm25_units = rootgrp.variables['conc'].units
-    rootgrp.close()
 
-    # Dust PM25 conentration to be removed for HIA
-    rootgrp = Dataset(path_dust_conc_cdf_test, mode='r')
-    pDUST25 = rootgrp.variables['pDUST-25'][:]
-#        pDUST25_units = rootgrp.variables['pDUST-25'].units
-    rootgrp.close()
-
-    # Salt PM25 conentration to be removed for HIA
-    rootgrp = Dataset(path_salt_conc_cdf_test, mode='r')
-    pSALT25 = rootgrp.variables['pSALT-25'][:]
-#        pSALT25_units = rootgrp.variables['pSALT-25'].units
-    rootgrp.close()
-
-    # Antropogenic concentration
-    pm25_conc = bc_pm25_conc - pSALT25 - pDUST25
-
+    # value of concentration model results minus base line
+    fh_pm25_natural = Dataset(path_healthbl, mode='r')
+    pm25_natural = fh_pm25_natural.variables['conc'][:]
+#       pm25_delta = fh_deltapm25.variables['conc'][:]
+    fh_pm25_natural.close()
+    
+    # scenario values minus natural concentration (to check)
+    path_value_nc = path_result_cdf_sherpa + 'value_conc.nc'
+    fh_pm25_conc = Dataset(path_value_nc, mode='r')
+    pm25_conc = fh_pm25_conc.variables['conc'][:]
+#       pm25_delta = fh_deltapm25.variables['conc'][:]
+    fh_pm25_conc.close()
+   
+    sce_pm25_conc = pm25_conc - pm25_natural
+    
     # delta concentration from model resutls
-    path_conc_nc = path_result_cdf_test + 'delta_concentration.nc'
+    path_conc_nc = path_result_cdf_sherpa + 'delta_concentration.nc'
     fh_deltapm25 = Dataset(path_conc_nc, mode='r')
     d_pm25_conc = fh_deltapm25.variables['delta_concentration'][:]
 #       pm25_delta = fh_deltapm25.variables['conc'][:]
     fh_deltapm25.close()
     
+#    pm25_base = sce_pm25_conc + d_pm25_conc
     # get baseline data from nc file
     fh = Dataset(path_healthbl, mode='r')
     pop30plus = fh.variables['ppl30+'][:]
@@ -168,35 +172,101 @@ def main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_sal
     fh.close()
     
     # calculate impacts
-    delta_mort, delta_dll, delta_dll_spec = health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l')
+    
+    sce_mort, sce_dll, sce_dll_spec = health_impact(pop30plus, sce_pm25_conc, ar_drate, ar_lyl, approx='l')
+    delta_mort, delta_dll, delta_dll_spec = health_impact(pop30plus, d_pm25_conc, ar_drate, ar_lyl, approx='l')
 
-    # file to write resutls (remove if it already exists)
-    outfile=path_result_cdf_test + 'healthimp.nc'
+              
+    dflt_dict = {
+    'd_dll': {
+            'aggregation': 'sum',
+            'ci': ['d_dll_lb', 'd_dll', 'd_dll_ub'],
+            'combo_box': 'delta days of life loss',
+            'long_description': ['delta days of life loss lower bound',
+                                 'delta days of life loss',
+                                 'delta days of life loss upper bound'],
+            'units': 'dll/year'},
+    'd_dll_pp': {
+            'aggregation': 'population weighted average',
+            'ci': ['d_dll_pp_lb', 'd_dll_pp', 'd_dll_pp_ub'],
+            'combo_box': 'delta days of life loss',
+            'long_description': 
+                ['delta days of life loss per person lower bound',
+                 'delta days of life loss per person',
+                 'delta days of life loss per person upper bound'],
+            'units': 'dll/(person year)'},
+    'd_mort': {
+            'aggregation': 'sum',
+            'ci': ['d_mort_lb', 'd_mort', 'd_mort_ub'],
+            'combo_box': 'delta mortality',
+            'long_description': ['delta mortality lower bound',
+                                 'delta mortality',
+                                 'delta mortality upper bound'],
+            'units': 'people/year'},
+    'v_dll': {
+            'aggregation': 'sum',
+            'ci': ['v_dll_lb', 'v_dll', 'v_dll_ub'],
+            'combo_box': 'days of life loss',
+            'long_description': ['days of life loss lower bound',
+                                 'days of life loss',
+                                 'days of life loss upper bound'],
+            'units': 'dll/year'},
+    'v_dll_pp': {
+            'aggregation': 'population weighted average',
+            'ci': ['v_dll_pp_lb', 'v_dll_pp', 'v_dll_pp_ub'],
+            'combo_box': 'days of life loss per person',
+            'long_description': ['days of life loss per person lower bound',
+                                 'days of life loss per person',
+                                 'days of life loss per person upper bound'],
+            'units': 'dll/(person year)'},
+  'v_mort': {
+          'aggregation': 'sum',
+          'ci': ['v_mort_lb', 'v_mort', 'v_mort_ub'],
+          'combo_box': 'mortality',
+          'long_description': ['mortality lower bound',
+                               'mortality',
+                               'mortality upper bound'],
+          'units': 'people/year'}}
+
+ 
+    json_path = 'config\\config.json'
+    if os.path.exists(json_path):    
+        print('Using stored json file')
+        json_file = open(json_path)
+        json_str = json_file.read()
+        cfg_dct = json.loads(json_str)
+    else:
+        cfg_dct = dflt_dict
+        
+    outfile=path_result_cdf_sherpa + 'healthimp.nc'
     if os.path.exists(outfile):
         os.remove(outfile)   
+    for key in cfg_dct.keys():
+        if key == 'd_mort':
+            for it in enumerate(cfg_dct[key]['ci']):  
+                write_nc(delta_mort[it[0]], outfile, it[1], cfg_dct[key]['units'],
+                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+        if key == 'v_mort': 
+            for it in enumerate(cfg_dct[key]['ci']):
+                write_nc(sce_mort[it[0]], outfile, it[1], cfg_dct[key]['units'],
+                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+        if key == 'd_dll':
+            for it in enumerate(cfg_dct[key]['ci']):
+                write_nc(delta_dll[it[0]], outfile, it[1], cfg_dct[key]['units'],
+                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+        if key == 'v_dll': 
+            for it in enumerate(cfg_dct[key]['ci']):  
+                write_nc(sce_dll[it[0]], outfile, it[1], cfg_dct[key]['units'],
+                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+        if key == 'd_dll_pp':
+            for it in enumerate(cfg_dct[key]['ci']):  
+                write_nc(delta_dll_spec[it[0]], outfile, it[1], cfg_dct[key]['units'],
+                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+        if key == 'v_dll_pp': 
+            for it in enumerate(cfg_dct[key]['ci']):  
+                write_nc(sce_dll_spec[it[0]], outfile, it[1], cfg_dct[key]['units'],
+                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
     
-    # write all results into netcdf files
-    write_nc(delta_mort[1], outfile, 'bl_mort', 'number', addnutsid=True, l_name='base line mortality')
-    write_nc(delta_mort[0], outfile, 'bl_mort_lb', 'number', addnutsid=True, l_name='base line mortality lower bound')
-    write_nc(delta_mort[2], outfile, 'bl_mort_ub', 'number', addnutsid=True, l_name='base line mortality upper bound')
-    write_nc(delta_dll[1], outfile, 'bl_dll', 'dll per year', addnutsid=True, l_name='base line days of life loss per year')
-    write_nc(delta_dll[0], outfile, 'bl_dll_lb', 'dll per year', addnutsid=True, l_name='base line days of life per year loss lower bound')
-    write_nc(delta_dll[2], outfile, 'bl_dll_ub', 'dll per year', addnutsid=True, l_name='base line days of life per year loss upper bound')
-    write_nc(delta_dll_spec[1], outfile, 'bl_dll_pp', 'dll per person per year', addnutsid=True, l_name='base line days of life loss per year')
-    write_nc(delta_dll_spec[0], outfile, 'bl_dll_pp_lb', 'dll per person per year', addnutsid=True, l_name='base line days of life loss per person per year lower bound')
-    write_nc(delta_dll_spec[2], outfile, 'bl_dll_pp_up', 'dll per person per year', addnutsid=True, l_name='base line days of life loss per person per year upper bound')
-    
-    delta_mort, delta_dll, delta_dll_spec = health_impact(pop30plus, d_pm25_conc, ar_drate, ar_lyl, approx='l')
-    write_nc(delta_mort[1], outfile, 'mort', 'number', addnutsid=True, l_name='mortality')
-    write_nc(delta_mort[0], outfile, 'mort_lb', 'number', addnutsid=True, l_name='mortality lower bound')
-    write_nc(delta_mort[2], outfile, 'mort_ub', 'number', addnutsid=True, l_name='mortality upper bound')
-    write_nc(delta_dll[1], outfile, 'dll', 'dll per year', addnutsid=True, l_name='days of life loss per year')
-    write_nc(delta_dll[0], outfile, 'dll_lb', 'dll per year', addnutsid=True, l_name='days of life loss per year upper bound')
-    write_nc(delta_dll[2], outfile, 'dll_up', 'dll per year', addnutsid=True, l_name='days of life loss per year')
-    write_nc(delta_dll_spec[1], outfile, 'dll_pp', 'dll per person per year', addnutsid=True, l_name='days of life loss per person per year')
-    write_nc(delta_dll_spec[0], outfile, 'dll_pp_lb', 'dll per person per year', addnutsid=True, l_name='days of life loss per person per year lower bound')
-    write_nc(delta_dll_spec[2], outfile, 'dll_pp_up', 'dll per person per year', addnutsid=True, l_name='days of life loss per person per year upper bound')
-
 ## SUPPORT FUNCTIONS (IDEALLY IN THE AUXIALIARIES FILE)
 
 def write_nc(array, path_nc, name_var, unit_var, addnutsid=False, l_name=None):
@@ -211,9 +281,9 @@ def write_nc(array, path_nc, name_var, unit_var, addnutsid=False, l_name=None):
                 by terraria
     @author: peduzem
     '''
-    rootgrp = Dataset(path_model_cdf_test, 'r')
-    lon_array = rootgrp.variables['lon'][0, :]
-    lat_array = rootgrp.variables['lat'][:, 0]
+    rootgrp = Dataset(path_healthbl, 'r')
+    lon_array = rootgrp.variables['longitude'][:]
+    lat_array = rootgrp.variables['latitude'][:]
     rootgrp.close()
     if not os.path.exists(path_nc):
         mode = 'w' 
@@ -250,36 +320,12 @@ def write_nc(array, path_nc, name_var, unit_var, addnutsid=False, l_name=None):
 
     fh.variables[name_var].units = unit_var
     if l_name is not None:
-        fh.variables[name_var].long_name =l_name
+            fh.variables[name_var].long_name =l_name   
     fh.close()  
+
 
 if __name__ == '__main__':
     
-    main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_salt_conc_cdf_test, path_healthbl, path_result_cdf_test)
-    
-    
-    ## only for thesting (to be removed) this is the aggregation that 
-    ## java will do in the post compute 
-    
-    level = 'NUTS_Lv0'
-    code = 'CY'
-            
-    path_areasel_nc = 'workdir\\area_{}.nc'.format(code)
+    main_healthimpact(path_healthbl, path_result_cdf_sherpa, json_path)
 
-            
-    path_healthres = path_result_cdf_test + 'healthimp.nc'
-    delta_mort = {}
-    rootgrp = Dataset(path_healthres, 'r')
-    delta_mort[0] = rootgrp.variables['bl_mort_lb'][:]
-    delta_mort[1] = rootgrp.variables['bl_mort'][:]
-    delta_mort[2] = rootgrp.variables['bl_mort_ub'][:]
-    rootgrp.close()
-    
-    rootgrp = Dataset(path_areasel_nc, mode='r')
-    area_area = rootgrp.variables['AREA'][:]
-    rootgrp.close()
-    # delta_mortality in the area of interest
-    pt = 3
-    delta_mort_reg = [
-            np.sum(delta_mort[i]*area_area/100) for i in range(pt)]
-    area = np.sum(area_area)
+

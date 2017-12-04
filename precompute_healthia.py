@@ -1,10 +1,28 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Mar 22 14:32:28 2017
-    
-    Health impacts of PM2.5 - WHO-Europe method (HRAPIE reccomendations)
+    This script generates the input file for the health impact assessment:
+        in_health.nc
+        
+    This concerns only the health impacts of PM2.5 - WHO-Europe method 
+    (HRAPIE reccomendations)
 
-    WARNING: BASELINE VALUES ARE AVERAGED BETWEEN COUNTRIES FOR BORDER CELLS!! 
+    MAIN ASSUMPTIONS:
+        - BASELINE VALUES ARE HOMOGENEOUS WITHIN A COUTNRY AND AVERAGED BETWEEN
+        COUNTRIES FOR BORDER CELLS!! 
+        - RISK RATE FUNCTIONS ARE APPLIED ONLY TO ANTHROPOGENIC PM2.5 as in
+        EC4MACS Modelling Methodology the ALPHA Benefit Assessment  Model and 
+        Service Contract for Carrying out Cost-Benefit Analysis of Air Quality 
+        Related Issues, in particular in the Clean Air for Europe (CAFE)
+        Programme.
+        In CAFE: 
+        " The case is sometimes made that there are natural backgrounds of 
+        ozone (and of other pollutants also) and that either:        
+          i.	There are no adverse health effects associated with 
+          concentrations below these backgrounds, because they are natural
+          ii. Any associated adverse health effects should not be quantified,
+          because it is impossible to reduce pollution to below these levels"
+
     
     Required files:
         - path_mortbaseline: excel file with the data of the baseline
@@ -12,14 +30,13 @@ Created on Wed Mar 22 14:32:28 2017
           (For EU28 data is from LUISA, in its last version 11/22/2017,
           relative to the year 2015. Extra EU, always for 2015, is taken from:
           http://sedac.ciesin.columbia.edu/data/collection/gpw-v4
-        - grid intersect files
+        - grid intersect files 
             Country codes for the grid intesect are:
              'CY', 'ES', 'HU', 'ME', 'NL', 'SI', 'AT', 'BE', 'BG', 'CH', 
              'CZ', 'DE', 'DK', 'EE', 'EL', 'FI', 'FR', 'HR', 'IE', 'IT',
              'LI', 'LT', 'LU', 'LV', 'MK', 'MT', 'NO', 'PL', 'PT', 'RO', 
              'SE', 'SK', 'TR', 'UK'.
-          However some of these countries have no or incomplete population data:
-             'CH', 'MK', 'ME', 'NO', 'TR'. 'SE', 'NO',
+        - path_model_cdf_test: 
 
     BIBLIOGRAPHY:
 
@@ -58,14 +75,14 @@ from osgeo import gdal
 import sys
 import time # time the code, check which are the bottle necks
 
-from sherpa_globals import (path_tiff, path_mortbaseline, grid_txt,
-                            path_dust_conc_cdf_test,
-                            path_salt_conc_cdf_test,
-                            path_healthbl, path_model_cdf_test)
+from sherpa_globals import (path_tiff, path_mortbaseline, path_grid_txt,
+                            path_healthbl, path_model_cdf_test, 
+                            path_dust_conc_cdf_test, 
+                            path_salt_conc_cdf_test)
 
-def baseline_nc(path_tiff, path_mortbaseline, path_dust_conc_cdf_test, 
-                path_salt_conc_cdf_test, path_healthbl,
-                std_life_exp=70):
+def baseline_nc(path_tiff, path_mortbaseline, path_healthbl, 
+                path_dust_conc_cdf_test, 
+                path_salt_conc_cdf_test, path_model_cdf_test, std_life_exp=70):
     """
     Function that produces the base line netcdf for the SHERPA tool 
     input : 
@@ -80,10 +97,12 @@ def baseline_nc(path_tiff, path_mortbaseline, path_dust_conc_cdf_test,
         http://data.euro.who.int/dmdb/
     output :
         - healthbl_nc.nc' = netcdf file with: 
-            - ppl = population distribution 
             - ppl30+ = population over 30 distribution
             - deathsppl30+ = death rate for people over 30 distribution 
             - lyl30+ = life of years lost for each person dying over 30. 
+            - conc = anthropogenic PM (removing from the baseline salt 
+            and dust)
+            
     @author: peduzem
     """
 # -----------------------------------------------------------------------------
@@ -94,8 +113,14 @@ def baseline_nc(path_tiff, path_mortbaseline, path_dust_conc_cdf_test,
     # BASELINE POPULATION DATA and other PRECOMPUTATION
     # Load population file from LUISA
     popall = tiftogridgeneral(path_tiff)
-#    write_nc(popall, path_healthbl, 'ppl', '-', addnutsid=True)
-    
+    # remove all negative and -inf values (not sure why they are there)
+    popall = np.where(np.isinf(popall), 0, popall)
+    popall = np.where(popall < 0, 0, popall)
+#    path_pop = 'D://sherpa.git//Sherpa//input//pop.nc'
+#    write_nc(popall, path_pop, 'pop', 'number', path_model_cdf_test, addnutsid=True, l_name='population')
+
+#    popall = np.where(np.negative(popall), 0, popall)
+    popall.sum()
     # READ EXCEL FILE WITH BASELINE DATA FROM THE WHO
     # Baseline morality
     df_mort = pd.read_excel(path_mortbaseline,
@@ -181,7 +206,7 @@ def baseline_nc(path_tiff, path_mortbaseline, path_dust_conc_cdf_test,
     for country in countries:
 #        country = 'AT'
         t0 = time.time()
-        area_co[country] = gridint_toarray(level, parea, country)
+        area_co[country] = gridint_toarray(level, parea, country, path_model_cdf_test)
         t1 = time.time()
         dt = t1 - t0
         print('to calculate area of country', country, 'it takes', dt)
@@ -212,28 +237,56 @@ def baseline_nc(path_tiff, path_mortbaseline, path_dust_conc_cdf_test,
             ar_lyl =  ar_lyl +  m_lyl * area_co[country] / 100
 #            ar_le  = ar_le + m_le * area_co[country] / 100  
 
+                                            
+                                            
+#    # base case PM25 conentration
+#    rootgrp = Dataset(path_base_conc_cdf_test, mode='r')
+#    bc_pm25_conc = rootgrp.variables['conc'][:]
+##    bc_pm25_units = rootgrp.variables['conc'].units
+#    rootgrp.close()
+
+    # Dust PM25 conentration to be removed for HIA
+    rootgrp = Dataset(path_dust_conc_cdf_test, mode='r')
+    pDUST25 = rootgrp.variables['pDUST-25'][:]
+#        pDUST25_units = rootgrp.variables['pDUST-25'].units
+    rootgrp.close()
+
+    # Salt PM25 conentration to be removed for HIA
+    rootgrp = Dataset(path_salt_conc_cdf_test, mode='r')
+    pSALT25 = rootgrp.variables['pSALT-25'][:]
+#        pSALT25_units = rootgrp.variables['pSALT-25'].units
+    rootgrp.close()
+
+    # Antropogenic concentration
+    pm25_natural = pSALT25 + pDUST25
+    
+    
+    
     # write resutls in nc files
-    write_nc(pop30plus, path_healthbl, 'ppl30+', '-', addnutsid=True)
-    write_nc(ar_drate, path_healthbl, 'deathsppl30+', '-', addnutsid=True)
-    write_nc(ar_lyl, path_healthbl, 'lyl30+', '-', addnutsid=True)           
+    write_nc(pm25_natural, path_healthbl, 'conc', u'\u03BC'+'g/m'+ u'\u00B3', path_model_cdf_test, addnutsid=True, l_name='natural (salt and dust) PM2.5 concentration')
+    write_nc(pop30plus, path_healthbl, 'ppl30+', '-', path_model_cdf_test, addnutsid=True, l_name='number of people avove 30 years of age')
+    write_nc(ar_drate, path_healthbl, 'deathsppl30+', '-', path_model_cdf_test, addnutsid=True, l_name='mortality rate - people above 30 over number of death above 30')
+    write_nc(ar_lyl, path_healthbl, 'lyl30+', '-', path_model_cdf_test, addnutsid=True, l_name='average years of life lost for each death above 30')           
 # -----------------------------------------------------------------------------
 
 
 
 ## SUPPORT FUNCTIONS (IDEALLY IN THE AUXIALIARIES FILE)
 
-def write_nc(array, path_nc, name_var, unit_var, addnutsid=False, l_name=None):
+def write_nc(array, path_nc, name_var, unit_var, path_model_cdf_test, addnutsid=False, l_name=None):
     ''' Function to write an array in a netcdf file,
         input:
             - array: data to write
             - path_nc: path of netcdf file
             - name_var: name for data in array
             - unit_var: units for data in array
+            - path_model_cdf_test: path of model to copy lat and lon array from 
             - addnutsid: if True the layer nuts_id is added so that the
                 nectcdf file is consistent with the ones provided
                 by terraria
     @author: peduzem
     '''
+
     rootgrp = Dataset(path_model_cdf_test, 'r')
     lon_array = rootgrp.variables['lon'][0, :]
     lat_array = rootgrp.variables['lat'][:, 0]
@@ -454,7 +507,7 @@ def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
 
 
 
-def gridint_toarray(level, parea, code):
+def gridint_toarray(level, parea, code, path_model_cdf_test):
     """
     Reads the grid intersect txt files and creates an array with the specified
     dimensions with the percentage of each cell beleonging to the specified area
@@ -477,7 +530,7 @@ def gridint_toarray(level, parea, code):
     lat_array = rootgrp.variables['lat'][:, 0]
     rootgrp.close()
 
-    nuts_info = read_nuts_area(grid_txt, calcall=True)
+    nuts_info = read_nuts_area(path_grid_txt, calcall=True)
 #    nuts_info.update(read_nuts_area(gcities_txt, nullnut='LAND000'))
 #    nuts_info.update(read_nuts_area(fua_txt, nullnut='LAND000'))
 
@@ -512,9 +565,9 @@ def gridint_toarray(level, parea, code):
 
 if __name__ == '__main__':
 
-    baseline_nc(path_tiff, path_mortbaseline,
-                 path_dust_conc_cdf_test, path_salt_conc_cdf_test, path_healthbl,
-                 std_life_exp=70)
+    baseline_nc(path_tiff, path_mortbaseline, path_healthbl, 
+                path_dust_conc_cdf_test, 
+                path_salt_conc_cdf_test, path_model_cdf_test, std_life_exp=70)
     
 #    main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_salt_conc_cdf_test, path_healthbl, path_result_cdf_test)
 
