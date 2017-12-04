@@ -5,50 +5,46 @@ Scipt to test the national emissions reduction commitments
 
 @author: peduzem
 """
-#import sys
-#reload(sys)
-#sys.setdefaultencoding('utf-8')
 
 import matplotlib as mpl
-#matplotlib.use('pgf')
-import numpy as np
-from netCDF4 import Dataset
+mpl.use('pgf')
 
+# import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+# import matplotlib.markers as mmarks
+
+# from matplotlib import cm
+# from matplotlib.ticker import LinearLocator, FormatStrFormatter
+
+# from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
+
+from netCDF4 import Dataset
+import numpy as np
 import os as os
 from os import remove
-
 import pandas as pd  # conda install pandas
 from pandas import ExcelWriter
 from time import time  # for module1
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
-#import matplotlib.pyplot as plt
-#import plotly.plotly as py
-import matplotlib.lines as mlines
-import matplotlib.markers as mmarks
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
-import matplotlib.patches as mpatches
-
-from sherpa_auxiliaries import (create_emission_reduction_dict,
-                                create_emission_dict, create_window,
-                                read_progress_log, write_progress_log)
-from sherpa_globals import (path_base_conc_cdf_test, path_salt_conc_cdf_test,
-                            path_dust_conc_cdf_test, path_pop_mat_test,
-                            path_mortbaseline, path_emission_cdf_test,
+from sherpa_auxiliaries import (write_progress_log)
+from sherpa_globals import (path_base_conc_cdf_test, path_emission_cdf_test,
                             path_model_cdf_test, path_result_cdf_test)
-from sherpa_auxiliaries_epe import (gridint_toarray, write_nc, tiftogridgeneral,
-                                    save_obj, load_obj)
-
+from sherpa_auxiliaries_epe import (gridint_toarray, write_nc,
+                                    tiftogridgeneral)
 
 import module1 as shrp
 
-mpl.use('pgf')
-
-
 def read_inventory(year, em_inv, precursors):
+    """
+    Created on Wed Jun  7 15:28:00 2017
+    Script to read the inventories of TNO EMEP or GAINS
+    - input: year, em_inv, precursors
+    - supporting files: excel files with the emission inventories
+    - output: dataframe with emissions per country as reported in the inventory
+    @author: peduzem
+    """
 
     # nomenclature in inventory : EMEP and TNO
     sourcesinv = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'GR', 'ES',
@@ -66,45 +62,46 @@ def read_inventory(year, em_inv, precursors):
         path_emi_inv = 'input\\gains_inventory.xlsx'
         rename_dct = pd.read_excel('input\\utilities\\country_codes_4to2.xlsx',
                                    index_col=0, header=None).to_dict()
-        if em_inv == 'GAINS':
-            for precu in precursors:
-                if precu == 'PPM':
-                    s_name = 'p25'
-                if precu == 'NOx':
-                    s_name = 'nox'
-                if precu == 'SOx':
-                    s_name = 'so2'
-                if precu == 'NH3':
-                    s_name = 'nh3'
-                if precu == 'NMVOC':
-                    s_name = 'voc'
+        for precu in precursors:
+            if precu == 'PPM':
+                s_name = 'p25'
+            if precu == 'NOx':
+                s_name = 'nox'
+            if precu == 'SOx':
+                s_name = 'so2'
+            if precu == 'NH3':
+                s_name = 'nh3'
+            if precu == 'NMVOC':
+                s_name = 'voc'
+            df_e_inv = pd.read_excel(path_emi_inv,
+                                     sheetname='{}'.format(s_name),
+                                     skiprows=6,
+                                     header=0, skip_footer=44,
+                                     index_col=[0, 2])
+            df_e_inv.rename(index=rename_dct[1], inplace=True)
+            df_e_inv_eu[precu] = df_e_inv[year].loc[:, 'SUM']
+    elif em_inv == 'EMEP' or em_inv == 'TNO':
+        if em_inv == 'EMEP':
+            path_emi_inv = 'input\\emep_emissions.xlsx'
+        elif em_inv == 'TNO':
+            path_emi_inv = 'input\\tno_emissions.xlsx'
+        for precu in precursors:
+            if precu == 'PPM':
+                df_e_inv = pd.read_excel(path_emi_inv, sheetname='PM2.5',
+                                         index_col=[1])
+                df_e_inv_eu[precu] = df_e_inv.ix[sourcesinv][year]
+            else:
                 df_e_inv = pd.read_excel(path_emi_inv,
-                                         sheetname='{}'.format(s_name),
-                                         skiprows=6,
-                                         header=0, skip_footer=44,
-                                         index_col=[0, 2])
-                df_e_inv.rename(index=rename_dct[1], inplace=True)
-                df_e_inv_eu[precu] = df_e_inv[year].loc[:, 'SUM']
-        elif em_inv == 'EMEP' or em_inv == 'TNO':
-            if em_inv == 'EMEP':
-                path_emi_inv = 'input\\emep_emissions.xlsx'
-            elif em_inv == 'TNO':
-                path_emi_inv = 'input\\tno_emissions.xlsx'
-            for precu in precursors:
-                if precu == 'PPM':
-                    df_e_inv = pd.read_excel(path_emi_inv, sheetname='PM2.5',
-                                             index_col=[1])
-                    df_e_inv_eu[precu] = df_e_inv.ix[sourcesinv][year]
-                else:
-                    df_e_inv = pd.read_excel(path_emi_inv,
-                                             sheetname='{}'.format(precu),
-                                             index_col=[1])
-                    df_e_inv_eu[precu] = df_e_inv.ix[sourcesinv][year]
+                                         sheetname='{}'.format(precu),
+                                         index_col=[1])
+                df_e_inv_eu[precu] = df_e_inv.ix[sourcesinv][year]
 
     # inventory for EU28:
     df_e_inv_eu.ix['EU28'] = df_e_inv_eu.ix[sourcesinv].sum(axis=0)
+    
     # Rename keys so they are the same as in SHERPA..
     df_e_inv_eu.rename(index={'GR': 'EL', 'GB': 'UK'}, inplace=True)
+    
     return df_e_inv_eu
 
 def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
@@ -372,13 +369,19 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
     fig.savefig(path_figures + 'NEC{}{}{}.pgf'.format(name, an_ty, opt))
     fig.savefig(path_figures + 'NEC{}{}{}.pdf'.format(name, an_ty, opt))
     plt.show()
-### Printing tables:
+    # Printing tables:
     save_xls(redms, (path_figures + 'redms_de{}{}{}.xls'.format(name, an_ty, opt)))
     save_xls(redms2, (path_figures + 'redms_as{}{}{}.xls'.format(name, an_ty, opt)))
-## end function here
+
 def perexppercountry(name, an_ty, opt, country, order):
     """ calculate mapped percentage exposure reduction for each option"""
-## @TODO to finish description
+    ## @TODO to finish description
+    # debug 
+#    order = 'dec'
+#    name =
+#    an_ty =
+#    opt =
+#    country = 
     # Write reduction text
     sect_aggr = ['industry', 'residential', 'agriculture', 'transport', 'other']
     areatypes = ['FUA','not_FUA']
@@ -409,26 +412,27 @@ def perexppercountry(name, an_ty, opt, country, order):
     if an_ty == 'sec':
         path_reduction_txt = path_results + '\\redms_{}{}{}{}{}.txt'.format(country,name,order,an_ty,opt)
         for prec in precursor_lst:
-            if prec == 'NMVOC':
-                df_red.loc[prec] = 0 * np.arange(len(ms_list))
-            else:
-                df_red['MS1'].loc[prec] = df_red_agg['industry'].loc[prec]
-                df_red['MS3'].loc[prec] = df_red_agg['industry'].loc[prec]
-                df_red['MS4'].loc[prec] = df_red_agg['industry'].loc[prec]
-                df_red['MS2'].loc[prec] = df_red_agg['residential'].loc[prec]
-                df_red['MS7'].loc[prec] = df_red_agg['transport'].loc[prec]
-                df_red['MS10'].loc[prec] = df_red_agg['agriculture'].loc[prec]
-                df_red['MS5'].loc[prec] = df_red_agg['other'].loc[prec]
-                df_red['MS6'].loc[prec] = df_red_agg['other'].loc[prec]
-                df_red['MS8'].loc[prec] = df_red_agg['other'].loc[prec]
-                df_red['MS9'].loc[prec] = df_red_agg['other'].loc[prec]
+#            if prec == 'NMVOC':
+#                df_red.loc[prec] = 0 * np.arange(len(ms_list))
+#            else:
+            df_red['MS1'].loc[prec] = df_red_agg['industry'].loc[prec]
+            df_red['MS3'].loc[prec] = df_red_agg['industry'].loc[prec]
+            df_red['MS4'].loc[prec] = df_red_agg['industry'].loc[prec]
+            df_red['MS2'].loc[prec] = df_red_agg['residential'].loc[prec]
+            df_red['MS7'].loc[prec] = df_red_agg['transport'].loc[prec]
+            df_red['MS10'].loc[prec] = df_red_agg['agriculture'].loc[prec]
+            df_red['MS5'].loc[prec] = df_red_agg['other'].loc[prec]
+            df_red['MS6'].loc[prec] = df_red_agg['other'].loc[prec]
+            df_red['MS8'].loc[prec] = df_red_agg['other'].loc[prec]
+            df_red['MS9'].loc[prec] = df_red_agg['other'].loc[prec]
 
 
         df_red.to_csv(path_reduction_txt, sep='\t', index_label='POLL')
+        
         # Computation:
         # Run model 1 with for each country and each macrosector
         # and calcluate the impacts
-    #    for country in sources:
+        # for country in sources:
         path_areacountry_nc = 'workdir\\area_{}.nc'.format(country)
         outputfin = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
         if not os.path.exists(outputfin):
@@ -472,26 +476,25 @@ def perexppercountry(name, an_ty, opt, country, order):
             output = path_results + '\\NEC_{}{}{}{}{}{}\\'.format(country,name,order,an_ty,opt,areatype)
             path_reduction_txt = path_results + '\\redms_{}{}{}{}{}{}.txt'.format(country,name,order,an_ty,opt,areatype)
             for prec in precursor_lst:
-                if prec == 'NMVOC':
-                    df_red.loc[prec] = 0 * np.arange(len(ms_list))
-                else:
-                    df_red['MS1'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS3'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS4'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS2'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS7'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS10'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS5'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS6'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS8'].loc[prec] = df_red_agg[areatype].loc[prec]
-                    df_red['MS9'].loc[prec] = df_red_agg[areatype].loc[prec]
+#                if prec == 'NMVOC':
+#                    df_red.loc[prec] = 0 * np.arange(len(ms_list))
+#                else:
+                df_red['MS1'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS3'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS4'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS2'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS7'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS10'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS5'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS6'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS8'].loc[prec] = df_red_agg[areatype].loc[prec]
+                df_red['MS9'].loc[prec] = df_red_agg[areatype].loc[prec]
 
             df_red.to_csv(path_reduction_txt, sep='\t', index_label='POLL')
             # Computation:
             # Run model 1 with for each country and each macrosector
             # and calcluate the impacts
-        #    for country in sources:
-
+            # for country in sources:
             if areatype == 'FUA':
                 path_fua_country = 'D:\\sherpa.git\\Sherpa\\asstest\\workdirreg\\'
                 path_areacountry_nc = path_fua_country + 'area_fuas_{}.nc'.format(country)
@@ -536,11 +539,11 @@ def perexppercountry(name, an_ty, opt, country, order):
 
     rootgrp = Dataset(path_base_conc_cdf_test, mode='r')
     bc_pm25_conc = rootgrp.variables['conc'][:]
-    #        bc_pm25_units = rootgrp.variables['conc'].units
+    # bc_pm25_units = rootgrp.variables['conc'].units
     rootgrp.close()
     bc_conc = np.where(np.isnan(bc_pm25_conc), 0, (bc_pm25_conc))
     # Total popluation in the country
-#    poptot = np.sum(popall * areacountry / 100)
+    # poptot = np.sum(popall * areacountry / 100)
     exp = 1000 * conc * (popall) # ng p /m3
     bc_exp = 1000 * bc_conc * (popall)  # ng p /m3
     exp_per = (np.divide(exp, bc_exp, out=np.zeros_like(exp), where=bc_exp!=0))*100
@@ -582,6 +585,7 @@ pgf_with_latex = {                      # setup matplotlib to use latex for outp
         r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
         ]
     }
+                    
 mpl.rcParams.update(pgf_with_latex)
 
 
@@ -591,12 +595,13 @@ if __name__ == '__main__':
     sources = ['BE', 'DE','ES', 'FR', 'IT', 'UK']
     yearred = '2030'  # or 2030
     year = 2005  # according to the new NEC directive
-    opts = ['I', 'II']  # or II
+    opts = ['I', 'II']  # I to order sectors in terms of eff
+                        # II to order sectors in terms of potential      
     an_tys = ['sec', 'spa']  # 'sec' or 'spa' anal. type sectorial or spatial
     ords = ['inc', 'dec'] # orders 'inc' or 'dec' increasing or decreasing
                           # values of indicators
-    name = 'exposure'
-    path_results = 'spaflextest\\'
+    name = 'exposure' # esposure or concentration
+    path_results = 'spaflextest2\\'
     path_figures = path_results
     
     # select emission inventory
@@ -610,10 +615,20 @@ if __name__ == '__main__':
     path_surf_nc = 'input/JRC01.nc'
     rootgrp = Dataset(path_surf_nc, mode='r')
     surf = rootgrp.variables['surface'][:]
-    # area_units = rootgrp.variables['surface'].units
+    area_units = rootgrp.variables['surface'].units
     rootgrp.close()
     
-    precursors = ['PPM', 'NOx', 'SOx', 'NH3']
+    # Longitude and latitutde arrays
+    rootgrp = Dataset(path_model_cdf_test, 'r')
+    precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
+    longitude_array = rootgrp.variables['lon'][0, :]
+    latitude_array = rootgrp.variables['lat'][:, 0]
+    rootgrp.close()
+    n_lon = len(longitude_array)  
+    n_lat = len(latitude_array)  
+
+    
+    precursors = ['PPM', 'NOx', 'SOx', 'NH3', 'NMVOC']
     
     # Absolute value of emission reduction by country and precursor
     df_e_red_eu = pd.DataFrame(columns=precursors)
@@ -623,7 +638,6 @@ if __name__ == '__main__':
     df_nec = pd.read_csv(path_results + 'NECdirective.csv', index_col=[0],
                          header=[0, 1])
 
-#    for opt in opts:
     opt = 'I'
     for an_ty in an_tys:
         nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv)
@@ -636,46 +650,98 @@ if __name__ == '__main__':
             grid_per_ch[country][an_ty] = {}
             grid_per_ch[country][an_ty]['dec'] = perexppercountry(name,an_ty, opt, country, 'dec')
             grid_per_ch[country][an_ty]['inc'] = perexppercountry(name,an_ty, opt, country, 'inc')
-##    order = 'dec', 'inc'
-#    order = 'dec'
-#    de_dec = perexppercountry(name,an_ty, opt, country, order)
-#    country = 'ES'
-#    es_dec = perexppercountry(name,an_ty, opt, country, order)
 
-        # Cities analysis
+    # Cities analysis
     path_bc_conc_nc = path_base_conc_cdf_test
     rootgrp = Dataset(path_bc_conc_nc, mode='r')
     bc_pm25_conc = rootgrp.variables['conc'][:]
     # bc_pm25_units = rootgrp.variables['conc'].units
     rootgrp.close()
+    
     conc = np.where(np.isnan(bc_pm25_conc), 0, (bc_pm25_conc))
-    cities = pd.read_csv(
-                   path_results + 'cities.csv', index_col=[0])
-    av_conc_new = {}
-    av_conc = {}
-    for city in cities.index:
-        av_conc_new[city] = {}
-#        print(city)
-        country = city[0:2]
-        area_city = gridint_toarray('GCITY_CODE', 'parea', city)
-        av_conc[city] = (np.sum((conc * area_city * surf / 100) / np.sum(area_city * surf / 100)))
-        for an_ty in an_tys:
-            av_conc_new[city][an_ty] = {}
-            for order in ords:
-                output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
-#    output = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,'dec',an_ty,opt)
-                dc_path = output + 'delta_concentration.nc'
-                rootgrp = Dataset(dc_path, mode='r')
-                dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
-    # bc_pm25_units = rootgrp.variables['conc'].units
-                rootgrp.close()
-                dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
-                ac = bc_pm25_conc - dconc
-                av_conc_new[city][an_ty][order] = (np.sum((ac * area_city * surf / 100) /
-                np.sum(area_city * surf / 100)))
+#    cities = pd.read_csv(
+#                   path_results + 'fuacities.csv')
+    cities = ['Bruxelles', 'Antwerpen', 'Liege', 
+              'Berlin', 'Hamburg', 'Munchen', 'Koln', 
+              'Madrid', 'Barcelona', 'Valencia', 'Bilbao', 
+              'Paris', 'Lyon', 'Lille', 'Marseille', 
+              'Roma', 'Milano', 'Torino', 'Napoli', 
+              'London', 'Manchester', 'West Midlands urban area', 'Liverpool']
+    
+   pd.read_excel(path_results + 'NECdirective.xls', index_col=[0],
+                         header=[0, 1])
 
-    cities = pd.read_csv(
-                   path_results + 'cities.csv', index_col=[0])
+
+    target_cell_lat = 40.40625
+    target_cell_lon = -3.6875
+
+    # convert latitude and longitude string in float
+    target_cell_lat = float(target_cell_lat)
+    target_cell_lon = float(target_cell_lon)
+    
+    # get row index of latitude and col index of longitude
+    i_lat_target = 0
+    lat_error = float('inf')
+    for i in range(len(latitude_array)):
+        lat_dist = abs(target_cell_lat - latitude_array[i])
+        if lat_dist < lat_error:
+            lat_error = lat_dist
+            i_lat_target = i
+    
+    i_lon_target = 0
+    lon_error = float('inf')
+    for i in range(len(longitude_array)):
+        lon_dist = abs(target_cell_lon - longitude_array[i])
+        if lon_dist < lon_error:
+            lon_error = lon_dist
+            i_lon_target = i
+    conc[i_lat_target, i_lon_target]
+    
+    country = 'ES'
+    order = 'dec'
+    an_ty = an_tys[0]
+    output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+    dc_path = output + 'delta_concentration.nc'
+    rootgrp = Dataset(dc_path, mode='r')
+    dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
+    bc_pm25_units = rootgrp.variables['delta_concentration'].units
+    rootgrp.close()
+    
+    dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
+    ac = conc - dconc
+    ac[i_lat_target, i_lon_target]
+
+#    cities['NUTS0'] = [city[:2] for city in cities['FUA_CODE']]
+#    citysel = cities.set_index('NUTS0').loc[sources]
+#    av_conc_new = {}
+#    av_conc = {}
+#    for city in citysel['FUA_CODE']:
+#        print(city)
+#        av_conc_new[city] = {}
+##        print(city)
+    
+    area_city = gridint_toarray('FUA_CODE', 'parea', 'ES001L2')
+    area_city = gridint_toarray('GCITY_CODE', 'parea', 'ES001C1')
+    av_conc = (np.sum((conc * area_city * surf / 100) / np.sum(area_city * surf / 100)))
+    print(av_conc)
+    
+#        for an_ty in an_tys:
+#            av_conc_new[city][an_ty] = {}
+#            for order in ords:
+#                output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+##    output = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,'dec',an_ty,opt)
+#                dc_path = output + 'delta_concentration.nc'
+#                rootgrp = Dataset(dc_path, mode='r')
+#                dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
+#    # bc_pm25_units = rootgrp.variables['conc'].units
+#                rootgrp.close()
+#                dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
+#                ac = bc_pm25_conc - dconc
+#                av_conc_new[city][an_ty][order] = (np.sum((ac * area_city * surf / 100) /
+#                np.sum(area_city * surf / 100)))
+#                print(av_conc_new[city][an_ty][order])
+#    cities = pd.read_csv(
+#                   path_results + 'cities.csv', index_col=[0])
     plt.clf()
     fig= plt.figure(figsize=figsize(1))
     ax = fig.add_subplot(111)
