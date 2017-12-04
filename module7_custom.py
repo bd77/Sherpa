@@ -20,6 +20,7 @@ REFERENCES
 from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
 import numpy as np
 import pandas as pd
+
 def read_nc(nc_file):
     #nc_file='input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
     #nc_file='input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
@@ -42,7 +43,9 @@ def read_nc(nc_file):
             nznames=strpoll.split(', ')
         else:
             nznames=[ncz +"{:02d}".format(x+1) for x in nz]
+
             #nznames=[ncz + s for s in map(str,range(1,len(nc_data.dimensions[ncz])+1))]
+
     #create an index with lat and lon
     #latrep=map(str, np.repeat(lats,len(lons)))
     #lonrep=map(str, np.tile(lons,len(lats)))
@@ -195,6 +198,7 @@ from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 #from pylab import *
 def plot_dict(dc_dic,idx,coord_emissions,grid_grads=3,unit='%'):
+
     lat_emissions=np.unique(coord_emissions['lat'])
     lon_emissions=np.unique(coord_emissions['lon'])
     #grid_grads define the area for the plot
@@ -353,19 +357,23 @@ def haversine_vec(lon1,lat1,lon_vec2,lat_vec2):
 '''
 NAME
     Import info on grid points attribution to nuts or specific area type from ascii file
-PURPOSE
-    Import info on grid points attribution to nuts or specific area type from ascii file/s.
-    If the file is single then it must contain the column 'Area [km2]' relative to % of the area in the finest nut,
+
+PURPOSE 
+    Import info on grid points attribution to nuts or specific area type from ascii file/s. 
+    If the file is single then it must contain the column 'Area [km2]' relative to % of the area in the finest nut, 
+
     this datum will be set to each nut but it will then aggregated for larger nuts when nutsarea will be calculated
     If the files are two, then each nut will have its own % area for each grid point, then the data will be merged here
 PROGRAMMER(S)
     Denise Pernigotti
 REVISION HISTORY
 
+
 REFERENCES
 
 '''
 import pandas as pd
+
 def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
     nuts_info_all={}
     if(filenuts != 'rect'):
@@ -377,12 +385,13 @@ def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
         if calcall :
         #nutsnames.insert(0, 'ALL')
             nutsnames.insert(0, 'ALL_'+nutsnames[0])
-            nuts_info[nutsnames[0]]=nutsnames[0]
-        nuts_info['grid']=['_'.join(str(i) for i in z) for z in zip(nuts_info['COL'],nuts_info['ROW'])]
+
+            nuts_info[nutsnames[0]]=nutsnames[0] 
+        nuts_info['grid']=['_'.join(str(i) for i in z) for z in zip(nuts_info['COL'],nuts_info['ROW'])]      
         if 'Area [km2]' in nuts_info.columns:
             nuts_area=pd.concat(map(lambda p: nuts_info['Area [km2]'],nutsnames),axis=1)
             #nuts_area.index=nuts_info['grid']
-            nuts_area.columns=nutsnames
+            nuts_area.columns=nutsnames  
            #nuts_info=nuts_info[nutsnames]
         else:
             sys.exit("missing infos on grid cells area per nut")
@@ -394,7 +403,9 @@ def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
             nut_info=pd.Series(list(nuts_area[nut]), index=index)
             nut_info=nut_info.to_frame(name='area')
             #aggregate data on these nuts if necessary
-            nut_info_nut=nut_info.groupby(level=[0,1]).sum()
+
+            nut_info_nut=nut_info.groupby(level=[0,1]).sum()    
+
             #find total area
             grid_area_tot=nut_info_nut.groupby(level=['grid']).sum()
             nut_info_nut['parea']=nut_info_nut/grid_area_tot
@@ -406,7 +417,9 @@ def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
     else:
         nuts_rect=nutsall
         nuts_rect.index=nuts_rect.index.droplevel(level=0)
-        grid_inrect=nuts_rect.index
+
+        grid_inrect=nuts_rect.index 
+
         grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']>=rect_coord['ll']['lon']]
         grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']<=rect_coord['ur']['lon']]
         grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']>=rect_coord['ll']['lat']]
@@ -414,7 +427,8 @@ def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
         nuts_rect=nuts_rect.loc[list(grid_inrect)]
         nuts_rect['nutname'] = 'rect'
         nuts_rect.set_index('nutname', append=True, inplace=True)
-        nuts_info_all['rect']=nuts_rect.swaplevel(i=-2, j=-1, axis=0)
+        nuts_info_all['rect']=nuts_rect.swaplevel(i=-2, j=-1, axis=0)        
+
     return nuts_info_all
 '''
 NAME
@@ -449,6 +463,7 @@ def find_target_info(areaid,areacells,x_y):
               target_info=pd.Series([target_area,len(area_cells)],index=['areaid','ncells'],name=areaid)
               return target_info
 
+
 '''
 NAME
     Summation of dc per area and eventually per precursor
@@ -482,7 +497,8 @@ REVISION HISTORY
 
 REFERENCES
 
-'''
+'''  
+
 def dc_snapaggregate(alldc_snaps,aggr_src=True):
     #aggregate sources as required in e-rep
     if(aggr_src==True):
@@ -513,32 +529,31 @@ REFERENCES
 def dc_increments(alldc,aggr_zones='city'):    #calculate increments
     alldc_inc={}
     if(aggr_zones!='rect'):
-        alldc_inc['ALL_NUTS_Lv0']=alldc['ALL_NUTS_Lv0']-alldc['NUTS_Lv0']
-        if aggr_zones=='city':
+        alldc_inc['ALL_NUTS_Lv0']=alldc['ALL_NUTS_Lv0']-alldc['NUTS_Lv0'] 
+        if aggr_zones=='city': 
             if 'FUA_CODE' in alldc.columns:
                 alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']-alldc['FUA_CODE']
-                if 'GCITY_CODE' in alldc.columns:
+                if 'GCITY_CODE' in alldc.columns: 
                     alldc_inc['FUA_CODE']=alldc['FUA_CODE']-alldc['GCITY_CODE']
                     alldc_inc['GCITY_CODE']=alldc['GCITY_CODE']
                 else:
-                    alldc_inc['FUA_CODE']=alldc['FUA_CODE']
+                    alldc_inc['FUA_CODE']=alldc['FUA_CODE']               
             else:
                alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']
         elif aggr_zones=='nuts':
             alldc_inc['NUTS_Lv0']=alldc['NUTS_Lv0']-alldc['NUTS_Lv1']
             if 'NUTS_Lv2' in alldc.columns:
                 alldc_inc['NUTS_Lv1']=alldc['NUTS_Lv1']-alldc['NUTS_Lv2']
-                if 'NUTS_Lv3' in alldc.columns:
+                if 'NUTS_Lv3' in alldc.columns: 
                     alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']-alldc['NUTS_Lv3']
                     alldc_inc['NUTS_Lv3']=alldc['NUTS_Lv3']
                 else:
-                    alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']
+                    alldc_inc['NUTS_Lv2']=alldc['NUTS_Lv2']               
             else:
                alldc_inc['NUTS_Lv1']=alldc['NUTS_Lv1']
     else:
         alldc_inc['ALL_NUTS_Lv0']=alldc['ALL_NUTS_Lv0']-alldc['rect']
         alldc_inc['rect']=alldc['rect']
-
     alldc_inc=pd.DataFrame.from_dict(alldc_inc)
     return alldc_inc
 
@@ -559,7 +574,7 @@ def sherpa_model(pr,model_idx,alldists,emissiondelta,inner_radius=False):
     emidelta=emissiondelta.loc[pr]
     #fastest
     window_all=(1.+alldists)**(-model_idx.loc['omega'][pr])
-    dc_cells=model_idx.loc['alpha'][pr]*(emidelta*window_all)
+    dc_cells=model_idx.loc['alpha'][pr]*(emidelta*window_all) 
     if inner_radius is not False : #if not zero then use info on flatweight
         outer_cells=alldists[(alldists>inner_radius) & (emidelta.sum()>0)].index
         if len(outer_cells)>0:
@@ -571,7 +586,8 @@ def sherpa_model(pr,model_idx,alldists,emissiondelta,inner_radius=False):
             flat_matrix=pd.DataFrame(index=outer_cells, columns=flat_value.index)
             flat_matrix=flat_matrix.fillna(flat_value)
             dc_cells.loc[:,outer_cells]=flat_matrix.transpose()
-    return dc_cells
+
+    return dc_cells 
 
 '''
 NAME
@@ -581,11 +597,11 @@ PURPOSE
 PROGRAMMER(S)
     Denise Pernigotti starting from Bart routine for writing delta conc netcdf in module 1
 REVISION HISTORY
-
+    
 REFERENCES
-
+    
 '''
-import pandas as pd
+import pandas as pd  
 def df2mat(dfdata):
     grids=pd.DataFrame(dfdata.index.str.split('_',expand=True).tolist(), columns=['x','y'], index=dfdata.index)
     grids['x']=pd.to_numeric(grids['x'])
@@ -599,43 +615,44 @@ def df2mat(dfdata):
 NAME
     Convert a 3D matrix to a multindex dataframe
 PURPOSE
-    Convert a 3D matrix to a multindex dataframe, where indexes came from a combination of dimnames[0] and dimnames[1] while
+    Convert a 3D matrix to a multindex dataframe, where indexes came from a combination of dimnames[0] and dimnames[1] while 
     columns come from dimnames[2]
 PROGRAMMER(S)
     Denise Pernigotti
 REVISION HISTORY
-
+    
 REFERENCES
-
+    
 '''
 import numpy as np
 import pandas as pd
 
 def array2df(array3D,dimnames):
-    #convert it back to Dataframe
+    #convert it back to Dataframe   
     #search which dimensions corresponds to array dimensions
     arrayind=np.argsort(array3D.shape)
     if arrayind[0]==0:
         array3D=np.swapaxes(array3D, 0, 2)
     elif arrayind[1]==0:
         array3D=np.swapaxes(array3D, 1, 2)
-
+        
     arrayind=np.argsort(array3D.shape)
     if arrayind[0]==1: array3D=np.swapaxes(array3D, 0, 1)
-
+    
     arrayind=np.argsort(array3D.shape)
     if(arrayind[0]==0 and arrayind[1]==1 and arrayind[2]==2):
      dimnnames_sortednames=[k for k in sorted(dimnames, key=lambda k: len(dimnames[k]))]
-     dimnames_len=[len(emissions_array['dimnames'][d]) for  d in dimnnames_sortednames]
+     dimnames_len=[len(emissions_array['dimnames'][d]) for  d in dimnnames_sortednames] 
      array_new= np.reshape(array3D,(dimnames_len[0]*dimnames_len[1],dimnames_len[2]))
      iterables = [dimnames[dimnnames_sortednames[0]],dimnames[dimnnames_sortednames[1]]]
      df_index=pd.MultiIndex.from_product(iterables, names=[dimnnames_sortednames[0],dimnnames_sortednames[1]])
-     dc_df=pd.DataFrame(data=array_new, index=df_index,columns=dimnames[dimnnames_sortednames[2]])
+     dc_df=pd.DataFrame(data=array_new, index=df_index,columns=dimnames[dimnnames_sortednames[2]]) 
     else:
         print(arrayind)
-        exit('something wrong in matrix dimension')
-    return dc_df
-# main
+        exit('something wrong in matrix dimension')    
+    return dc_df  
+# main 
+
 if __name__ == '__main__':
 
     import time
@@ -650,7 +667,7 @@ if __name__ == '__main__':
     #set working directory
     #os.chdir('E:\\BKUP\\JRC\\E-REP')
     #the input files are searched starting fro currect directory if not specified otherwise
-    localdir= os.path.dirname(__file__)
+    localdir= os.path.dirname(__file__) 
     sherpadir=localdir
     #directory for emissions and SR relationship only
     sherpa_version='20170322_v18_SrrResults_PotencyBased'
@@ -660,19 +677,22 @@ if __name__ == '__main__':
     print('while txt files for grid intersect nuts, fua etc will be searched in local input directory '+localdir)
 
     ############################################### user input data
-    pollutant='PM25' #may be '25' or '10'
-    testarea='COMlyon' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
-    aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur)
+
+    pollutant='NO2' #may be '25' or '10'
+    testarea='Covenant' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
+
     rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
     aggr_src=True #set to True for aggregatin sources as in erep
     include_natural=False #include or not natiral PM concentration
     outfig='png' #'pnd' of 'pdf'
-    ###############################################
-    ############################################### input files
+
+    ############################################### 
 
     pollconc=pollutant+'_Y'
     pollmodel=pollutant+'_Y'
-    if pollutant is 'NO2':
+
+    if pollutant is 'NO2': 
         pollconc='NO2_NO2eq_Y_mgm3'
         pollmodel='NO2eq_Y'
     emissions_nc=os.path.join(sherpadir, 'input',sherpa_version,'1_base_emissions','BC_emi_'+pollutant+'_Y.nc')
@@ -687,18 +707,19 @@ if __name__ == '__main__':
     #list of true names for areas IDs
     codes_names=pd.Series({'NUTS_Lv0':'nuts0','NUTS_Lv1':'nuts1','NUTS_Lv2':'nuts2','NUTS_Lv3':'nuts3','FUA_CODE':'fua','GCITY_CODE':'gcities'})
     codes_txt={k: localdir +'\\input\\selection\\' + codes_names[k] +'_names.txt'for k in codes_names.keys()}
-    #list of points used as receptors. Only 'id','lon','lat' and 'Station name' are required columns
+    #list of points used as receptors. Only 'id','lon','lat' and 'Station name' are required columns 
     targets_txt=localdir +'\\input\\' + testarea + '_targets.txt'
-    ###############################################
+    ############################################### 
 
     #If not present create the output/testarea directory
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-
-    #read netcdf files, put the data in multindex dataframes and check consistency
+    
+    #read netcdf files, put the data in multindex dataframes and check consistency 
     emissions = read_nc(emissions_nc)
-    concentration = read_nc(concentration_nc)
-    model= read_nc(model_nc)
+    concentration = read_nc(concentration_nc) 
+    model= read_nc(model_nc) 
+
 
     if include_natural:
         pmsize=pollutant[-2:]
@@ -706,21 +727,23 @@ if __name__ == '__main__':
         dust_nc = os.path.join(dir, 'input','pDUST-pSALT',pmsize,'basecase.nc')
         salt= read_nc(salt_nc)
         dust= read_nc(dust_nc)
-
+    
     #check consistency of model and emissions
-    if model.loc['coord'].astype(np.float32).equals(emissions.loc['coord'].astype(np.float32)):
-    #if model.loc['coord'].equals(emissions.loc['coord']):
+    if model.loc['coord'].astype(np.float32).equals(emissions.loc['coord'].astype(np.float32)): 
+    #if model.loc['coord'].equals(emissions.loc['coord']): 
+
         print ('OK latitude and longitude in matrices emissions and model are the same')
     else:
         sys.exit("latitude and/or longitude are different in loaded matrices")
 
     #check consistency of model and concentrations
     if model.loc['coord'].astype(np.float32).equals(concentration.loc['coord'].astype(np.float32)):
-    #if model.loc['coord'].equals(concentration.loc['coord']):
+
+    #if model.loc['coord'].equals(concentration.loc['coord']): 
         print ('OK latitude and longitude in matrices model and conc are the same')
     else:
-        sys.exit("latitude and/or longitude are different in loaded matrices")
-
+        sys.exit("latitude and/or longitude are different in loaded matrices")         
+    
     #get inner radios and check if the flat weight option is activated
     inner_radius = int(getattr(Dataset(model_nc,'r'), 'Radius of influence'))
     if 'flatWeight' in model.index.levels[0]:
@@ -729,10 +752,11 @@ if __name__ == '__main__':
             sys.exit("Something wrong, radius of influence is >=200")
     else:
         if inner_radius is not 200:
-            sys.exit("Something wrong, flatweight approximation is deactivated but inner_radius is not 200")
+
+            sys.exit("Something wrong, flatweight approximation is deactivated but inner_radius is not 200")   
         print('Flatweight approximation is OFF')
         inner_radius=False
-
+ 
     #save coord info
     coordinates=emissions.loc['coord',].transpose()
     lat_vec=np.unique(coordinates['lat'])
@@ -747,7 +771,6 @@ if __name__ == '__main__':
     nuts_info.update(read_nuts_area(fua_txt,nullnut='LAND000'))
     if(aggr_zones=='rect'):
         nuts_info.update(read_nuts_area('rect',nutsall=nuts_info['ALL_NUTS_Lv0'].copy()))
-
 
     #read list of receptors and check its consistency
     receptors=pd.read_csv(targets_txt,delimiter="\t",encoding = "ISO-8859-1")
@@ -781,9 +804,10 @@ if __name__ == '__main__':
     model=model.drop('coord',level=0)
     emissions=emissions.drop('coord',level=0)
     #fake sum to remove one level
-    concentration=concentration.groupby(level=[0]).sum()
-    concentration=concentration.loc['conc']
 
+    concentration=concentration.groupby(level=[0]).sum()  
+    concentration=concentration.loc['conc']
+ 
     #remove not modelled points (SR was build only using reductons in points in grid intersect)
     modelled_emissions_idx=list(set(emissions.columns).intersection(nuts_info['NUTS_Lv0'].index.get_level_values(1)))
     emissions=emissions[modelled_emissions_idx]
@@ -806,9 +830,8 @@ if __name__ == '__main__':
             info_grids[area]=info_grids[area].set_index(info_grids_area.index)
             info_grids[area]= info_grids[area].drop([0], 1)
             #print(info_grids[area])
-            nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:]
-
-
+            nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:] 
+        
     #remove not modelled grid points
     model_sum=model.loc['alpha'].sum()
     model_points=model_sum[model_sum>0].index
@@ -819,7 +842,7 @@ if __name__ == '__main__':
     model_sumgrid=model.loc['alpha'].sum(axis=1)
     precursors=list(model_sumgrid[model_sumgrid>0].index)
     print ("in model keep ",list(precursors)," modelled precursors")
-    model=model.loc[(slice(None),precursors),:]
+    model=model.loc[(slice(None),precursors),:]  
     emissions=emissions.loc[(precursors,slice(None)),:]
 
     ###########
@@ -867,8 +890,8 @@ if __name__ == '__main__':
         #create an emissions delta with zeroes out of the area and emissions detuced by emissions_delta multiplies for the realtive grid area inside the area
 
         #Core of the sharpa calculations: calculate dc due to each gridpoint for each precursor and macrosector
-        start =time.perf_counter()
-        dc[idx]=pd.concat(list(map(lambda p: sherpa_model(p, model[idx],dists_array[ix,:],emissions,inner_radius),precursors)))
+        start =time.perf_counter()    
+        dc[idx]=pd.concat(list(map(lambda p: sherpa_model(p, model[idx],dists_array[ix,:],emissions,inner_radius),precursors))) 
         dc[idx].index=emissions.index
         end = time.perf_counter()
         #print ("time elapsed ",end-start)

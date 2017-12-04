@@ -15,14 +15,12 @@ for compatibility the header is 'potency' in the output txt
 
 # imports
 from netCDF4 import Dataset
-from numpy import lib, zeros, sum, power, ones, array
+from numpy import lib, zeros, sum, power, array
 from math import isnan
 # path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test,
-from time import time
 import sys
 from sherpa_globals import alpha_potency
 from sherpa_auxiliaries import create_emission_reduction_dict, create_emission_dict, create_window, deltaNOx_to_deltaNO2
-from os import rename
 
 # function that applies reductions per snap sector and precursor to the emission netcdf
 def create_delta_emission(path_emission_cdf, precursor_lst, reduction_area_array, path_reduction_txt):
@@ -235,7 +233,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
         for nuts_code in sorted_nuts_codes:
             f_res.write('%s\t%e\n' % (nuts_code, delta_conc[nuts_code] / target_conc_basecase / (alpha_potency / 100) * 100)) # rel potential in percentage
     f_res.close()
-
+    
     
 if __name__ == '__main__':
     
