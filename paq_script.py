@@ -20,7 +20,8 @@ import pandas as pd
 
 
 from healthia import calc_impacts
-import module1old as shrp # at the moment using old model and module!
+#import module1old as shrp # at the moment using old model and module!
+import module1 as shrp # trying with new model1
 from sherpaeco import save_obj, load_obj
 from sherpa_auxiliaries import (create_emission_reduction_dict,
                                 create_emission_dict, create_window,
@@ -192,10 +193,10 @@ if __name__ == '__main__':
             proglog_filename = path_result_cdf_test + 'proglog'
             write_progress_log(proglog_filename, 25, 2)
             start = time()
-#            shrp.module1(path_emission_cdf_test, nc_redarea,
-#                         path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
             shrp.module1(path_emission_cdf_test, nc_redarea,
-                         path_reduction_txt, path_model_cdf_test, output)
+                         path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
+#            shrp.module1(path_emission_cdf_test, nc_redarea,
+#                         path_reduction_txt, path_model_cdf_test, output)
             stop = time()
             print('Module 1 run time: %s sec.' % (stop-start))
             remove(proglog_filename)
@@ -231,10 +232,10 @@ if __name__ == '__main__':
         proglog_filename = path_result_cdf_test + 'proglog'
         write_progress_log(proglog_filename, 25, 2)
         start = time()
-#        shrp.module1(path_emission_cdf_test, path_area_eu,
-#                     path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
         shrp.module1(path_emission_cdf_test, path_area_eu,
-                     path_reduction_txt, path_model_cdf_test, output)
+                     path_reduction_txt, path_base_conc_cdf_test, path_model_cdf_test, output)
+#        shrp.module1(path_emission_cdf_test, path_area_eu,
+#                     path_reduction_txt, path_model_cdf_test, output)
         stop = time()
         print('Module 1 run time: %s sec.' % (stop-start))
         remove(proglog_filename)

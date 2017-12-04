@@ -12,8 +12,8 @@ from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
 import pickle  # to save results direclty as python objects
 import pandas as pd
 from module7_custom import read_nuts_area
-from sherpa_globals import path_model_cdf_test, grid_txt, gcities_txt, fua_txt, path_emission_cdf_test
-
+from sherpa_globals import path_model_cdf_test, path_grid_txt, gcities_txt, fua_txt, path_emission_cdf_test
+import os as os
 from sherpa_auxiliaries import (create_emission_dict)
 
 def tiftogridgeneral(path_tiff):
@@ -57,7 +57,7 @@ def load_obj(name ):
 def gridint_toarray(level, parea, code):
     """
     Reads the grid intersect txt files and creates an array with the specified
-    dimensions with the fraction of each cell beleonging to the specified area
+    dimensions with the percentage of each cell beleonging to the specified area
   . Needs to import the function from DENISEP
     from module7_custom import read_nuts_area
 
@@ -77,7 +77,11 @@ def gridint_toarray(level, parea, code):
     lat_array = rootgrp.variables['lat'][:, 0]
     rootgrp.close()
 
-    nuts_info = read_nuts_area(grid_txt, calcall=True)
+    # @TODO modified to see if I gain time... not sure it will still work @TODO
+#    if level == 'NUTS_Lv0': 
+#        nuts_info = read_nuts_area(grid_txt, calcall=True)
+#    else: 
+    nuts_info = read_nuts_area(path_grid_txt, calcall=True)
     nuts_info.update(read_nuts_area(gcities_txt, nullnut='LAND000'))
     nuts_info.update(read_nuts_area(fua_txt, nullnut='LAND000'))
 
@@ -111,7 +115,7 @@ def gridint_toarray(level, parea, code):
     return area_sel*100
 
 
-def write_nc(array, path_nc, name_var, unit_var, addnutsid=False):
+def write_nc(array, path_nc, name_var, unit_var, addnutsid=False, l_name=None):
     ''' Function to write an array in a netcdf file,
         input:
             - array: data to write
@@ -127,27 +131,42 @@ def write_nc(array, path_nc, name_var, unit_var, addnutsid=False):
     lon_array = rootgrp.variables['lon'][0, :]
     lat_array = rootgrp.variables['lat'][:, 0]
     rootgrp.close()
-    fh = Dataset(path_nc, mode='w', format='NETCDF3_CLASSIC')
-    fh.createDimension('latitude', len(lat_array))
-    fh.createDimension('longitude', len(lon_array))
-    latitude = fh.createVariable('latitude', 'f4', ('latitude',))
-    longitude = fh.createVariable('longitude', 'f4', ('longitude',))
-    if addnutsid is True:
+    if not os.path.exists(path_nc):
+        mode = 'w' 
+        fh=Dataset(path_nc, mode=mode, format='NETCDF3_CLASSIC') 
+        fh.createDimension('latitude', len(lat_array))
+        fh.createDimension('longitude', len(lon_array))
+        latitude = fh.createVariable('latitude', 'f4', ('latitude',))
+        longitude = fh.createVariable('longitude', 'f4', ('longitude',)) 
+        if addnutsid is True:
 #        fh.createDimension('z', 10)
-        fh.createDimension('nuts_id', 1)
-        var = fh.createVariable(name_var, 'f4',
-                                ('nuts_id', 'latitude', 'longitude',))
-        nutsid = fh.createVariable('NUTS', 'i4', ('nuts_id',))
-        longitude[:] = lon_array
-        latitude[:] = lat_array
-        nutsid[0] = 1
-        var[0, :] = array
-    elif addnutsid is False:
-        longitude[:] = lon_array
-        latitude[:] = lat_array
-        var = fh.createVariable(name_var, 'f4', ('latitude', 'longitude'))
-        var[:] = array
-        fh.variables[name_var].units = unit_var
+            fh.createDimension('nuts_id', 1)
+            var = fh.createVariable(name_var, 'f8',
+                                    ('nuts_id', 'latitude', 'longitude',))
+            nutsid = fh.createVariable('NUTS', 'i4', ('nuts_id',))
+            longitude[:] = lon_array
+            latitude[:] = lat_array
+            nutsid[0] = 1
+            var[0, :] = array
+        elif addnutsid is False:
+            longitude[:] = lon_array
+            latitude[:] = lat_array
+            var = fh.createVariable(name_var, 'f8', ('latitude', 'longitude'))
+            var[:] = array          
+    else:
+        mode = 'a'
+        fh=Dataset(path_nc, mode=mode, format='NETCDF3_CLASSIC')
+        if addnutsid is True:
+            var = fh.createVariable(name_var, 'f8',
+                                    ('nuts_id', 'latitude', 'longitude',))
+            var[0, :] = array
+        elif addnutsid is False:
+            var = fh.createVariable(name_var, 'f8', ('latitude', 'longitude'))
+            var[:] = array
+
+    fh.variables[name_var].units = unit_var
+    if l_name is not None:
+        fh.variables[name_var].long_name =l_name
     fh.close()
 
 

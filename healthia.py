@@ -94,7 +94,7 @@ def calc_impacts(path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
         Sex: Both
         http://data.euro.who.int/dmdb/ [Accessed December 13, 2016].
 
-        Life expectancy at birth for the year 2009 (most recent with the most
+        Life expectancy at bith for the year 2009 (most recent with the most
         values) from:
         http://data.euro.who.int/hfamdb/ [Accessed Aprli 12, 2017].
 
@@ -105,7 +105,10 @@ def calc_impacts(path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
     # BASELINE POPULATION DATA
     # Load population file from LUISA
     popall = tiftogridgeneral(path_tiff)
-
+    # remove all negative and -inf values (not sure why they are there)
+    popall = np.where(np.isinf(popall), 0, popall)
+    popall = np.where(popall < 0, 0, popall)
+#    write_nc(popall, 'input\\pop\\pop_nc.nc', 'ppl', '-')
     # Build Pandas dataframe with the baseline population data
     # distributed by age:
     # Baseline morality
@@ -168,12 +171,14 @@ def calc_impacts(path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
     # the database. Average values calculating considering EU28 countries
     # which are also in the WHO database
 
-    eu28_codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES',
-                  'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT',
-                  'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
+    eu34_codes =['AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL',  
+                 'ES', 'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LI', 'LT', 'LU', 
+                 'LV', 'ME', 'MK', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE',
+                 'SI', 'SK', 'TR', 'UK']
+    
     # Find coutnries that are both in the EU and in the mortality database
     intersect = list(
-            set.intersection(set(eu28_codes), set(list(df_mort.index))))
+            set.intersection(set(eu34_codes), set(list(df_mort.index))))
     # Calculate averages for the countries in both lists:
     m_drate = drate.ix[intersect].mean(axis=0)
     m_p30_ptot = p30_ptot.ix[intersect].mean(axis=0)
@@ -240,19 +245,33 @@ def calc_impacts(path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
     # considering bounds for 95% CI
     if approx == 'l':
         # linear approximation
-        mrr = 1.06  # 'middle' value
-        lrr = 1.04  # lower bound
-        hrr = 1.083  # higher bound
+#        mrr = 1.06  # 'middle' value
+#        lrr = 1.04  # lower bound
+#        hrr = 1.083  # higher bound
+#        # crf = 0.006
+#        af = np.asarray([(lrr-1)/lrr, (mrr-1)/mrr, (hrr-1)/hrr]) / 10
+#        pt = len(af)
+#        if country in list(df_mort.index):
+#            delta_mort = np.where(np.isnan(pm25_conc), 0, (
+#                    [af[i]*pm25_conc*pop30plus*drate.ix[country]
+#                     for i in range(len(af))]))
+#        else:
+#            delta_mort = np.where(np.isnan(pm25_conc), 0, (
+#                    [af[i]*pm25_conc*pop30plus*m_drate
+#                     for i in range(len(af))]))
+        mrr = 0.06  # 'middle' value
+        lrr = 0.04  # lower bound
+        hrr = 0.083  # higher bound
         # crf = 0.006
-        af = np.asarray([(lrr-1)/lrr, (mrr-1)/mrr, (hrr-1)/hrr]) / 10
+        af = [lrr, mrr, hrr]
         pt = len(af)
         if country in list(df_mort.index):
             delta_mort = np.where(np.isnan(pm25_conc), 0, (
-                    [af[i]*pm25_conc*pop30plus*drate.ix[country]
+                    [(af[i]*pm25_conc/10)/(1+af[i]*pm25_conc/10)*pop30plus*drate.ix[country]
                      for i in range(len(af))]))
         else:
             delta_mort = np.where(np.isnan(pm25_conc), 0, (
-                    [af[i]*pm25_conc*pop30plus*m_drate
+                    [(af[i]*pm25_conc/10)/(1+af[i]*pm25_conc/10)*pop30plus*m_drate
                      for i in range(len(af))]))
 
     elif approx == 'e':
@@ -328,16 +347,16 @@ def calc_impacts(path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
 if __name__ == '__main__':
 
     from sherpa_globals import (path_tiff, path_mortbaseline,
-                                path_base_conc_cdf_test,
                                 path_dust_conc_cdf_test,
                                 path_salt_conc_cdf_test)
 
     level = 'NUTS_Lv0'
     parea = 'parea'
-    path_conc_nc = path_base_conc_cdf_test
-    codes = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI',
+    path_conc_nc = 'D://sherpa.git//Sherpa//outputdieselgate//delta_concentration.nc'
+    codes = ['CY', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI',
              'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL',
              'PT', 'RO', 'SE', 'SI', 'SK', 'UK']
+#    codes = ['IT']
     deltayll_reg = {}
     deltayll_spec_reg = {}
     delta_mort_reg = {}
@@ -351,5 +370,5 @@ if __name__ == '__main__':
          deltayll_spec_reg[code]) = calc_impacts(
                  path_conc_nc, path_areasel_nc, path_tiff, path_mortbaseline,
                  path_dust_conc_cdf_test, path_salt_conc_cdf_test,
-                 code, spec='a',
-                 approx='e', miller=True, std_life_exp=70)
+                 code, spec='d',
+                 approx='l', miller=False, std_life_exp=70)
