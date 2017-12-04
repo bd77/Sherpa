@@ -339,6 +339,7 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
 
     # Set a buffer around the edge
     plt.ylim([min(tick_pos)-bar_width, max(tick_pos)+bar_width])
+    plt.show()
     return f
 
 
@@ -352,7 +353,7 @@ def figsize(scale):  # Added by Ema for spyder plot
     return fig_size
 
 
-def plot_spyder(emi_sum, prec):  # Added by Ema for spyder plot
+def plot_spyder(emi_sum, prec, ftx=16):  # Added by Ema for spyder plot
     """Spyder plot for emissions, only if the point is in GCITY
     @author: peduzem
 
@@ -368,29 +369,35 @@ def plot_spyder(emi_sum, prec):  # Added by Ema for spyder plot
 #        fig = plt.figure(figsize=figsize(1))
         ax = fig.add_subplot(111, projection="polar")
         ax.grid(True)
-        ax.yaxis.grid(color='#dddddd')
-        ax.xaxis.grid(color='#dddddd')
-        colors = ['gold', 'tomato']
+        ax.yaxis.grid(color='#aab0b7')
+        ax.xaxis.grid(color='#aab0b7')
+        dct_colors = {'GCITY_CODE': ['red', 'red', '//', 'City'],
+                      'FUA_CODE': ['blue', 'None', '', 'Greater city']}
         for spine in ax.spines.values():
             spine.set_edgecolor('None')
         theta = np.arange(len(df_city))/float(len(df_city))*2.*np.pi
         ax.set_xticks(theta)
+
         for tick in ax.yaxis.get_major_ticks():
             tick.label1.set_horizontalalignment('center')
             tick.label1.set_verticalalignment('top')
-
         df = []
 
         if 'FUA_CODE' in emi_sum.columns:
             df_fua = emi_sum['FUA_CODE'].loc[prec].reindex(index)/1000
             df.append([df_fua])
         df.append([df_city])
+
+        # make plots
         plots = []
         for it, dfdata in enumerate(df):
-            line, = ax.plot(theta, df[it][0], color=colors[it],
-                            marker="o", label=None, zorder=3)  # , zorder = -3)
-            ax.fill(theta, df[it][0], color=colors[it], alpha=0.3,
-                    zorder=3)
+            line, = ax.plot(theta, df[it][0], color=dct_colors[df[it][0].name][0],
+                            marker=None, label=None, zorder=3)
+            ax.fill(theta, df[it][0], color=dct_colors[df[it][0].name][1], alpha=0.3,
+                        zorder=3, lw=0.3)
+            ax.fill(theta, df[it][0], edgecolor=dct_colors[df[it][0].name][1],
+                        alpha=0.3, hatch=dct_colors[df[it][0].name][2], zorder=3, color='None',
+                        lw=0.4)
             plots.append(line,)
 
         def _closeline(line):
@@ -403,22 +410,29 @@ def plot_spyder(emi_sum, prec):  # Added by Ema for spyder plot
         ax.set_rlabel_position(90)  # get radial labels away from plotted line
 
         maxy = max(max(df_fua), max(df_city))
+        # set yticks so that I have 5 y ticks for each figure
+        ylim_lst = [1, 2, 5, 10, 15, 20, 40, 50, 60, 80, 100]
+        for lim in ylim_lst:
+            if maxy <= lim:
+                ylim = lim
+                ax.set_ylim(top=ylim)
+                plt.yticks(np.arange(0, (ylim+ylim/5), ylim/5), zorder=6)
+                break
+            else:
+                ylim = maxy
+
         for it in np.arange(len(theta)):
-            ax.text(theta[it], maxy*1.15, index[it], va='center',
-                    ha='center', fontsize=12)
+            ax.text(theta[it], ylim*1.15, index[it], va='center',
+                    ha='center', fontsize=ftx)
         ax.set_xticklabels('')
 
-        plt.legend(handles=[plots[0], plots[1]], labels=['FUA', 'city core'],
-                   bbox_to_anchor=(0, 1), loc='center left')
-        ax.tick_params(axis='y', labelsize=10, zorder=4)
-        plt.title("{} emissions [kton/y]".format(prec), fontsize=14, y=1.2)
+#        plt.legend(handles=[plots[0], plots[1]], labels=['Greater city', 'City'],
+#                    loc=(-0.2, 0.9), fontsize=ftx-2, frameon=False)
+        ax.tick_params(axis='y', labelsize=ftx-2, zorder=4)
+        plt.title("{} [kton/y]".format(prec), fontsize=ftx, y=1.2, weight='bold')
+#        plt.show()
         return fig
-
-
-
 ##
-
-
 '''
 NAME
     Implementation of haversine formula (form lat lon to distances in km) for vectors
@@ -777,7 +791,7 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
 
     ################default user definition
     aggr_src=True #set to True for aggregatin sources as in erep
-    include_natural=False #include or not natiral PM concentration
+    include_natural=True #include or not natiral PM concentration
     print_areainfo=False #if true check and print which grid points in fua/gcity are actually not modelled
     #############
 
@@ -797,14 +811,14 @@ def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,o
     emissions = read_nc(emissions_nc)
 
     concentration = read_nc(concentration_nc)
-    model= read_nc(model_nc)
+    model = read_nc(model_nc)
 
     if include_natural:
-        pmsize=pollutant[-2:]
-        salt_nc ='input/pDUST-pSALT',pmsize,'basecase.nc'
-        dust_nc = 'input/pDUST-pSALT',pmsize,'basecase.nc'
-        salt= read_nc(salt_nc)
-        dust= read_nc(dust_nc)
+        pmsize = pollutant[-2:]
+        salt_nc = 'input/pDUST-pSALT/pSALT-'+pmsize+'-basecase.nc'  # EMA
+        dust_nc = 'input/pDUST-pSALT/pDUST-'+pmsize+'-basecase.nc'  # EMA
+        salt = read_nc(salt_nc)
+        dust = read_nc(dust_nc)
 
     #check consistency of model and emissions
     if model.loc['coord'].astype(np.float32).equals(emissions.loc['coord'].astype(np.float32)):
@@ -1122,6 +1136,9 @@ if __name__ == '__main__':
     testarea='Pariscity' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     pollutant='PM25' #may be 'PM25' or 'PM10' or NOx
     aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur)
+	aggr_core = True # added by EPE, in case of aggr_zone == 'city'
+    # the core of the city may be made up of multiple administrative units
+    # which are aggregated in one single core
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
     outfig='jpg' #'pnd' of 'pdf'
     ###############################################
