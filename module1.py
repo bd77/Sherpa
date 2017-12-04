@@ -119,7 +119,7 @@ def create_delta_emission(path_emission_cdf, precursor_lst, path_area_cdf,
     return delta_emission_dict
 
 # function definition of source receptor model
-def module8(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf, *progresslog):
+def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf, *progresslog):
     
     # check if a progess log file was passed as argument
     if progresslog:
