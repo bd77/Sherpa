@@ -69,8 +69,10 @@ from module3 import module3a, module3b
 from module4 import module4
 from module5 import module5
 from module6 import module6
+from module8_healthia import module8_healthia
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
-    path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, path_base_conc_cdf_test
+    path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
+    path_base_conc_cdf_test, path_healthbl_test, path_config_json_test
 from sherpa_auxiliaries import is_number
 from sys import argv
 import os.path
@@ -85,7 +87,7 @@ if __name__ == '__main__':
         
         # run module 1 with test inputs
         start = time()
-        module1(path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_model_cdf_test, path_result_cdf_test)
+        module1(path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, path_base_conc_cdf_test, path_model_cdf_test, path_result_cdf_test)
         stop = time()
         print('Module 1 run time: %s sec.' % (stop-start))
         
@@ -119,7 +121,7 @@ if __name__ == '__main__':
         module5(path_emission_cdf_test, path_nuts0_cdf_test, path_reduction_txt_test, path_base_conc_cdf_test, path_model_cdf_test, path_result_cdf_test)
         stop = time()
         print('Module 5 calculation time = %f' % (stop - start))
-
+#
         # run module 6 test inputs
         start = time()
         # paris
@@ -128,7 +130,13 @@ if __name__ == '__main__':
         module6(path_emission_cdf_test, path_nuts2_cdf_test, target_cell_lat, target_cell_lon, 'input/user_reduction_snap7.txt', path_base_conc_cdf_test, path_model_cdf_test, path_result_cdf_test)
         stop = time()
         print('Module 6 calculation time = %f' % (stop - start))
-        
+#
+        # run module 8 test inputs        
+        start = time()
+        module8_healthia(path_healthbl_test, path_result_cdf_test, path_config_json_test, path_base_conc_cdf_test)
+        stop = time()
+        print('Module 8 calculation time = %f' % (stop - start))
+
     else:
         # check which module has to be ran
         module = int(argv[1])
@@ -231,7 +239,20 @@ if __name__ == '__main__':
             path_result_cdf = argv[9]
             
             module6(path_emission_cdf, path_nuts_cdf, cell_lat, cell_lon, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf)
+
+        # ---------#
+        # module 8 #
+        # ---------#
+        
+        elif module == 8:
+            path_healthbl = argv[2]     
+            path_result_cdf = argv[3]
+            path_config_json = argv[4]
+            if argv[5]:
+                path_base_conc_cdf = argv[5]           
+            module8_healthia(path_healthbl, path_result_cdf, path_config_json, path_base_conc_cdf)
     
+     
         else:
             print('unknown module %d' % module)
         

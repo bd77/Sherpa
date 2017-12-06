@@ -23,6 +23,7 @@ path_reduction_mod3b_txt_test = 'input/potency_reduction_module3b.txt'
 path_model_cdf_test = 'input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc' 
 # folder where output will be put
 path_result_cdf_test = 'output/'
+
 # progress log is used when module 1 is called by another module
 path_nuts0_cdf_test = 'input/EMI_RED_ATLAS_NUTS0.nc'
 path_nuts1_cdf_test = 'input/EMI_RED_ATLAS_NUTS1.nc'
@@ -31,6 +32,8 @@ path_nuts3_cdf_test = 'input/EMI_RED_ATLAS_NUTS3.nc'
 
 path_base_conc_cdf_test = 'input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc'
 
+path_healthbl_test = 'input/impacts/healthbl_nc.nc'
+path_config_json_test = 'config/sharedvariables.json'
 
 # list of precursors
 # order important, it's the order in the alpha and omega arrays
