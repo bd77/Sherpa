@@ -23,7 +23,6 @@ path_reduction_mod3b_txt_test = 'input/potency_reduction_module3b.txt'
 path_model_cdf_test = 'input\\20170322_v18_SrrResults_PotencyBased\\3_source_receptors\\SR_PM25_Y_20170322_potencyBased.nc'
 # folder where output will be put
 path_result_cdf_test = 'output/'
-path_result_cdf_sherpa = 'C:\\Users\\peduzem\\AppData\\Local\\Sherpa\\app\\data\\temp\\'
 # progress log is used when module 1 is called by another module
 path_nuts0_cdf_test = 'input/EMI_RED_ATLAS_NUTS0.nc'
 path_nuts1_cdf_test = 'input/EMI_RED_ATLAS_NUTS1.nc'
@@ -42,6 +41,8 @@ path_base_NO2conc_cdf_test = 'input\\20170322_v18_SrrResults_PotencyBased\\2_bas
 path_dust_conc_cdf_test = 'input\\pDUST-pSALT\\pDUST-25-basecase.nc'
 path_salt_conc_cdf_test = 'input\\pDUST-pSALT\\pSALT-25-basecase.nc'
 
+path_healthbl_test = 'input/impacts/healthbl_nc.nc'
+path_config_json_test = 'config/sharedvariables.json'
 
 path_pop_mat_test = 'input\\population.mat'
 path_grid_txt = 'input\\selection\\grid_intersect'
