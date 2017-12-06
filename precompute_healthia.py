@@ -2,28 +2,28 @@
 """
 Created on Wed Mar 22 14:32:28 2017
     This script generates the input file for the health impact assessment:
-        in_health.nc
+    moduel8_healthia.py
         
     This concerns only the health impacts of PM2.5 - WHO-Europe method 
     (HRAPIE reccomendations)
 
     MAIN ASSUMPTIONS:
-        - BASELINE VALUES ARE HOMOGENEOUS WITHIN A COUTNRY AND AVERAGED BETWEEN
-        COUNTRIES FOR BORDER CELLS!! 
+        
+        - BASELINE VALUES ARE HOMOGENEOUS WITHIN A COUNTRY AND AVERAGED BETWEEN
+          COUNTRIES FOR BORDER CELLS!! 
         - RISK RATE FUNCTIONS ARE APPLIED ONLY TO ANTHROPOGENIC PM2.5 as in
-        EC4MACS Modelling Methodology the ALPHA Benefit Assessment  Model and 
-        Service Contract for Carrying out Cost-Benefit Analysis of Air Quality 
-        Related Issues, in particular in the Clean Air for Europe (CAFE)
-        Programme.
-        In CAFE: 
-        " The case is sometimes made that there are natural backgrounds of 
-        ozone (and of other pollutants also) and that either:        
-          i.	There are no adverse health effects associated with 
-          concentrations below these backgrounds, because they are natural
-          ii. Any associated adverse health effects should not be quantified,
-          because it is impossible to reduce pollution to below these levels"
+          EC4MACS Modelling Methodology the ALPHA Benefit Assessment  Model and 
+          Service Contract for Carrying out Cost-Benefit Analysis of Air Quality 
+          Related Issues, in particular in the Clean Air for Europe (CAFE)
+          Programme.
+          In CAFE: 
+          " The case is sometimes made that there are natural backgrounds of 
+          ozone (and of other pollutants also) and that either:        
+              - i. There are no adverse health effects associated with 
+                concentrations below these backgrounds, because they are natural
+              - ii. Any associated adverse health effects should not be quantified,
+                because it is impossible to reduce pollution to below these levels"
 
-    
     Required files:
         - path_mortbaseline: excel file with the data of the baseline
         - path_tiff: .tif file with the population distribution (LUISA)
@@ -31,12 +31,13 @@ Created on Wed Mar 22 14:32:28 2017
           relative to the year 2015. Extra EU, always for 2015, is taken from:
           http://sedac.ciesin.columbia.edu/data/collection/gpw-v4
         - grid intersect files 
-            Country codes for the grid intesect are:
+          Country codes for the grid intesect are:
              'CY', 'ES', 'HU', 'ME', 'NL', 'SI', 'AT', 'BE', 'BG', 'CH', 
              'CZ', 'DE', 'DK', 'EE', 'EL', 'FI', 'FR', 'HR', 'IE', 'IT',
              'LI', 'LT', 'LU', 'LV', 'MK', 'MT', 'NO', 'PL', 'PT', 'RO', 
              'SE', 'SK', 'TR', 'UK'.
-        - path_model_cdf_test: 
+        - path_model_cdf_test: (only to be able to save ncdf with the same 
+          format)
 
     BIBLIOGRAPHY:
 
@@ -49,7 +50,6 @@ Created on Wed Mar 22 14:32:28 2017
         Holland, M., 2014. Cost-benefit Analysis of Final Policy Scenarios
         for the EU Clean Air Package Version. Version 2
 
-    - Concentration-response function
         World Health Organization Europe, 2017. AirQ+: software tool for health
         risk assessment of air pollution.
 
@@ -85,23 +85,24 @@ def baseline_nc(path_tiff, path_mortbaseline, path_healthbl,
                 path_salt_conc_cdf_test, path_model_cdf_test, std_life_exp=70):
     """
     Function that produces the base line netcdf for the SHERPA tool 
+    
     input : 
         - path_tiff = path to the tiff image with the population from Marco
         - path_mortbaseline = path to the mortality baseline file with 
-        the information per country
+          the information per country
         - path_dust_conc_cdf_test = path of baseline dust concentration 
         - path_salt_conc_cdf_test = path of baseline salt concentration 
         - path_healthbl = path where results are stored (health baseline)
         - std_life_exp = standard life expectancy to calculate the years of
-        life loss, 70 is the value used by WHO in
-        http://data.euro.who.int/dmdb/
+          life loss, 70 is the value used by WHO in
+          http://data.euro.who.int/dmdb/
+          
     output :
         - healthbl_nc.nc' = netcdf file with: 
             - ppl30+ = population over 30 distribution
             - deathsppl30+ = death rate for people over 30 distribution 
             - lyl30+ = life of years lost for each person dying over 30. 
-            - conc = anthropogenic PM (removing from the baseline salt 
-            and dust)
+            - pm25_natural = natural PM (from dust and salt)
             
     @author: peduzem
     """
@@ -161,7 +162,7 @@ def baseline_nc(path_tiff, path_mortbaseline, path_healthbl,
         """
         Life years loss caclculation: average life year lost for each death
         older than 30 and younger than the std_life_exp, we can use this
-        because the CRF does not depend on age
+        because the CRF does not depend on age.
         """
         return np.sum(x[cols]*lyl/x['sum_sel'])
 
