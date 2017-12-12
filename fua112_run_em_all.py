@@ -21,7 +21,8 @@ are calculated
 import sys
 import os
 from datetime import date
-from module6 import module6 
+
+from module6_fua import module6 
 import timeit
 
 # INPUT configuration
@@ -37,7 +38,7 @@ else:
 
 # read file with city_lats and city_lons
 # cityname    nuts0    codeid    lat    lon
-fcity = open('../city_list_fua112.txt', 'r')
+fcity = open('D:/SHERPA/FUA112/city_list_fua151.txt', 'r')
 fcity.readline()     # read header
 city_dict = {}
 while True:
@@ -50,7 +51,7 @@ n_cities = len(city_dict)
 
 
 # which reductions to apply: all, perPrecursor, perSNAP, perSNAPandPrecursor
-user_reduction_folder = '../../reduction_input_files/'
+user_reduction_folder = 'D:/SHERPA/FUA112/reduction_input_files/'
 # user_reduction_subfolder = 'allSNAP_allPrec'
 # user_reduction_subfolder = 'allSNAP_perPrec'
 # user_reduction_subfolder = 'perSNAP_allPrec'
@@ -63,7 +64,7 @@ precursor_tag = user_reduction_subfolder.split('_')[1]
 user_reduction_list = os.listdir(user_reduction_folder + user_reduction_subfolder)
 
 # read model information
-model_file = '../model_configuration_file.txt'
+model_file = 'D:/SHERPA/FUA112/run_configuration/model_file.txt'
 fmod = open(model_file, 'r')
 line = fmod.readline().rstrip()      # read header
 model_dict = {}
@@ -88,7 +89,7 @@ print(model_dict)
 # --------------------
 
 date_tag = date.today().strftime('%Y%m%d')
-results_path = '../results/%s_%s_%s_%s/' % (date_tag, snap_tag, precursor_tag, area_aggregation_tag)
+results_path = 'D:/SHERPA/FUA112/results/%s_%s_%s_%s/' % (date_tag, snap_tag, precursor_tag, area_aggregation_tag)
 if not(os.path.exists(results_path)):
     os.makedirs(results_path) 
     print('Results directory %s created.' % (results_path))   
@@ -110,8 +111,8 @@ for model_name in model_dict.keys():
     path_cell_surface_cdf = model_dict[model_name]['cell_surface_cdf']
     
     # and the reduction areas
-    reduc_area_agg_path = '../../fua_area_cdfs/aggAreas_%s/' % (model_dict[model_name]['ctm'])
-    reduc_area_all_path = '../../fua_area_cdfs/allAreas_%s/' % (model_dict[model_name]['ctm'])
+    reduc_area_agg_path = 'D:/SHERPA/FUA112/fua_area_cdfs/aggAreas_%s/' % (model_dict[model_name]['ctm'])
+    reduc_area_all_path = 'D:/SHERPA/FUA112/fua_area_cdfs/allAreas_%s/' % (model_dict[model_name]['ctm'])
 
     # check if the output file already exists to resume a calculation
     completed_runs = []
@@ -137,6 +138,7 @@ for model_name in model_dict.keys():
         # open a new file to store all results and write the header
         fallres = open(results_file_name, 'w')
         fallres.write('Source apportionment for %d cities\n' % (n_cities))
+        fallres.write('commit eb21d3fb8ee65a2f44dc2b482efb077d3fdf8c40\n')
         fallres.write('emissions cdf = %s\n' % (path_emission_cdf))
         fallres.write('concentrations cdf = %s\n' % (path_base_conc_cdf))
         fallres.write('model folder = %s\n' % (path_model_cdf))
@@ -181,7 +183,7 @@ for model_name in model_dict.keys():
                 precursor = snap_prec.split('_')[1] 
                 
                 # in case of NO2 only calculate for precursor NOx
-                if pollutant_tag != 'NO2' or (pollutant_tag == 'NO2' and (precursor == 'NOx' or precursor == 'all')):
+                if pollutant_tag != 'NO2' or (pollutant_tag == 'NO2' and precursor == 'NOx'):
                 
                     # check if the city, source_area, snap combination is already calculated
                     start = timeit.timeit()
@@ -210,9 +212,9 @@ for model_name in model_dict.keys():
                                             
                         # open the result dictionary and write results to one file
                         fallres = open(results_file_name, 'a')
-                        for source_area in m6_dict.keys():
-                            res_area = m6_dict[source_area]
-                            for pollutant in m6_dict[source_area].keys():
+                        for source_area_in_dict in m6_dict.keys():
+                            res_area = m6_dict[source_area_in_dict]
+                            for pollutant in m6_dict[source_area_in_dict].keys():
                                 res_area_pol = res_area[pollutant]
                                 line_format = 6 * '%s;' + 5 * '%e;' + '%e\n'
                                 fallres.write(line_format % (model_name, pollutant, target_city, source_area, snap, precursor, res_area_pol['potential'],\
