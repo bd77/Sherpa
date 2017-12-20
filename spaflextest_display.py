@@ -66,7 +66,7 @@ import matplotlib.lines as mlines
 import matplotlib.markers as mmarks
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
+from matplotlib.ticker import LinearLocator, FormatStrFormatter,ScalarFormatter
 import matplotlib.patches as mpatches
 # for plotting
 from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
@@ -314,7 +314,7 @@ def plot_ratios_fuas(name, sources, precursor_lst, path_results, path_figures):
 #                    bbox_inches = "tight", dpi=300)
         fig.savefig(path_figures + 'regionalratiostex{}_{}.pgf'.format(name, precursor))
         fig.savefig(path_figures + 'regionalratiostex{}_{}.pdf'.format(name, precursor))
-#        plt.show()
+        plt.show()
 
 if __name__ == '__main__':
 
@@ -324,7 +324,10 @@ if __name__ == '__main__':
 
 
     sources = ['BE', 'DE','ES', 'FR', 'IT', 'UK']
-    path_results = 'spaflextest\\'
+#    path_results = 'spaflextest\\'
+
+    path_results = 'spaflextest3\\'
+
     path_figures = path_results
     name = 'exposure' # have not checked if everything is correct for concentration
     precursor_lst = ['PPM', 'SOx', 'NOx', 'NH3']#, 'NMVOC']#, 'NMVOC']
@@ -423,7 +426,11 @@ if __name__ == '__main__':
         ax = fig.add_subplot(111)
         ax.minorticks_on()
 #        fig, ax = plt.subplots(figsize=(14, 8))
+#        ax.set_yscale('log', basey=2)
         ax.set_ylim([0,3])
+#        ax.set_yticks(np.arange(0,4))
+#        ax.get_yaxis().set_major_formatter(ScalarFormatter())
+
 #        ax = plt.minorticks_on()
         ax.tick_params(axis='x',which='minor',bottom='off')
         plt.xticks(ind, sources)
@@ -435,12 +442,14 @@ if __name__ == '__main__':
 
         plt.ylabel('{} performance ratio, $\\rho_{{s,{}}}$'.format(name, precursor))
         plt.legend(ncol=2, loc='best')
+
+        
         fig.savefig(path_figures + 'sectorialratiosnew{}_{}.png'.format(name, precursor),
                     bbox_inches = "tight", dpi=300)
         fig.savefig(path_figures + 'sectorialratiostex{}_{}.pgf'.format(name, precursor))
         fig.savefig(path_figures + 'sectorialratiosex{}_{}.pdf'.format(name, precursor))
-        plt.show()
 
+        plt.show()
 
 #    color= 'C{}'.format(int(ms[2:])-1)
 #    sources = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES',

@@ -7,9 +7,9 @@ Script used to produce the data for the article
 """
 
 # for importing matlab files
-import scipy.io as sio
-from PIL import Image
-from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
+#import scipy.io as sio
+#from PIL import Image
+#from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
 from netCDF4 import  Dataset # for using netCDF files
 import numpy as np  # for scientific operators
 from time import time  # for module1
@@ -17,15 +17,15 @@ from os import remove
 import os as os
 import pandas as pd  # conda install pandas
 # for plotting
-from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
+# from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 #import plotly.plotly as py
 import matplotlib.lines as mlines
-import matplotlib.markers as mmarks
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
+#import matplotlib.markers as mmarks
+#from mpl_toolkits.mplot3d import Axes3D
+#from matplotlib import cm
+#from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import matplotlib.patches as mpatches
 
 from healthia import calc_impacts
@@ -115,6 +115,7 @@ def precompute(path_areared_nc):
                for precursor in precursor_lst for ms in np.arange(0, 10)}
 
     return emi, emi_sec
+
 def plot_ratios_aggsec(name, prec_lst, sources, path_figures, path_results):
     sect_aggr = ['industry', 'residential', 'agriculture', 'transport',
                  'other']

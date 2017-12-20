@@ -12,12 +12,6 @@ mpl.use('pgf')
 # import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-# import matplotlib.markers as mmarks
-
-# from matplotlib import cm
-# from matplotlib.ticker import LinearLocator, FormatStrFormatter
-
-# from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
 
 from netCDF4 import Dataset
@@ -33,7 +27,34 @@ from sherpa_globals import (path_base_conc_cdf_test, path_emission_cdf_test,
                             path_model_cdf_test, path_result_cdf_test)
 from sherpa_auxiliaries_epe import (gridint_toarray, write_nc,
                                     tiftogridgeneral)
+def figsize(scale):
+    fig_width_pt = 390                          # Get this from LaTeX using \the\textwidth
+    inches_per_pt = 1.0/72.27                       # Convert pt to inch
+    golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
+    fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
+    fig_height = fig_width*golden_mean              # height in inches
+    fig_size = [fig_width,fig_height]
+    return fig_size
 
+pgf_with_latex = {                      # setup matplotlib to use latex for output
+    "pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
+    "text.usetex": True,                # use LaTeX to write all text
+    "font.family": "serif",
+    "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
+    "font.sans-serif": [],
+    "font.monospace": [],
+    "axes.labelsize": 10,               # LaTeX default is 10pt font.
+    "font.size": 10,
+    "legend.fontsize": 8,               # Make the legend/label fonts a little smaller
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "figure.figsize": figsize(0.9),     # default fig size of 0.9 textwidth
+    "pgf.preamble": [
+        r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
+        r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
+        ]
+    }
+mpl.rcParams.update(pgf_with_latex)
 import module1 as shrp
 
 def read_inventory(year, em_inv, precursors):
@@ -50,10 +71,10 @@ def read_inventory(year, em_inv, precursors):
     sourcesinv = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'GR', 'ES',
                   'FI', 'FR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT',
                   'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'GB']
-    # Create a dataframe with the emissions per precursors for the reference
-    # year
 
-#    precursors = ['PPM', 'NOx', 'SOx', 'NH3']#,'NMVOC']
+   # Create a dataframe with the emissions per precursors for the reference
+   # year
+
     # Dataframe with emissions per country as reported in the inventory
     df_e_inv_eu = pd.DataFrame(index=sourcesinv, columns=precursors)
 
@@ -105,7 +126,17 @@ def read_inventory(year, em_inv, precursors):
     return df_e_inv_eu
 
 def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
-    # @TODO provide description
+    '''Ideal application of the NEC directive.
+       INPUT:
+           - an_ty: analysis type sec or spa
+           - opt: I or II
+           - name: exposure 
+           - sources: country codes of interests 
+           - path_results:
+           - path_figures
+           - em_inv: emission inventory name (e.g. GAINS)
+       OUTPUT
+    '''
 
     # Prepare dictionaries for country-to-grid data
     df_res = {}
@@ -132,6 +163,7 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
         columnsresults = sect_aggr
     elif an_ty == 'spa':
         columnsresults = areas
+        
     # Grid to grid data:
     # reading data and preparing dataframe for results:
     for precursor in precursors:
@@ -152,7 +184,8 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
                                  columns = columnsresults)
         df_ind[precursor] = pd.DataFrame(index=list(df_pot[precursor].index),
                                  columns = columnsresults)
-   # Calculating the performance indicator
+   
+    # Calculating the performance indicator
         for sect in columnsresults:
             df_releff[precursor][sect] = (df_eff[precursor]['{}'.format(sect)] /
                                              df_eff[precursor][columnsresults].max(axis=1))
@@ -198,7 +231,7 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
     lst ={}
     lst2 = {}
     red = {}
-    redper = {}
+    redpertable = {}
     results = {}
     redms = {} # % reduction per macrosector
     redms2 = {}
@@ -211,8 +244,8 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
         results[precursor] = pd.DataFrame(index=[sources], columns = colres)
         redms[precursor] = pd.DataFrame(index=[sources], columns = columnsresults)
         redms2[precursor] = pd.DataFrame(index=[sources], columns = columnsresults)
-
-
+#    em_inv = 'GAINS' # 'EMEP', 'TNO', 'GAINS'
+    df_e_inv_eu = read_inventory(year, em_inv, precursors)
     for precursor in precursors:
         # Calculate the absolute value of emissions after implementation of NEC:
         df_e_red_eu[precursor] = (1 - df_nec[yearred][precursor].ix[sources]) * df_e_inv_eu[precursor].ix[sources]*1000
@@ -223,16 +256,16 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
             else:
                 emi2010 = df_emi[precursor].sum(axis=1)
             red[precursor] = emi2010 - df_e_red_eu[precursor]
-            redper[precursor] =red[precursor]/df_emi[precursor].sum(axis=1) * 100
-
+#            redper[precursor] =red[precursor]/df_emi[precursor].sum(axis=1) * 100
+            redpertable[precursor] = red[precursor]/emi2010 * 100 
         elif an_ty == 'spa':
             if em_inv == 'GAINS':
                 emi2010 = (read_inventory(2010, em_inv, [precursor])*1000).loc[sources][precursor]
             else:
                 emi2010 = df_emi[precursor]['emi_reg'].loc[:, 'country'].loc[sources]
             red[precursor] = emi2010.loc[sources] - df_e_red_eu[precursor]
-            redper[precursor] = red[precursor] / df_emi[precursor]['emi_reg'].loc[:, 'country'].loc[sources] * 100
-
+#            redper[precursor] = red[precursor] / df_emi[precursor]['emi_reg'].loc[:, 'country'].loc[sources] * 100
+            redpertable[precursor] = red[precursor]/emi2010 * 100
 
     for precursor in precursors:
         for country in sources:
@@ -373,15 +406,11 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
     save_xls(redms, (path_figures + 'redms_de{}{}{}.xls'.format(name, an_ty, opt)))
     save_xls(redms2, (path_figures + 'redms_as{}{}{}.xls'.format(name, an_ty, opt)))
 
+    
+    
+    
 def perexppercountry(name, an_ty, opt, country, order):
     """ calculate mapped percentage exposure reduction for each option"""
-    ## @TODO to finish description
-    # debug 
-#    order = 'dec'
-#    name =
-#    an_ty =
-#    opt =
-#    country = 
     # Write reduction text
     sect_aggr = ['industry', 'residential', 'agriculture', 'transport', 'other']
     areatypes = ['FUA','not_FUA']
@@ -434,7 +463,7 @@ def perexppercountry(name, an_ty, opt, country, order):
         # and calcluate the impacts
         # for country in sources:
         path_areacountry_nc = 'workdir\\area_{}.nc'.format(country)
-        outputfin = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+        outputfin = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
         if not os.path.exists(outputfin):
             os.makedirs(outputfin)
             proglog_filename = path_result_cdf_test + 'proglog'
@@ -469,11 +498,11 @@ def perexppercountry(name, an_ty, opt, country, order):
     if an_ty == 'spa':
         print(country)
         conc = np.zeros((1, len(lat_array), len(lon_array)))
-        outputfin = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+        outputfin = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
         if not os.path.exists(outputfin):
             os.makedirs(outputfin)
         for areatype in areatypes:
-            output = path_results + '\\NEC_{}{}{}{}{}{}\\'.format(country,name,order,an_ty,opt,areatype)
+            output = path_results + 'NEC_{}{}{}{}{}{}\\'.format(country,name,order,an_ty,opt,areatype)
             path_reduction_txt = path_results + '\\redms_{}{}{}{}{}{}.txt'.format(country,name,order,an_ty,opt,areatype)
             for prec in precursor_lst:
 #                if prec == 'NMVOC':
@@ -535,6 +564,10 @@ def perexppercountry(name, an_ty, opt, country, order):
 #            print(df_red)
 #            print(areatype, np.sum(conca))
             conc = conc + conca
+        outfile=outputfin + 'delta_concentration.nc'
+        if os.path.exists(outfile):
+            print('removing file')
+            os.remove(outfile) 
         write_nc(conc, outputfin + 'delta_concentration.nc', 'delta_concentration', 'microg/m3')
 
     rootgrp = Dataset(path_base_conc_cdf_test, mode='r')
@@ -547,7 +580,12 @@ def perexppercountry(name, an_ty, opt, country, order):
     exp = 1000 * conc * (popall) # ng p /m3
     bc_exp = 1000 * bc_conc * (popall)  # ng p /m3
     exp_per = (np.divide(exp, bc_exp, out=np.zeros_like(exp), where=bc_exp!=0))*100
-    write_nc(exp_per, outputfin + 'exp{}{}{}{}{}per.nc'.format(country,name,order,an_ty,opt), 'exposure', '%')
+    
+    outfile = outputfin + 'exp{}{}{}{}{}per.nc'.format(country,name,order,an_ty,opt)
+    if os.path.exists(outfile):
+        print('removing file')
+        os.remove(outfile)   
+    write_nc(exp_per, outfile, 'exposure', '%')
 
     return exp_per
 
@@ -588,6 +626,8 @@ pgf_with_latex = {                      # setup matplotlib to use latex for outp
                     
 mpl.rcParams.update(pgf_with_latex)
 
+def f1(x):
+    return '%.f' % x
 
 if __name__ == '__main__':
 
@@ -595,17 +635,18 @@ if __name__ == '__main__':
     sources = ['BE', 'DE','ES', 'FR', 'IT', 'UK']
     yearred = '2030'  # or 2030
     year = 2005  # according to the new NEC directive
-    opts = ['I', 'II']  # I to order sectors in terms of eff
+    opts = ['I', 'II']  # I to order sectors in terms of eff (I is used in the article)
                         # II to order sectors in terms of potential      
     an_tys = ['sec', 'spa']  # 'sec' or 'spa' anal. type sectorial or spatial
     ords = ['inc', 'dec'] # orders 'inc' or 'dec' increasing or decreasing
                           # values of indicators
+                          
     name = 'exposure' # esposure or concentration
-    path_results = 'spaflextest2\\'
+    path_results = 'spaflextest3\\'
     path_figures = path_results
     
     # select emission inventory
-    em_inv = 'GAINS' # 'EMEP', 'TNO'
+    em_inv = 'GAINS' # 'EMEP', 'TNO', 'GAINS'
 
     # Population
     path_tiff = 'input/pop/7km_Qi_2010.tif'
@@ -637,7 +678,10 @@ if __name__ == '__main__':
     # Dataframe with the emission reductins per country according to NEC
     df_nec = pd.read_csv(path_results + 'NECdirective.csv', index_col=[0],
                          header=[0, 1])
-
+    
+#------------------------------------------------------------------------------
+    # Start calculations: 
+        
     opt = 'I'
     for an_ty in an_tys:
         nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv)
@@ -651,6 +695,10 @@ if __name__ == '__main__':
             grid_per_ch[country][an_ty]['dec'] = perexppercountry(name,an_ty, opt, country, 'dec')
             grid_per_ch[country][an_ty]['inc'] = perexppercountry(name,an_ty, opt, country, 'inc')
 
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+    # REVIEWED 07/12/2017
+    
     # Cities analysis
     path_bc_conc_nc = path_base_conc_cdf_test
     rootgrp = Dataset(path_bc_conc_nc, mode='r')
@@ -659,17 +707,154 @@ if __name__ == '__main__':
     rootgrp.close()
     
     conc = np.where(np.isnan(bc_pm25_conc), 0, (bc_pm25_conc))
-#    cities = pd.read_csv(
-#                   path_results + 'fuacities.csv')
-    cities = ['Bruxelles', 'Antwerpen', 'Liege', 
-              'Berlin', 'Hamburg', 'Munchen', 'Koln', 
-              'Madrid', 'Barcelona', 'Valencia', 'Bilbao', 
-              'Paris', 'Lyon', 'Lille', 'Marseille', 
-              'Roma', 'Milano', 'Torino', 'Napoli', 
-              'London', 'Manchester', 'West Midlands urban area', 'Liverpool']
+
+    cities = pd.read_excel(path_results + '150fuas_lat-lon_eng.xls',
+                           index_col='URAU_CODE')
+    measurements = pd.read_table(path_results + 'AA_airbase\\airbase_ereporting_2015_stations_within_fua150.txt',sep=';', skipinitialspace=True)
+    measurements.stationtype=measurements.stationtype.str.strip()
+    measurements.pollutant=measurements.pollutant.str.strip()
+
+    for uraucode in cities.index:
+        lat = cities['lat'].loc[uraucode]
+        lon = cities['lon'].loc[uraucode]
+        en_name = cities['ENGLISH_NAME'].loc[uraucode]
+            # convert latitude and longitude string in float
+        lat = float(lat)
+        lon = float(lon)
+            # get row index of latitude and col index of longitude
+        i_lat_target = 0
+        lat_error = float('inf')
+        for i in range(len(latitude_array)):
+            lat_dist = abs(lat - latitude_array[i])
+            if lat_dist < lat_error:
+                lat_error = lat_dist
+                i_lat_target = i
+        
+        i_lon_target = 0
+        lon_error = float('inf')
+        for i in range(len(longitude_array)):
+            lon_dist = abs(lon - longitude_array[i])
+            if lon_dist < lon_error:
+                lon_error = lon_dist
+                i_lon_target = i
+                
+#        print(conc[i_lat_target, i_lon_target])   
+        cities.loc[uraucode, 'bc_conc'] = conc[i_lat_target, i_lon_target]
+#        cities['bc_conc']
+        mes_conc = measurements['aqvalue'].loc[(np.where((measurements.urau_code.values == uraucode) & 
+                     (measurements.stationtype.values == 'Background') & 
+                     (measurements.pollutant.values == 'Particulate matter < 2.5 µm (aerosol)')))].mean()
+        cities.loc[uraucode, 'mes_conc'] = mes_conc  
+        country=uraucode[0:2]
+        if country in sources:
+            for an_ty in an_tys:
+                for order in ords:
+                    output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+                    dc_path = output + 'delta_concentration.nc'
+                    rootgrp = Dataset(dc_path, mode='r')
+                    dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
+                    rootgrp.close()
+                    dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
+                    cities.loc[uraucode, (order+'_'+an_ty)] = dconc[i_lat_target, i_lon_target] 
+                    cities.loc[uraucode, (order+'_'+an_ty+'scaled')] = dconc[i_lat_target, i_lon_target]/conc[i_lat_target, i_lon_target]*cities.loc[uraucode, 'mes_conc']
+
+    # saving updated cities database:
+    cities.to_csv(path_results + 'AA_airbase\\data.csv') 
     
-   pd.read_excel(path_results + 'NECdirective.xls', index_col=[0],
+    # plotting cities resutls
+    cities_plot = ['Bruxelles', 'Antwerpen', 'Liege', 
+                   'Berlin', 'Hamburg', 'Koln', 
+                   'Madrid', 'Barcelona', 'Valencia',
+                   'Paris', 'Lyon', 'Marseille', 
+                   'Roma', 'Milano', 'Torino',
+                   'London', 'Manchester', 'Liverpool']
+    plt.clf()
+    fig= plt.figure(figsize=figsize(1))
+    ax = fig.add_subplot(111)
+    ax.minorticks_on()
+#    fig, ax = plt.subplots(figsize=(14, 8))
+    ax.set_ylim([0,30])
+#    ax = plt.minorticks_on()
+    ax.tick_params(axis='x',which='minor',bottom='off')
+    ind = np.arange(len(cities_plot))
+#    ax.set_xticklabels(list(cities['cityname'].values), rotation=90)
+    plt.xticks(ind, cities_plot, rotation=90)
+    who_x = ind
+    who_y = np.ones(len(ind))* 10
+    aqd_y = np.ones(len(ind))* 20 # to check
+    plt.plot(who_x, who_y, color='g', linestyle = 'dashed', label = 'WHO limit')
+    plt.plot(who_x, aqd_y, color='r', linestyle = 'solid', label = 'AQD limit')
+    patches = []
+    citiesni = cities.set_index(['ASCII_NAME'])
+    for ind, x in enumerate(cities_plot):
+        print(ind, citiesni['mes_conc'].loc[x])
+        plt.plot(ind, citiesni['mes_conc'].loc[x],'o',color = 'r')
+        plt.plot(ind, citiesni['mes_conc'].loc[x]-citiesni['dec_secscaled'].loc[x],'D', color = 'b')
+        plt.plot(ind, citiesni['mes_conc'].loc[x]-citiesni['inc_secscaled'].loc[x],'D',  mfc='none', color ='b')
+        plt.plot(ind, citiesni['mes_conc'].loc[x]-citiesni['dec_spascaled'].loc[x],'v', color = 'g')
+        plt.plot(ind, citiesni['mes_conc'].loc[x]-citiesni['inc_spascaled'].loc[x],'v', mfc='none', color = 'g')
+    plt.ylabel('Concentration [$\mu$ g/m$^3$]')
+    marker = mlines.Line2D([], [], color='b', marker='D',
+                          label='sec. dec.', linestyle = 'None')
+    patches.append(marker)
+    marker = mlines.Line2D([], [], color='b', marker='D', mfc='none',
+                          label='sec. inc.', linestyle = 'None')
+    patches.append(marker)
+    marker = mlines.Line2D([], [], color='g', marker='v',
+                          label='spa. dec.', linestyle = 'None')
+    patches.append(marker)
+    marker = mlines.Line2D([], [], color='g', marker='v', mfc='none',
+                          label='spa. inc.', linestyle = 'None')
+    patches.append(marker)
+    marker = mlines.Line2D([], [], color='r', marker='o',
+                          label='base case', linestyle = 'None')
+    patches.append(marker)
+    marker = mlines.Line2D([], [], color='r', marker='None',
+                          label='AQD limit', linestyle = 'solid')
+    patches.append(marker)
+    marker = mlines.Line2D([], [], color='r', marker='None',
+                          label='WHO limit', linestyle = 'dashed')
+    patches.append(marker)
+    plt.legend(handles=patches, ncol=2, loc='best')
+    fig.savefig(path_figures + 'cities.png', bbox_inches = "tight", dpi=300)
+    fig.savefig(path_figures + 'cities.pgf', bbox_inches = "tight")
+    fig.savefig(path_figures + 'cities.pdf', bbox_inches = "tight")
+    plt.show()
+    
+    ## test
+    cities.loc['FR001L1']
+    mes_conc = measurements['aqvalue'].loc[(np.where((measurements.urau_code.values == 'FR001L1') & 
+                     (measurements.stationtype.values == 'Traffic') & 
+                     (measurements.pollutant.values == 'Particulate matter < 2.5 µm (aerosol)')))]
+ 
+#------------------------------------------------------------------------------     
+    # REVIEWED 11/12/2017
+    # tables with reducctions 
+    # Dataframe with the emission reductins per country according to NEC
+    df_nec = pd.read_csv(path_results + 'NECdirective.csv', index_col=[0],
                          header=[0, 1])
+    # Dataframe with the emissions per country according to the inventory
+    df_e_inv_eu = read_inventory(2005, em_inv, precursors)*1000
+    redper={}
+    red={}
+    yearslong=[2005,2010]*len(precursors)
+    preclong=np.repeat(precursors,2)
+    redpertable = pd.DataFrame(index=sources, columns=zip(yearslong,preclong))
+    for precursor in precursors:
+        # Calculate the absolute value of emissions after implementation of NEC:
+        df_e_red_eu[precursor] = (1 - df_nec[yearred][precursor].ix[sources]) * df_e_inv_eu[precursor].ix[sources]
+        # Absolute value of emission reduction from year 2010
+        emi2010 = (read_inventory(2010, em_inv, [precursor])*1000).loc[sources][precursor]
+        red[precursor] = emi2010 - df_e_red_eu[precursor]
+        redper[precursor] = red[precursor]/emi2010 * 100 
+        redpertable[2005,precursor]=df_nec[yearred][precursor].ix[sources]*100 
+        redpertable[2010,precursor]=redper[precursor]
+        
+    print(redpertable.to_latex(float_format=f1)) 
+
+#------------------------------------------------------------------------------        
+#------------------------------------------------------------------------------
+   
 
 
     target_cell_lat = 40.40625
@@ -679,23 +864,7 @@ if __name__ == '__main__':
     target_cell_lat = float(target_cell_lat)
     target_cell_lon = float(target_cell_lon)
     
-    # get row index of latitude and col index of longitude
-    i_lat_target = 0
-    lat_error = float('inf')
-    for i in range(len(latitude_array)):
-        lat_dist = abs(target_cell_lat - latitude_array[i])
-        if lat_dist < lat_error:
-            lat_error = lat_dist
-            i_lat_target = i
-    
-    i_lon_target = 0
-    lon_error = float('inf')
-    for i in range(len(longitude_array)):
-        lon_dist = abs(target_cell_lon - longitude_array[i])
-        if lon_dist < lon_error:
-            lon_error = lon_dist
-            i_lon_target = i
-    conc[i_lat_target, i_lon_target]
+
     
     country = 'ES'
     order = 'dec'
@@ -725,23 +894,23 @@ if __name__ == '__main__':
     av_conc = (np.sum((conc * area_city * surf / 100) / np.sum(area_city * surf / 100)))
     print(av_conc)
     
-#        for an_ty in an_tys:
-#            av_conc_new[city][an_ty] = {}
-#            for order in ords:
-#                output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
-##    output = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,'dec',an_ty,opt)
-#                dc_path = output + 'delta_concentration.nc'
-#                rootgrp = Dataset(dc_path, mode='r')
-#                dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
-#    # bc_pm25_units = rootgrp.variables['conc'].units
-#                rootgrp.close()
-#                dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
-#                ac = bc_pm25_conc - dconc
-#                av_conc_new[city][an_ty][order] = (np.sum((ac * area_city * surf / 100) /
-#                np.sum(area_city * surf / 100)))
-#                print(av_conc_new[city][an_ty][order])
-#    cities = pd.read_csv(
-#                   path_results + 'cities.csv', index_col=[0])
+    for an_ty in an_tys:
+        av_conc_new[city][an_ty] = {}
+        for order in ords:
+            output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+#    output = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,'dec',an_ty,opt)
+            dc_path = output + 'delta_concentration.nc'
+            rootgrp = Dataset(dc_path, mode='r')
+            dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
+# bc_pm25_units = rootgrp.variables['conc'].units
+            rootgrp.close()
+            dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
+            ac = bc_pm25_conc - dconc
+            av_conc_new[city][an_ty][order] = (np.sum((ac * area_city * surf / 100) /
+            np.sum(area_city * surf / 100)))
+            print(av_conc_new[city][an_ty][order])
+    cities = pd.read_csv(
+                   path_results + 'cities.csv', index_col=[0])
     plt.clf()
     fig= plt.figure(figsize=figsize(1))
     ax = fig.add_subplot(111)
@@ -842,20 +1011,31 @@ if __name__ == '__main__':
         return '%.2f' % x
 
 
-#    for precursor in precursors:
-#        print(precursor)
-#        print(redms2[precursor].to_latex(float_format=f1))
-#
-#    for precursor in precursors:
-#        print(precursor)
-#        print(df_releff[precursor].to_latex(float_format=f1))
-#    for precursor in precursors:
-#        print(precursor)
-#        print(redms2[precursor].to_latex(float_format=f1))
+    for precursor in precursors:
+        print(precursor)
+        print(redms2[precursor].to_latex(float_format=f1))
 
+    for precursor in precursors:
+        print(precursor)
+        print(df_releff[precursor].to_latex(float_format=f1))
+    for precursor in precursors:
+        print(precursor)
+        print(redms2[precursor].to_latex(float_format=f1))
+    for precursor in precursors:
+        print(precursor)
+#        print(redper.to_latex(float_format=f1))
 
+    precursors = ['PPM', 'NOx', 'SOx', 'NH3', 'NMVOC']  
+    # Absolute value of emission reduction by country and precursor
+    df_e_red_eu = pd.DataFrame(columns=precursors)
+    df_e_inv_eu = read_inventory(year, em_inv, precursors)
+    df_e_inv_eu10 = read_inventory(2010, em_inv, precursors)
+    # Dataframe with the emission reductins per country according to NEC
+    df_nec = pd.read_csv(path_results + 'NECdirective.csv', index_col=[0],
+                         header=[0, 1])
+    
     print(df_e_inv_eu.loc[sources].to_latex(float_format=f1))
-
+    print(df_e_inv_eu10.loc[sources].to_latex(float_format=f1))
 #  DRAW FUAS
     rootgrp = Dataset(path_model_cdf_test, 'r')
     lon_array = rootgrp.variables['lon'][0, :]
@@ -882,70 +1062,11 @@ if __name__ == '__main__':
         area_co=rootgrp.variables['AREA'][:]
         area = area + area_co
     cs = m.contourf(x,y,(area[0]), clevs)#, cmap='jet', vmax=50, extend='max')
-    m.bluemarble()
+    m.shadedrelief()
+#    m.bluemarble(ax=None, scale=1)
     cbar = m.colorbar(cs,location='right', pad="5%", label = 'cell area [\%]')
     cbar.ax.tick_params(labelsize=7)
-    plt.savefig(path_figures + 'fuas.pdf', bbox_inches = "tight", format='pdf')
+    plt.savefig(path_figures + 'fuas3.pdf', bbox_inches = "tight", format='pdf')
     plt.show()
 
-#    import matplotlib as mpl
-#    mpl.use("pgf")
-#    pgf_with_pdflatex = {
-#    "pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
-#    "text.usetex": True, #True,                # use LaTeX to write all text
-#    "font.family": "serif",
-#    "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
-#    "font.sans-serif": [],
-#    "font.monospace": [],
-#    "axes.labelsize": 10,               # LaTeX default is 10pt font.
-#    "font.size": 10,
-#    "legend.fontsize": 8,               # Make the legend/label fonts a little smaller
-#    "xtick.labelsize": 8,
-#    "ytick.labelsize": 8,
-#    "figure.figsize": figsize(0.9),     # default fig size of 0.9 textwidth
-#    "pgf.preamble": [
-#        r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
-#        r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
-#        ]
-#    }
-#    mpl.rcParams.update(pgf_with_pdflatex)
-#
-#    import matplotlib.pyplot as plt
-#    plt.figure(figsize=(4.5,2.5))
-#    plt.plot(range(5))
-#    plt.text(0.5, 3., "serif")#, family="serif")
-#    plt.text(0.5, 2., "monospace")#, family="monospace")
-#    plt.text(2.5, 2., "sans-serif")#, family="sans-serif")
-#    plt.xlabel(u"is not $\\mu$")
-#    plt.tight_layout(.5)
 
-
-# -*- coding: utf-8 -*-
-#    from __future__ import (absolute_import, division, print_function,
-#                            unicode_literals)
-#
-#    import six
-#
-#    import matplotlib as mpl
-#    mpl.use("pgf")
-#    pgf_with_custom_preamble = {
-#        "font.family": "serif", # use serif/main font for text elements
-#        "text.usetex": True,    # use inline math for ticks
-#        "pgf.rcfonts": False,   # don't setup fonts from rc parameters
-#        "pgf.preamble": [
-#             "\\usepackage{units}",         # load additional packages
-#             "\\usepackage{metalogo}",
-#             "\\usepackage{unicode-math}",  # unicode math setup
-#             r"\setmathfont{xits-math.otf}",
-#             r"\setmainfont{DejaVu Serif}", # serif font via preamble
-#             ]
-#    }
-#    mpl.rcParams.update(pgf_with_custom_preamble)
-#
-#    import matplotlib.pyplot as plt
-#    plt.figure(figsize=(4.5,2.5))
-#    plt.plot(range(5))
-#    plt.xlabel("unicode text: я, ψ, €, ü, \\unitfrac[10]{°}{µm}")
-#    plt.ylabel("\\XeLaTeX")
-#    plt.legend(["unicode math: $λ=∑_i^∞ μ_i^2$"])
-#    plt.tight_layout(.5)
