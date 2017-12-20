@@ -239,7 +239,7 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
     'd_dll_pp': {
             'aggregation': 'population weighted average',
             'ci': ['d_dll_pp_lb', 'd_dll_pp', 'd_dll_pp_ub'],
-            'combo_box': 'delta days of life loss',
+            'combo_box': 'delta days of life loss per person',
             'long_description': 
                 ['delta days of life loss per person lower bound',
                  'delta days of life loss per person',
