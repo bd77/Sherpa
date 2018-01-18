@@ -8,6 +8,7 @@ output: - (**)
 
 @author: Denise Pernigotti and Emanuela Peduzzi (EPE)
 '''
+import matplotlib as mpl
 
 def figsize(scale):
     '''Square figure size
@@ -34,7 +35,15 @@ def figsizer(scale): # rectangular figure
     return fig_size
 
 
-
+#
+#def figsize(scale):  # Added by Ema for spyder plot
+#    fig_width_pt = 390                              #
+#    inches_per_pt = 1.0/72.27                       # Convert pt to inch
+#    golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio
+#    fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
+#    fig_height = fig_width*golden_mean              # height in inches
+#    fig_size = [fig_width, fig_height]
+#    return fig_size
 
 '''
 NAME
@@ -275,7 +284,7 @@ from matplotlib.ticker import AutoMinorLocator # EMA this should be at the top
 
 
 def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
-             x_label='Percentage of total mass', leg_loc='lower right', ftx=16):
+             x_label='Percentage of total mass', leg_loc='lower right', ftx=10):
     '''
     NAME
        Stacked barplot using plt
@@ -286,37 +295,67 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
     PROGRAMMER(S)
         Denise Pernigotti
     REVISION HISTORY
-        Revised by @author: peduzem 20/09/2017
+        Revised by @author: peduzem 20/09/2017, 16/01/2018
     REFERENCES
     '''
-
+               
     dfdata = dfdata[varplot['areaid']].transpose()
-    varnames = dfdata.columns
-    areanames = varplot['areaname']
-    areanames.index = varplot['areaid']
     varplot_left = pd.Series(np.zeros(len(dfdata.index)), index=dfdata.index)
     addsum = dfdata.sum(axis=1)
-
-    for ind in range(1, len(dfdata.index)):
-        varplot_left[ind] = varplot_left[ind-1]+addsum[dfdata.index[ind-1]]
+    if addsum.loc['Total'] > 100:
+        print('WARNING: rescaling to 100')
+        dfdata_plot = dfdata * 100 /  addsum.loc['Total']
+    elif addsum.loc['Total'] <= 100:
+        ncontrol_fill = 100 - addsum.loc['Total']
+        dfdata_plot = dfdata
+        dfdata_plot['External'] = 0
+        dfdata_plot.loc['Total', 'External'] = ncontrol_fill
+                   
+    varnames = dfdata_plot.columns
+    for ind in range(1, len(dfdata_plot.index)):
+        varplot_left[ind] = varplot_left[ind-1]+addsum[dfdata_plot.index[ind-1]]
     if totalname in varplot['areaid'].values:
         varplot_left[totalname] = 0.
 
     # colors by EPI
-    colors = {'PPM': 'blue', 'SOx': 'gold', 'NOx': 'red', 'NH3': 'green',
-              'NMVOC': '#black', 'Traffic': 'red', 'Energy': 'blue',
-              'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
-              'Agriculture': 'green', 'Residential': 'blue',
-              'Offroad': '#8470ff', 'Extraction': '#00FF00',
-              'Other': 'skyblue', 'Salt': '#ccffe5', 'Dust': '#ffffcc', 'No control': '#aab0b7'}
+#    colors = {'PPM': 'blue', 'SOx': 'gold', 'NOx': 'red', 'NH3': 'green',
+#              'NMVOC': '#black', 'Transport': 'red', 'Energy': 'blue',
+#              'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
+#              'Agriculture': 'green', 'Residential': 'blue',
+#              'Offroad': '#8470ff', 'Extraction': '#00FF00',
+#              'Other': 'skyblue', 'Salt': '#ccffe5', 'Dust': '#ffffcc', 'No control': '#aab0b7',
+#              'Natural': '#ffe7ba','External': '#cdcdb4'}
+    #Colors ATLAS
+    colors = {'Transport': 'red', 'Energy': 'blue',
+          'Industry': 'gold', 'Production': '#8B4789', 'Waste': '#00FFFF',
+          'Agriculture': '#33FF99', 'Residential': '#0080FF',
+          'Offroad': '#8470ff', 'Extraction': '#00FF00',
+          'Other': '#ee82ee', 'Natural': '#ffe7ba', 'Salt': '#ccffe5', 'Dust': '#ffffcc',
+          'External': '#cdcdb4', 'bottom': 'None'} # pink #FF66FF #9933FF 
+  
+    # @todo to be completed EPE: setting values for y-axis
+    yaxisnames = {'GCITY_CODE': 'City',
+                  'FUA_CODE': 'Commuting Zone',
+                  'NUTS_Lv1': 'NUTS_Lv1',
+                  'NUTS_Lv2': 'NUTS_Lv2',
+                  'NUTS_Lv3': 'NUTS_Lv3',
+                  'NUTS_Lv0': 'Rest of the country',
+                  'ALL_NUTS_Lv0': 'Transboundary', 
+                  'Total': 'Total'}
 
-#    colors={'PPM':'grey','SOx':'#ff0000','NOx': '#0000ff','NH3':'#b22222','NMVOC':'#8470ff',
-#    'Traffic': '#0000ff','Energy':'#999999','Industry':'#ff0000','Production':'#8B4789','Waste':'#00FFFF','Agriculture':'#b22222','Residential':'#32cd32',
-#    'Offroad':'#8470ff','Extraction':'#00FF00','Other':'#bebebe','Salt':'#ccffe5','Dust':'#ffffcc'}
-
+    # EPE: Display only greater city when the city core si below 300 km2
+    # and aggregation is done only on FUAs
+    varplot['yname']=[yaxisnames[k] for k in varplot['areaid'].values]
+    areanames = varplot['yname']
+    areanames.index = varplot['areaid']     
+    if 'FUA_CODE' in areanames.index.values:
+        if 'GCITY_CODE' not in areanames.index.values:
+            areanames.loc['FUA_CODE'] = 'Greater city' 
+    
     # Create the general blog and the "subplots" i.e. the bars
     plt.close('all')
-    f, ax1 = plt.subplots(1, figsize=(12, 6))  # modified by EPI
+    f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
+#    f, ax1 = plt.subplots(1, figsize=(12, 6))  # modified by EPI
     if plot_opt == 'perc':
         ax1.set_xlim([0, 100])
     else:
@@ -335,7 +374,7 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
     # Create a bar plot, in position bar_1
     ax1.barh(bar_l,
              # using the pre_score data
-             dfdata[varnames[0]],
+             dfdata_plot[varnames[0]],
              # set the width
              height=bar_width,
              # with pre_score and mid_score on the bottom
@@ -350,11 +389,11 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
     for ivar in range(1, len(varnames)):
         ax1.barh(bar_l,
                  # using the mid_score data
-                 dfdata[varnames[ivar]],
+                 dfdata_plot[varnames[ivar]],
                  # set the width
                  height=bar_width,
                  # with pre_score and mid_score on the bottom
-                 left=list(varplot_left+dfdata[
+                 left=list(varplot_left+dfdata_plot[
                            varnames[range(0, ivar)]].sum(axis=1)),
                  # with the label post score
                  label=varnames[ivar],
@@ -373,82 +412,107 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
     # Set the label and legends
     ax1.set_xlabel(x_label, fontsize=ftx)
     # ax1.set_ylabel("Areas")
-    plt.legend(loc=leg_loc)
+#    plt.legend(loc=leg_loc)
 
     # Set a buffer around the edge
     plt.ylim([min(tick_pos)-bar_width, max(tick_pos)+bar_width])
+    
+    
+    ypos = len(dfdata_plot.index.values)
+    xposcum = 0          
+    for letlabind in (np.arange(len(dfdata_plot.columns))):
+        xpos = xposcum + dfdata_plot.loc['Total'][letlabind]/2
+        xposcum = xposcum + dfdata_plot.loc['Total'][letlabind]
+        letter = dfdata_plot.columns[letlabind][0]
+        # place latter only if there is enough space
+        if dfdata_plot.loc['Total'][letlabind] >= 5 and np.isnan(xpos) == False:
+            ax1.text(xpos, ypos, letter, va= 'center',  ha= 'center', fontsize=(ftx+2))
+    
     plt.show()
     return f
 
-
-def figsize(scale):  # Added by Ema for spyder plot
-    fig_width_pt = 390                              #
-    inches_per_pt = 1.0/72.27                       # Convert pt to inch
-    golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio
-    fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-    fig_height = fig_width*golden_mean              # height in inches
-    fig_size = [fig_width, fig_height]
-    return fig_size
-
-
-def plot_spyder(emi_sum, prec, ftx=16):  # Added by Ema for spyder plot
-    """Spyder plot for emissions, only if the point is in GCITY
+def plot_spyder(emi_sum, prec, wantedorder_present, ftx=8):  # Added by Ema for spyder plot
+    """Spyder plot for emissions, only if the point is in the city
     @author: peduzem
 
     """
-#    prec = 'PPM'
-    if 'GCITY_CODE' in emi_sum.columns:
-        sect_display = emi_sum['GCITY_CODE'].loc[prec].index.get_level_values(0)
+    # @todo for debug to remove. 
+#    prec = 'PPM' 
+    
+    titles_dct = {'NH3': "NH$_\mathbf{3}$", 
+                  'SOx': "SO$_\mathbf{2}$", 
+                  'NMVOC': "NMVOC", 
+                  'PPM': 'PPM$_\mathbf{2.5}$', 
+                  'NOx': "NO$_\mathbf{x}$"}
+    
+    dct_colors = {'GCITY_CODE': ['red', 'red', '//', 'City'],
+                      'FUA_CODE': ['blue', 'None', '', 'Greater city']}  
 
-        index = [sect_display[1], sect_display[3], sect_display[4],
-                 sect_display[0], sect_display[2]]
-        df_city = emi_sum['GCITY_CODE'].loc[prec].reindex(index)/1000
+    # Polar plot are created only for cities (receptor point at least in FUA): 
+#    if 'FUA_CODE' in wantedorder_present['areaid'].values:
+    if 'FUA_CODE' in emi_sum.columns:
+        sect_display = emi_sum['FUA_CODE'].loc[prec].index.get_level_values(0)
+        # order index as in the atlas
+        index = [sect_display[4], sect_display[0], sect_display[2],
+                 sect_display[1], sect_display[3]]
+        df = []
+        df_fua = emi_sum['FUA_CODE'].loc[prec].reindex(index)/1000
+
+        if 'GCITY_CODE' in emi_sum.columns:
+            df_city = emi_sum['GCITY_CODE'].loc[prec].reindex(index)/1000
+            if 'GCITY_CODE' in wantedorder_present['areaid'].values:
+                df.append([df_city])
+
+        df.append([df_fua])
+        
         fig = plt.figure()
-#        fig = plt.figure(figsize=figsize(1))
+        # create figure
+        fig = plt.figure(figsize=figsize(0.3), dpi=1000)
         ax = fig.add_subplot(111, projection="polar")
         ax.grid(True)
-        ax.yaxis.grid(color='#aab0b7')
-        ax.xaxis.grid(color='#aab0b7')
-        dct_colors = {'GCITY_CODE': ['red', 'red', '//', 'City'],
-                      'FUA_CODE': ['blue', 'None', '', 'Greater city']}
+        ax.yaxis.grid(color='#aab0b7', lw=0.7)
+        ax.xaxis.grid(color='#aab0b7', lw=0.7)
+        # set border of figure area
         for spine in ax.spines.values():
-            spine.set_edgecolor('None')
-        theta = np.arange(len(df_city))/float(len(df_city))*2.*np.pi
+            spine.set_edgecolor('#aab0b7')
+            spine.set_zorder(0)
+            spine.set_linewidth(1)
+                
+        # Define angles of y axis in polar plots
+        theta = np.arange(len(df_fua))/float(len(df_fua))*2.*np.pi
         ax.set_xticks(theta)
-
+        
+        # Define tick labels for y axis
+        for tick in ax.yaxis.get_major_ticks():
+                tick.label1.set_horizontalalignment('center')
+                tick.label1.set_verticalalignment('top')
+        # get radial labels away from plotted line (set angle)
+        ax.set_rlabel_position(90)
+            
         for tick in ax.yaxis.get_major_ticks():
             tick.label1.set_horizontalalignment('center')
             tick.label1.set_verticalalignment('top')
-
-        df = []
-
-        if 'FUA_CODE' in emi_sum.columns:
-            df_fua = emi_sum['FUA_CODE'].loc[prec].reindex(index)/1000
-            df.append([df_fua])
-        df.append([df_city])
-
+        
         # make plots
         plots = []
+        mpl.rcParams['hatch.color'] = 'red'
         for it, dfdata in enumerate(df):
             line, = ax.plot(theta, df[it][0], color=dct_colors[df[it][0].name][0],
-
                             marker=None, label=None, zorder=3)
             ax.fill(theta, df[it][0], color=dct_colors[df[it][0].name][1], alpha=0.3,
-                        zorder=3, lw=0.3)
+                    zorder=3, lw=0.3)
             ax.fill(theta, df[it][0], edgecolor=dct_colors[df[it][0].name][1],
-
-                        alpha=0.3, hatch=dct_colors[df[it][0].name][2], zorder=3, color='None',
-                        lw=0.4)
+                    alpha=0.3, hatch=dct_colors[df[it][0].name][2], zorder=3, color='None',
+                    lw=0.4)
             plots.append(line,)
+
 
         def _closeline(line):
             x, y = line.get_data()
             x = np.concatenate((x, [x[0]]))
             y = np.concatenate((y, [y[0]]))
             line.set_data(x, y)
-        [_closeline(l) for l in [plots[0], plots[1]]]
-
-        ax.set_rlabel_position(90)  # get radial labels away from plotted line
+        [_closeline(l) for l in plots]
 
         maxy = max(max(df_fua), max(df_city))
         # set yticks so that I have 5 y ticks for each figure
@@ -461,17 +525,26 @@ def plot_spyder(emi_sum, prec, ftx=16):  # Added by Ema for spyder plot
                 break
             else:
                 ylim = maxy
+        yticks = ax.yaxis.get_major_ticks()
+        yticks[0].label1.set_visible(False)     
+        # EPE: Substituting the axis label with a txt label otherwise
+        # the lable is below the grid (probably a bug). 
+        # see my post on stackexchange: 
+        # https://stackoverflow.com/questions/46242088/axis-label-hidden-by-axis-in-plot
 
         for it in np.arange(len(theta)):
-            ax.text(theta[it], ylim*1.15, index[it], va='center',
+            # first letter of the sector:
+            ax.text(theta[it], ylim*1.15, index[it][0], va='center',
                     ha='center', fontsize=ftx)
         ax.set_xticklabels('')
 
 #        plt.legend(handles=[plots[0], plots[1]], labels=['Greater city', 'City'],
 #                    loc=(-0.2, 0.9), fontsize=ftx-2, frameon=False)
         ax.tick_params(axis='y', labelsize=ftx-2, zorder=4)
-        plt.title("{} [kton/y]".format(prec), fontsize=ftx, y=1.2, weight='bold')
-#        plt.show()
+        ax.text(2,  ylim*1.3, titles_dct[prec], va='center',
+                        ha='center', fontsize=(ftx+2), weight='bold')
+
+        plt.show()
         return fig
 ##
 
@@ -647,10 +720,10 @@ def dc_snapaggregate(alldc_snaps,aggr_src=True):
 #    alldc_snaps=dc_areasum(dc[idx],narea) # @todo EPE check, this does not make sense (not there in denises module, ok to canel!)
     # aggregate sources as required in e-rep
     if(aggr_src==True):
-        sources=pd.Series(['Traffic','Industry','Industry','Industry','Agriculture','Residential','Other','Other','Other','Other'], #  Modified by Ema
+        sources=pd.Series(['Transport','Industry','Industry','Industry','Agriculture','Residential','Other','Other','Other','Other'], #  Modified by Ema
                             index=['Nsnaps07','Nsnaps01','Nsnaps03','Nsnaps04','Nsnaps10','Nsnaps02','Nsnaps08','Nsnaps05','Nsnaps06','Nsnaps09'])
     else:
-        sources=pd.Series(['Traffic','Energy','Industry','Production','Agriculture','Residential','Offroad','Extraction','Industry','Waste'],
+        sources=pd.Series(['Transport','Energy','Industry','Production','Agriculture','Residential','Offroad','Extraction','Industry','Waste'],
                             index=['Nsnaps07','Nsnaps01','Nsnaps03','Nsnaps04','Nsnaps10','Nsnaps02','Nsnaps08','Nsnaps05','Nsnaps06','Nsnaps09'])
 
     alldc=alldc_snaps
@@ -659,7 +732,7 @@ def dc_snapaggregate(alldc_snaps,aggr_src=True):
     alldc=alldc_snaps.groupby(level=1).sum()
     if(aggr_src==True):  # EPE: changed order to have other at the end
                          # for better display
-        alldc = alldc.reindex(['Traffic', 'Industry', 'Agriculture', 'Residential',
+        alldc = alldc.reindex(['Transport', 'Industry', 'Agriculture', 'Residential',
                                'Other'])
     return alldc
 
@@ -1186,14 +1259,14 @@ if __name__ == '__main__':
     ############################################### user input data
 #    sherpa_version='inputFlatWeightChimere_7km_nuts'
     sherpa_version='20170322_v18_SrrResults_PotencyBased'
-    testarea='Pariscity' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    testarea='Trial' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     pollutant='PM25' #may be 'PM25' or 'PM10' or NOx
     aggr_zones ='city' #may be 'city','nuts', 'fuaonly' or 'rect' (in this case the domain defined with ll and ur)
     aggr_core = True # added by EPE, in case of aggr_zone == 'city'
     # the core of the city may be made up of multiple administrative units
     # which are aggregated in one single core
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
-    outfig='jpg' #'pnd' of 'pdf'
+    outfig='png' #'pnd' of 'pdf'
     normalize = True  # EPE normalize to 100 for apportionment >100
     ###############################################
     ############################################### input files
@@ -1257,6 +1330,7 @@ if __name__ == '__main__':
     ################default user definition
     aggr_src=True #set to True for aggregatin sources as in erep
     include_natural=True #include or not natiral PM concentration
+    aggr_sd=True # aggregate salt and dust in natural (EPE)
     print_areainfo=False #if true check and print which grid points in fua/gcity are actually not modelled
     #############
 
@@ -1556,13 +1630,22 @@ if __name__ == '__main__':
         dc_inc=dc_inc[wantedorder_present['areaid']]
         #add natural sources
         if include_natural:
-            natural=pd.DataFrame(0, index=['Salt','Dust'], columns=dc_inc.columns)
-            natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx]
-            natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx]
+            # EPE: modified to allow aggregation of natural contribution
+            if aggr_sd == False: 
+                natural=pd.DataFrame(0, index=['Salt','Dust'], columns=dc_inc.columns)
+                natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx]
+                natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx]
+            elif aggr_sd == True: 
+                natural=pd.DataFrame(0, index=['Natural'], columns=dc_inc.columns)
+                natural.loc['Natural', totalname] = (
+                        dust.loc['pDUST-'+pmsize,idx].values
+                        + salt.loc['pSALT-'+pmsize,idx].values) * 100./concentration[idx]
+            
             dc_inc=dc_inc.append(natural)
+            dc_inc_pl = dc_inc.copy() # @todo EPE: for debugging purpose, it will be removed 
         #plots
         fig={}
-        fig[1]=plot_bar(dc_inc,wantedorder_present,totalname)
+        fig[1]=plot_bar(dc_inc_pl,wantedorder_present,totalname)
         plt.close('all')
 #        fig[2]=plot_bar(dc_inc_p,wantedorder_present,totalname)
         plt.close('all')
@@ -1574,14 +1657,14 @@ if __name__ == '__main__':
             plt.close('all')
             for ip,p in enumerate(precursors):
                 xlab = ''.join([p, ' emitted mass in ', emi_unitsplot])
-                fig[4+ip] = plot_spyder(emi_sum, p)
+                fig[4+ip] = plot_spyder(emi_sum, p, wantedorder_present)
 #                fig[4+ip] = plot_bar(emi_inc.loc[p][smallareas],wantedorder_present.loc[wantedorder_present['areaid'].isin(smallareas)],totalname,plot_opt='noperc',x_label=xlab,leg_loc='upper left')
         plt.close('all')
 #        print(dc_inc)
         dc_inc.columns=wantedorder_present['areaname']
 
         for ids in list(receptors[receptors['target_idx']==idx].index):
-            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+outfig)
+            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+ outfig, dpi=1000, bbox_inches='tight')
 #            fig[2].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_prec_bars.'+outfig)
             if len(smallareas)>0:
 #                fig[3].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_map.'+outfig)
@@ -1593,6 +1676,23 @@ if __name__ == '__main__':
             dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.csv')
             dc_inc_all[ids]=dc_inc.transpose()
             target_allinfo[ids]=target_info.transpose()
+            # EPE: make legend and save it
+            figleg = plt.figure(figsize=figsize(0.1))#
+            axleg = figleg.add_subplot()
+            axleg = plt.subplot()
+            axleg.set_axis_off()
+            ax1 = fig[1].get_axes()
+            ax2 = fig[4].get_axes()
+            handles1, labels1 = ax1[0].get_legend_handles_labels()
+            handles2 = ax2[0].lines
+            labels2 = [handles.get_label() for handles in handles2]                       
+            dct_names = {'GCITY_CODE': 'City',
+                         'FUA_CODE': 'Greater city'} 
+            newlabels = [dct_names[label] for label in labels2]
+            axleg.legend(handles=handles1+handles2, labels=labels1+newlabels, fontsize=10, loc = 'center', frameon=False)
+            plt.show() 
+            figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight')
+            
     #summarize info on grid points
     reform = {(outerKey, innerKey): values for outerKey, innerDict in target_allinfo.items() for innerKey, values in innerDict.items()}
     target_allinfo=pd.DataFrame(reform).transpose()
@@ -1620,492 +1720,8 @@ if __name__ == '__main__':
     #config = pdfkit.configuration(wkhtmltopdf=path_wkthmltopdf)
     #pdfkit.from_file('output/template.html', 'output/output.pdf',configuration=config)
 ########################################### end revision for E-reporting ()
+   
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# -----------------------------------------------------------------------------
-#def module7(emissions_nc,concentration_nc, model_nc, intersect_dir,targets_txt,outdir,aggr_zones,outfig='png',rect_coord=None, *progresslog):
-
-#    #### START REVISION
-#    # inputs of module 7:
-#    emissions_nc = emissions
-#    concentration_nc = concentration
-#    model_nc = model
-#    intersect_dir = selection_dir
-#    targets_txt = target_list
-#    outdir = outdir
-#    aggr_zones = aggr_zones
-#    outfig = outfig
-#
-#    import pandas as pd
-#    import sys
-#    from mpl_toolkits.basemap import Basemap
-#    import matplotlib.pyplot as plt
-#    from scipy.spatial import distance
-#
-###    from sherpa_auxiliaries import read_progress_log
-##    if progresslog:
-##        progress_dict = read_progress_log(progresslog[0])
-###        progress_dict = read_progress_log(progresslog)
-##        write_netcdf_output = False
-##    else:
-##        progress_dict = {'start': 0.0, 'divisor': 1.0}
-##        write_netcdf_output = True
-##
-#    if not os.path.exists(outdir):  # added by EPI
-#        os.makedirs(outdir)
-#
-#    # ---------------- default user definition
-#    aggr_src = True  # set to True for aggregatin sources as in erep
-#    include_natural = True  # include or not natiral PM concentration
-#    print_areainfo = False  # if true check and print which grid points in
-#    # fua/gcity are actually not modelled
-#    # ----------------
-#
-## EPE # @todo update these with the new grid intersect     
-#    grid_txt = intersect_dir + '/grid_intersect'
-#    gcities_txt = intersect_dir + '/grid_int_gcities'
-#    fua_txt = intersect_dir + '/grid_int_fua'
-#    rect_txt = intersect_dir + '/gridint_rect'
-#    #list of true names for areas IDs
-#    codes_names = pd.Series({'NUTS_Lv0':'nuts0','NUTS_Lv1':'nuts1','NUTS_Lv2':'nuts2','NUTS_Lv3':'nuts3','FUA_CODE':'fua','GCITY_CODE':'gcities'})
-#    codes_txt = {k: intersect_dir+'/' + codes_names[k] +'_names.txt'for k in codes_names.keys()}
-#    #list of points used as receptors. Only 'id','lon','lat' and 'Station name' are required columns
-#    # -------------------------------------------------------------------------
-#
-#    # read netcdf files, put the data in multindex dataframes and
-#    # check consistency
-#    emissions = read_nc(emissions_nc)
-#    concentration = read_nc(concentration_nc)
-#    model = read_nc(model_nc)
-#
-#    if include_natural:
-#        pmsize = pollutant[-2:]
-#        salt_nc = 'input/pDUST-pSALT/pSALT-'+pmsize+'-basecase.nc'  # EMA
-#        dust_nc = 'input/pDUST-pSALT/pDUST-'+pmsize+'-basecase.nc'  # EMA
-#        salt = read_nc(salt_nc)
-#        dust = read_nc(dust_nc)
-#
-#    # check consistency of model and emissions
-#    if model.loc['coord'].astype(np.float32).equals(
-#            emissions.loc['coord'].astype(np.float32)):
-#        print('OK latitude and longitude in matrices emissions and \
-#              model are the same')
-#    else:
-#        sys.exit("latitude and/or longitude are different in loaded matrices")
-#
-#    # check consistency of model and concentrations
-#    if model.loc['coord'].astype(np.float32).equals(
-#            concentration.loc['coord'].astype(np.float32)):
-#
-#        print('OK latitude and longitude in matrices model and conc are the \
-#              same')
-#    else:
-#        sys.exit("latitude and/or longitude are different in loaded matrices")
-#
-#    # get inner radius and check if the flat weight option is activated
-#    inner_radius = int(getattr(Dataset(model_nc, 'r'), 'Radius of influence'))
-#    if 'flatWeight' in model.index.levels[0]:
-#        print('Flatweight approximation is ON with Radius of influence of ' +
-#              str(inner_radius) + ' grid cells')
-#        if inner_radius >= 200:
-#            sys.exit("Something wrong, radius of influence is >=200 grid \
-#                     cells")
-#    else:
-#        if inner_radius is not 200:
-#            sys.exit("Something wrong, flatweight approximation is deactivated \
-#                     but inner_radius is not 200 grid cells")
-#        print('Flatweight approximation is OFF')
-#        inner_radius = False
-#
-#    # save coord info
-#    coordinates = emissions.loc['coord', ].transpose()
-#    lat_vec = np.unique(coordinates['lat'])
-#    lon_vec = np.unique(coordinates['lon'])
-#    # find grid resolution in degrees
-#    dlon_res = min(lon_vec[1:]-lon_vec[:-1])
-#    dlat_res = min(lat_vec[1:]-lat_vec[:-1])
-#
-#    # grab nuts/areas info from txt
-#    nuts_info = read_nuts_area(grid_txt, calcall=True)
-#    nuts_info.update(read_nuts_area(gcities_txt, nullnut='LAND000'))
-#    nuts_info.update(read_nuts_area(fua_txt, nullnut='LAND000'))
-#    if(aggr_zones == 'rect'):
-#        nuts_info.update(read_nuts_area(
-#                         'rect', nutsall=nuts_info['ALL_NUTS_Lv0'].copy()))
-#
-#    # read list of receptors and check its consistency
-#    receptors = pd.read_csv(targets_txt, delimiter="\t",
-#                            encoding="ISO-8859-1")
-#    receptors.columns = [x.lower() for x in receptors.columns]
-#
-#    # check if information in receptors are ok and without duplicates
-#    required_info = ['id', 'station name', 'lon', 'lat']
-#    required_info_present = list(filter(lambda x: x in receptors.columns,
-#                                        required_info))
-#    missing_info = list(set(required_info) - set(required_info_present))
-#    if len(required_info_present) < len(required_info):
-#        sys.exit("the receptors location file is missing some information\
-#                 on " + missing_info)
-#    if len(receptors['id'].unique()) < len(receptors['id']):
-#        sys.exit("there are duplicates in receptors ids")
-#    if receptors['lon'].min() < lon_vec.min() or receptors['lon'].max() > lon_vec.max():
-#        sys.exit("some receptors have longitude outside the domain")
-#    if receptors['lat'].min() < lat_vec.min() or receptors['lat'].max() > lat_vec.max():
-#        sys.exit("some receptors have latitude outside the domain")
-#        
-#    # EPE @todo I could put a check on the receptor ID here to say if it is 
-#    # in the corresponding FUA name. 
-#
-#    #grab true names for each area
-#    # EPE @todo update with the new grid intersect
-#    area_names_long={k: pd.read_csv(codes_txt[k], delimiter="\t", encoding="ISO-8859-1", skiprows=1, index_col=0, header=None) for k in codes_names.keys()}
-#
-#    #reduce string length if needed
-#    area_names = {}
-#    countries = np.unique(nuts_info['NUTS_Lv0'].index.get_level_values(0))
-#
-#    for k in area_names_long.keys():
-#        area_names[k] = area_names_long[k][1].apply(name_short)
-#
-#    area_names['ALL_NUTS_Lv0'] = pd.Series({'ALL_NUTS_Lv0': 'Europe',
-#                                           'other': 'other'}, name='EU')
-##    area_names['ALL_NUTS_Lv0']=pd.Series({'ALL_NUTS_Lv0' : 'Europe'+str(len(countries)), 'other' : 'other'},name='EU')
-#
-#    if(aggr_zones=='rect'):
-#        area_names['rect']=pd.Series({'rect' : 'Domain', 'other' : 'other'},name='EU')
-##    totalname='Total'+str(len(countries))
-#    totalname='Total'
-#
-#    # -------------------------------------------------------------------------
-#    # optimize calculations removing unused data
-#    model = model.drop('coord', level=0)
-#    emissions = emissions.drop('coord', level=0)
-#    # fake sum to remove one level
-#    concentration = concentration.groupby(level=[0]).sum()
-#    concentration = concentration.loc['conc']
-#
-#    # remove not modelled points (SR was build only using reductons in points
-#    # in grid intersect)
-#    modelled_emissions_idx = list(set(emissions.columns).intersection(nuts_info['NUTS_Lv0'].index.get_level_values(1)))
-#    emissions = emissions[modelled_emissions_idx]
-#    print('in emissions keeping ',len(modelled_emissions_idx), ' grid points used in SR model training')
-#    print('the considered emissions are from '+str(len(countries))+' european or near european countries')
-#    print(countries)
-#
-#    # check coherence with nuts_info grid points (must be all and only the ones in emissions)
-#    info_grids={}
-#    for area in nuts_info.keys():
-#        index_diff=set(nuts_info[area].index.get_level_values(1)).difference(modelled_emissions_idx)
-#        if len(index_diff)>0:
-#            idx = pd.IndexSlice
-#            print('There are '+str(len(index_diff)) +
-#            ' points in area '+area+' which are not modelled an will be removed from area summing up')
-#            if print_areainfo:
-#                info_grids_area=coordinates.loc[index_diff]
-#                info_grids_area=info_grids_area.merge(nuts_info[area].reset_index(level=0),how='left',left_index=True, right_index=True)
-#                info_grids[area]=info_grids_area.merge(area_names[area].reset_index(level=0),how='left',left_on='nutname',right_on=0,left_index=True)
-#                info_grids[area]=info_grids[area].set_index(info_grids_area.index)
-#                info_grids[area]= info_grids[area].drop([0], 1)
-#                print(info_grids[area])
-#            nuts_info[area]=nuts_info[area].loc[idx[:,modelled_emissions_idx],:]
-#
-#    # remove not modelled grid points
-#    model_sum = model.loc['alpha'].sum()
-#    model_points = model_sum[model_sum>0].index
-#    print ("in model removing ",len(model_sum[model_sum==0].index)," grid points where alpha is zero")
-#    model=model[model_points]
-#
-#    #remove not modelled precursors
-#    model_sumgrid = model.loc['alpha'].sum(axis=1)
-#    precursors=list(model_sumgrid[model_sumgrid>0].index)
-#    print ("in model keep ",list(precursors)," modelled precursors")
-#    model=model.loc[(slice(None),precursors),:]
-#    emissions=emissions.loc[(precursors,slice(None)),:]
-#    #get measurement unit for emissions
-#    emi_units=list(map(lambda p: getattr(Dataset(emissions_nc,'r').variables[p], 'units'),precursors))
-#    if len(set(emi_units))!=1:
-#        sys.exit("not all precursors have the same unit mass in emissions")
-#
-#    # -------------------------------------------------------------------------
-#    # define the aggregation and increments calculation type depending on
-#    # aggr_zones
-#    if aggr_zones == 'city':
-#        wantedorder = pd.Series( {'3' : 'ALL_NUTS_Lv0', '2' : 'NUTS_Lv0', 
-#                                  '1' :'FUA_CODE','0':'GCITY_CODE'})   
-#    # Start - Added by EPE, to consider only fua
-#    elif aggr_zones == 'fuaonly':
-#        wantedorder = pd.Series({'1': 'FUA_CODE', '2': 'NUTS_Lv0',
-#                                 '3': 'ALL_NUTS_Lv0'})
-#    # End - Added by EPE, to consider only fua
-#    elif aggr_zones == 'nuts':
-#        wantedorder = pd.Series( {'4' : 'NUTS_Lv3', '3' : 'NUTS_Lv2',
-#                                  '2' : 'NUTS_Lv1', '1' :'NUTS_Lv0',
-#                                  '0' : 'ALL_NUTS_Lv0'})
-#    elif aggr_zones == 'rect':
-#        wantedorder = pd.Series( { '1' :'rect', '0' : 'ALL_NUTS_Lv0'})
-#
-#    alldist_km = pd.concat(list(map(lambda st: haversine_vec(receptors.loc[st,'lon'],receptors.loc[st,'lat'],coordinates['lon'],coordinates['lat']),receptors.index)),axis=1)
-#    receptors['id'] = receptors['id'].str.strip()
-#    receptors['target_idx'] = alldist_km.idxmin()
-#    receptors['dist_km'] = alldist_km.min()
-#    receptors['lon_grid'] = pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lon'] for st in receptors.index})
-#    receptors['lat_grid'] = pd.Series({st:coordinates.loc[receptors.loc[st,'target_idx'],'lat'] for st in receptors.index})
-#    receptors['model_conc'] = concentration[receptors['target_idx']].values
-#    print("the selected targets correspond to modelled grid points x_y ")
-#    print(receptors['target_idx'].values)
-#    count_idx = receptors.pivot(columns='target_idx',
-#                                values='target_idx').count()
-#    if count_idx.max() > 1:
-#        print('There are duplicates in target_idx:' + ', '.join(list(count_idx.loc[count_idx>1,].index)))
-#    a = count_idx.reset_index()
-#    a.rename(columns={0: 'duplicates'}, inplace=True)
-#    receptors = pd.merge(receptors,a)
-#    receptors.index  =receptors['id']
-#    receptors.drop('id', axis=1, inplace=True)
-#
-#    dc_inc_all = {}
-#    dc = {}
-#    dc_ppm = {}
-#    target_allinfo = {}
-#    
-#    # calculate distances first in order to save calculation time,
-#    # targets need to be in  memory limit of the machine
-#    # (say at most about 10000)
-#    dists_array = distance.cdist(coordinates.loc[count_idx.index, ['x', 'y']],
-#                                 coordinates.loc[emissions.columns,
-#                                                 ['x', 'y']],
-#                                 metric='euclidean')
-#
-#    for ix, idx in enumerate(count_idx.index):
-#        # For the selected point find all information on area  ids
-#        target_info = (pd.concat(list(map(lambda areaid:
-#                       find_target_info(areaid, nuts_info, idx),
-#                       nuts_info.keys())), axis=1).transpose())
-#        target_info['areaname']=pd.Series(dict(zip(target_info.index,map(lambda x: ''.join(list(area_names[x].loc[target_info.loc[x,'areaid']])).title(),target_info.index))))
-#        #select grid points in the same area as the target, with their percentual area
-#        narea=pd.concat(list(map(lambda areaname:nuts_info[areaname].loc[target_info.loc[areaname,'areaid']]['parea'],target_info.index)),axis=1)
-#        narea.columns=target_info.index
-#        narea=narea.fillna(0)
-#        # EPE: aggregate emissions per precursor and area
-#        nareasurf = pd.concat(list(map(lambda areaname:nuts_info[areaname]['area'].loc[target_info.loc[areaname,'areaid']],target_info.index)),axis=1)
-#        nareasurf.columns = target_info.index
-#        nareasurf = nareasurf.fillna(0)
-#        # EPE       
-#        if aggr_zones == 'city' and aggr_core:
-#            while True:
-#            # if the core is aggregated take all the GCITY_CODES that
-#            # belong to the FUA (added by EPE)
-#            # Get correspondance map from marco:
-#                gcity_map = pd.read_table('D:\\sherpa.git\\Sherpa\\atlas\\151_fuas_cities_urau.txt',
-#                              index_col=['FUA_CODE', 'ASCII_NAME'])
-#        #                # get fua code
-#                if 'FUA_CODE' in target_info.index:
-#                    fua_code = target_info['areaid'].loc['FUA_CODE']
-#                    # get id of cities in the core of the fua
-#                    cityc_codes = gcity_map.loc[fua_code]['URAU_COD_2']
-#                    # put in target info all the ids of the cities
-#                    target_info.loc['GCITY_CODE']['areaid']=cityc_codes.values
-#                                   # fill the areaname of target info
-#                    target_info['areaname'] = pd.Series(dict(zip(target_info[1:].index,map(lambda x: ''.join(list(area_names[x].loc[target_info.loc[x,'areaid']])).title(),target_info.index[1:]))))
-#                    target_info.loc['GCITY_CODE']['areaname'] = target_info.loc['FUA_CODE']['areaname']+'_core'
-#        ##                    # create a list of all the areanames pararea
-#                    listnarea = list(map(lambda areaname:nuts_info[areaname].loc[list(target_info.loc[areaname,'areaid'])]['parea'],['GCITY_CODE']))
-#                    tinfolist = list(target_info.index[1:])
-#                    tinfolist.remove('GCITY_CODE')
-##                    listnarea.append(list(map(lambda areaname:nuts_info[areaname].loc[target_info.loc[areaname,'areaid']]['parea'],tinfolist)))
-#        ##                    # create the item corresponding to the core
-#                    areaname = 'GCITY_CODE'
-#                    df = nuts_info[areaname].loc[list(target_info.loc[areaname,'areaid'])]['parea'].reset_index(level=0, drop=True)
-#                    df = df.groupby(level=0).sum()
-#        ##                    # create data frame summarizing results
-#        ##                    narea = pd.concat(listnarea,axis=1)
-#        #                    narea.columns = target_info.index[1:]
-#        ##                    # add the column for the core
-#                    narea['GCITY_CODE'] = df.loc[df.index.values]
-#                    narea=narea.fillna(0)
-#        ##                    # index the coluns in the original order
-#                    narea.reindex_axis(target_info.index, axis=1)
-#        ##
-#        ##                    # aggregate emissions per precursor and area
-#        ##                    nareasurf = pd.concat(list(map(lambda areaname:nuts_info[areaname].loc[target_info.loc[areaname,'areaid']]['area'],target_info.index[1:])),axis=1)
-#        ##                    # create the item corresponding to the core
-##                    areaname = 'GCITY_CODE'
-##                    df = nuts_info[areaname].loc[list(target_info.loc[areaname,'areaid'])]['area'].reset_index(level=0, drop=True)
-##                    df = df.groupby(level=0).sum()
-#        ##
-#        ##                    nareasurf.columns = target_info.index[1:]
-#        ##                                   # hadd the column for the core
-#                    nareasurf['GCITY_CODE'] = df.loc[df.index.values]
-#                    nareasurf=nareasurf.fillna(0)
-#        ##                    # index the columns in the original order
-#                    nareasurf.reindex_axis(target_info.index, axis=1)
-#                    if nareasurf['GCITY_CODE'].sum() < 300:
-#                        aggr_zones = 'fuaonly'
-#                        print('WARNING! The core is smaller than 300 km2, results are aggregated in terms of FUA')
-#                        break
-#                    else:
-#                        break
-#                else:
-#                    print('WARNING! The selected point does not correpond to a FUA')
-#                    break
-#
-#
-#        #select grid points in the same area as the target, with their percentual area
-##        narea=pd.concat(list(map(lambda areaname:nuts_info[areaname].loc[target_info.loc[areaname,'areaid']]['parea'],target_info.index)),axis=1)
-##        narea.columns=target_info.index
-##        narea=narea.fillna(0)
-#        #narea = dict(zip(target_info.index, narea))
-#        #create an emissions delta with zeroes out of the area and emissions detuced by emissions_delta multiplies for the realtive grid area inside the area
-#
-#        # Core of the sharpa calculations:
-#        # calculate dc due to each gridpoint for each precursor and macrosector
-#        start = time.perf_counter()
-#        dc[idx] = pd.concat(list(map(lambda p: sherpa_model(p, model[idx],
-#                            dists_array[ix, :], emissions, inner_radius),
-#                            precursors)))
-#        dc[idx].index = emissions.index
-#        end = time.perf_counter()
-#        #print ("time elapsed ",end-start)
-#
-#
-#        emi_sum = pd.concat(list(map(lambda p: dc_snapaggregate(
-#                            dc_areasum(emissions.loc[p], nareasurf), aggr_src),
-#                            precursors)), axis=0, keys=precursors)
-#        emi_inc = dc_increments(emi_sum, aggr_zones)
-#        emi_inc[totalname] = emi_inc.sum(axis=1)
-#
-#        # aggregate dc per precursor, area,
-#        # calculate increments and relative values
-#        alldc = dc_snapaggregate(dc_areasum(dc[idx], narea), aggr_src)
-#        dc_inc = dc_increments(alldc, aggr_zones)*100./concentration[idx]
-#        area_present = dc_inc.columns
-#        dc_inc[totalname] = dc_inc.sum(axis=1)
-#
-#        #aggregate results per precursor
-#        alldc_prec=dc_areasum(dc[idx],narea,liv=0)
-#        dc_inc_p=dc_increments(alldc_prec,aggr_zones)*100./concentration[idx]
-#        dc_inc_p[totalname]= dc_inc_p.sum(axis=1)
-#
-#        wantedorder_present=pd.Series(list(filter(lambda x: x in area_present, wantedorder))).to_frame(name='areaid')
-#        wantedorder_present['areaname']=pd.Series(list(target_info.loc[wantedorder_present['areaid'],'areaname']))
-#         #check for duplicated names in nuts
-#        if 'NUTS_Lv1' in wantedorder_present['areaid'].values:
-#            wantedorder_present.loc[wantedorder_present['areaid'].values=='NUTS_Lv1','areaname']='1_'+wantedorder_present.loc[wantedorder_present['areaid'].values=='NUTS_Lv1','areaname']
-#        if 'NUTS_Lv2' in wantedorder_present['areaid'].values:
-#            wantedorder_present.loc[wantedorder_present['areaid'].values=='NUTS_Lv2','areaname']='2_'+wantedorder_present.loc[wantedorder_present['areaid'].values=='NUTS_Lv2','areaname']
-#
-#         #rename fue elements (same names as city core)
-#        if 'FUA_CODE' in wantedorder_present['areaid'].values:
-#            wantedorder_present.loc[wantedorder_present['areaid'].values=='FUA_CODE','areaname']='Commuting zone\n'+wantedorder_present.loc[wantedorder_present['areaid'].values=='FUA_CODE','areaname']
-#            # wantedorder_present.loc[wantedorder_present['areaid'].values=='FUA_CODE','areaname']='fua_'+wantedorder_present.loc[wantedorder_present['areaid'].values=='FUA_CODE','areaname']
-#
-#        #build a dataframe with constant values in the smallest areas (excluding 'ALL_NUTS_Lv0' and 'NUTS_Lv0')
-#        smallareas=list(set(area_present)-set(['ALL_NUTS_Lv0','NUTS_Lv0']))
-#
-#        #avoid double counting of grid increments
-#        narea_inc=dc_increments(narea,aggr_zones)
-#
-#        if len(smallareas)>0:
-#        #make a copy with 0 and 1 only for plotting
-#            narea_bin=narea[smallareas].copy()
-#            narea_bin=narea_bin.mask(narea_bin>0.5,1)
-#            narea_bin=narea_bin.mask(narea_bin<=0.5,0)
-#            narea_id=narea_bin.sum(axis=1)
-#
-#            #dc_inc_flat= pd.concat(list(map(lambda p: narea_inc[p]*(dc_inc[p].sum()),smallareas)),axis=1).sum(axis=1)
-#            #dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns)
-#
-#        #set up appropriate names for the areas
-#        wantedorder_present=wantedorder_present.append(pd.Series({'areaid':totalname, 'areaname':totalname}), ignore_index=True)
-#        dc_inc=dc_inc[wantedorder_present['areaid']]
-#        #add natural sources
-#        if include_natural:
-#            natural=pd.DataFrame(0, index=['Salt','Dust'], columns=dc_inc.columns)
-#            natural.loc['Dust',totalname]=dust.loc['pDUST-'+pmsize,idx].values*100./concentration[idx]
-#            natural.loc['Salt',totalname]=salt.loc['pSALT-'+pmsize,idx].values*100./concentration[idx]
-#            dc_inc=dc_inc.append(natural)
-#            if dc_inc[totalname].sum() < 100:
-#                ncontrol_fill = 100 - dc_inc[totalname].sum()
-#                ncontrol=pd.DataFrame(0, index=['No control'], columns=dc_inc.columns)
-#                ncontrol.loc['No control',totalname] = ncontrol_fill
-#                dc_inc = dc_inc.append(ncontrol)
-#            elif dc_inc[totalname].sum() >= 100 and normalize == True:
-#                dc_inc = dc_inc * 100/dc_inc[totalname].sum()
-#                print('WARNING: rescaling all values 100')
-#
-#
-#        #plots
-#        fig={}
-#        fig[1]=plot_bar(dc_inc,wantedorder_present,totalname)
-#        plt.close('all')
-##        fig[2]=plot_bar(dc_inc_p,wantedorder_present,totalname)
-#        plt.close('all')
-#        if emi_units[0] == 'Mg/km2':  # EMA - correct emissions units in plot
-#            emi_unitsplot = 'ton/year'
-#        if len(smallareas)>0:
-#            #fig[3]=plot_dict(dc_inc_flat,idx,coordinates.loc[emissions.columns,])
-##            fig[3]=plot_dict(narea_id,idx,coordinates.loc[emissions.columns,])
-#            plt.close('all')
-#            for ip,p in enumerate(precursors):
-#                xlab = ''.join([p, ' emitted mass in ', emi_unitsplot])
-#                fig[4+ip] = plot_spyder(emi_sum, p)
-##                fig[4+ip] = plot_bar(emi_inc.loc[p][smallareas],wantedorder_present.loc[wantedorder_present['areaid'].isin(smallareas)],totalname,plot_opt='noperc',x_label=xlab,leg_loc='upper left')
-#        plt.close('all')
-##        print(dc_inc)
-#        dc_inc.columns=wantedorder_present['areaname']
-#
-#        for ids in list(receptors[receptors['target_idx']==idx].index):
-#            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+outfig)
-##            fig[2].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_prec_bars.'+outfig)
-#            if len(smallareas)>0:
-##                fig[3].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_map.'+outfig)
-#                for ip,p in enumerate(precursors):
-#                   if fig[4+ip]:  # added by EMA
-#                         fig[4+ip].savefig((outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_spys.'+outfig), dpi=300, bbox_inches='tight')
-##                    fig[4+ip].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_bars.'+outfig)
-#              #dc_inc.to_html(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.html',classes='table')
-#            dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.csv')
-#            dc_inc_all[ids]=dc_inc.transpose()
-#            target_allinfo[ids]=target_info.transpose()
-#    #summarize info on grid points
-#    reform = {(outerKey, innerKey): values for outerKey, innerDict in target_allinfo.items() for innerKey, values in innerDict.items()}
-#    target_allinfo=pd.DataFrame(reform).transpose()
-#    a =target_allinfo.reset_index()
-#    a.rename(columns={'level_0': 'id', 'level_1': 'area'}, inplace=True)
-#    b =receptors[['station name','target_idx','duplicates','model_conc','lon','lon_grid','lat','lat_grid','dist_km']].reset_index()
-#    summary= pd.merge(b, a)
-#    summary = summary.set_index(['id','area'])
-#    #summary.to_html(outdir+'\\AAA_summary_info.html',classes='table')
-#    summary.to_csv(outdir+'\\AAA_summary_info.csv')
-#
-#    reform = {(outerKey, innerKey): values for outerKey, innerDict in dc_inc_all.items() for innerKey, values in innerDict.items()}
-#    dc_inc_all=pd.DataFrame(reform).transpose()
-#    #check total totals of explained mass on each receptor
-#    total_pm=pd.concat([receptors[['station name','lon','lat','target_idx']],dc_inc_all.groupby(level=[0]).sum().loc[receptors.index,]],axis=1)
-#    #COUNTaverage source contribution and its variability among receptors
-#    summary_src={}
-#    summary_src['count']=dc_inc_all.groupby(level=[1]).count().transpose()
-#    summary_src['mean']=dc_inc_all.groupby(level=[1]).mean().transpose()
-#    summary_src['sd']=dc_inc_all.groupby(level=[1]).std().transpose()
-#    reform = {(innerKey,outerKey): values for outerKey, innerDict in summary_src.items() for innerKey, values in innerDict.items()}
-#    summary_src=pd.DataFrame(reform).transpose()
-## -----------------------------------------------------------------------------
-#    stop = time.perf_counter()
-#    print('Module 7 run time: %s sec.' % (stop-start))
-    #remove(proglog_filename)
-
+    
+    
     pass
-    #### END REVISION
