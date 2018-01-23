@@ -35,6 +35,11 @@ path_base_conc_cdf_test = 'input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc'
 path_healthbl_test = 'input/impacts/healthbl_nc.nc'
 path_config_json_test = 'config/sharedvariables.json'
 
+fua_intersect_dir = 'input/selection/gridnew/fua/'
+nuts_intersect_dir = 'input/selection/gridnew/nuts/'
+dbf_dir = 'input/selection/gridnew/'
+target_list = 'input/AM_targets.txt'
+
 # list of precursors
 # order important, it's the order in the alpha and omega arrays
 # precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PM25', 'SOx']  
