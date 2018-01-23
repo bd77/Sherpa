@@ -239,7 +239,7 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
     'd_dll_pp': {
             'aggregation': 'population weighted average',
             'ci': ['d_dll_pp_lb', 'd_dll_pp', 'd_dll_pp_ub'],
-            'combo_box': 'delta days of life loss',
+            'combo_box': 'delta days of life loss per person',
             'long_description': 
                 ['delta days of life loss per person lower bound',
                  'delta days of life loss per person',
@@ -297,27 +297,27 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
         if key == 'd_mort':
             for it in enumerate(cfg_dct[key]['ci']):  
                 write_nc(delta_mort[it[0]], outfile, it[1], cfg_dct[key]['units'], path_healthbl,
-                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+                     addnutsid=False, l_name=cfg_dct[key]['long_description'][it[0]])
         if key == 'v_mort': 
             for it in enumerate(cfg_dct[key]['ci']):
                 write_nc(sce_mort[it[0]], outfile, it[1], cfg_dct[key]['units'], path_healthbl,
-                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+                     addnutsid=False, l_name=cfg_dct[key]['long_description'][it[0]])
         if key == 'd_dll':
             for it in enumerate(cfg_dct[key]['ci']):
                 write_nc(delta_dll[it[0]], outfile, it[1], cfg_dct[key]['units'], path_healthbl,
-                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+                     addnutsid=False, l_name=cfg_dct[key]['long_description'][it[0]])
         if key == 'v_dll': 
             for it in enumerate(cfg_dct[key]['ci']):  
                 write_nc(sce_dll[it[0]], outfile, it[1], cfg_dct[key]['units'], path_healthbl,
-                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+                     addnutsid=False, l_name=cfg_dct[key]['long_description'][it[0]])
         if key == 'd_dll_pp':
             for it in enumerate(cfg_dct[key]['ci']):  
                 write_nc(delta_dll_spec[it[0]], outfile, it[1], cfg_dct[key]['units'], path_healthbl,
-                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+                     addnutsid=False, l_name=cfg_dct[key]['long_description'][it[0]])
         if key == 'v_dll_pp': 
             for it in enumerate(cfg_dct[key]['ci']):  
                 write_nc(sce_dll_spec[it[0]], outfile, it[1], cfg_dct[key]['units'], path_healthbl,
-                     addnutsid=True, l_name=cfg_dct[key]['long_description'][it[0]])
+                     addnutsid=False, l_name=cfg_dct[key]['long_description'][it[0]])
     
 ## SUPPORT FUNCTIONS (IDEALLY IN THE AUXIALIARIES FILE)
 
