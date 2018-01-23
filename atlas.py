@@ -209,7 +209,7 @@ if __name__ == '__main__':
             ax.grid(True)
             ax.yaxis.grid(color='#aab0b7', lw=0.7)
             ax.xaxis.grid(color='#aab0b7', lw=0.7)
-            # set bored of figure area
+            # set border of figure area
             for spine in ax.spines.values():
                 spine.set_edgecolor('#aab0b7')
                 spine.set_zorder(0)

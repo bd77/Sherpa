@@ -992,8 +992,8 @@ if __name__ == '__main__':
     
     # run module 1 without progress log
     ############################################### user input data
-    sherpa_version='inputFlatWeightChimere_7km_nuts'
-    testarea='London' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    sherpa_version='20170322_v18_SrrResults_PotencyBased'#'inputFlatWeightChimere_7km_nuts'
+    testarea='Pariscity' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     pollutant='PM25' #may be 'PM25' or 'PM10' or NOx
     aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
     #rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}
@@ -1010,7 +1010,8 @@ if __name__ == '__main__':
         sys.exit(pollutant +'is not implemented in this module')
     emissions='input/'+sherpa_version+'/1_base_emissions/BC_emi_'+pollutant+'_Y.nc'
     concentration='input/'+sherpa_version+'/2_base_concentrations/BC_conc_'+pollconc+'.nc'
-    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'.nc'   #info on areas and percentage of grids in areas
+    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'_20170322_potencyBased.nc'   # changed ema** #info on areas and percentage of grids in areas
+#    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'.nc'   #info on areas and percentage of grids in areas
     selection_dir='input/selection'
     target_list='input/'+testarea+'_targets.txt'
     outdir='output/'+sherpa_version+'/'+testarea

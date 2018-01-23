@@ -144,7 +144,7 @@ def plot_effpot(precursor_lst, name, sources, path_results,
 #    yvar = 'eff'
 
     ### Part 1 - sectors contribution:
-    yaxiskword = 'Efficiency, $\\eta_{{p,sector}}$'
+    yaxiskword = 'Potency, $\\eta_{{p,sector}}$'
     marks = ['o', 'v', 's', '*']
     sect_aggr = ['industry', 'residential', 'agriculture', 'transport',
                  'other']
@@ -219,18 +219,19 @@ def plot_effpot(precursor_lst, name, sources, path_results,
         df_scaty.to_csv(path_figures + 'df_efficiency_aggr_{}{}.csv'.format(name, precursor))
         aggsecemi.to_csv(path_figures + 'df_aggsecemi_aggr_{}.csv'.format(precursor))
             #plt
-    plt.xlabel('Potential, $\phi_p^{{Sector}}$, for {}'.format(name))
+    plt.xlabel('potential, $\phi_p^{{Sector}}$, for {}'.format(name))
     plt.ylabel('{}, for {}'.format(yaxiskword, name))
 
     for ind, sec in enumerate(sect_aggr):
         patches.append(mpatches.Patch(color= 'C{}'.format(int(ind)), label='{}'.format(sec)))
     plt.legend(handles=patches)
+    plt.show()
     fig.savefig(path_figures + 'perprecpersectex_{}.pgf'.format(name)) #,
     fig.savefig(path_figures + 'perprecpersectex_{}.pdf'.format(name))
 
 
     ### Part 2 - areas contribution:
-    yaxiskword = 'Efficiency, $\\eta_{{p,area}}$'
+    yaxiskword = 'potency, $\\eta_{{p,area}}$'
     marks = ['o', 'v', 's', '*']
     areas = ['FUA', 'not_FUA']
     # Plots by sectors:
@@ -266,18 +267,19 @@ def plot_effpot(precursor_lst, name, sources, path_results,
 
         plt.plot(df_scatx['FUA'], df_scaty['FUA'], marks[indp], color= 'C{}'.format(int(1)))
         plt.plot(df_scatx['not_FUA'], df_scaty['not_FUA'], marks[indp], color= 'C{}'.format(int(2)))
-    plt.xlabel('Potential, $\phi_{{p,area}}$, for {}'.format(name))
+    plt.xlabel('potential, $\phi_{{p,area}}$, for {}'.format(name))
     plt.ylabel('{}, for {}'.format(yaxiskword, name))
     patches.append(mpatches.Patch(color= 'C{}'.format(int(1)), label = '{}'.format('FUA')))
     patches.append(mpatches.Patch(color= 'C{}'.format(int(2)), label = '{}'.format('non FUA')))
     plt.legend(handles=patches)
-
+    plt.show()
     fig.savefig(path_figures + 'perprecperareatex_{}.pgf'.format(name)) #,
     fig.savefig(path_figures + 'perprecperareatex_{}.pdf'.format(name))
 
 
 def plot_ratios_fuas(name, sources, precursor_lst, path_results, path_figures):
-    marks = ['-o', '-v', '-s', '-*']
+#    marks = ['-o', '-v', '-s', '-*']
+    marks = ['o', 'v', 's', '*']
     if not os.path.exists(path_figures):
                 os.makedirs(path_figures)
     targets = ['ref_ratio', 'fua_ratio', 'not_fua_ratio']
@@ -305,7 +307,7 @@ def plot_ratios_fuas(name, sources, precursor_lst, path_results, path_figures):
 #        ax = plt.minorticks_on()
         ax.tick_params(axis='x',which='minor',bottom='off')
         plt.xticks(ind, sources)
-        p1 = plt.plot(ind, df_plots['ref_ratio']/df_plots['ref_ratio'], marks[indp], color = 'black')
+        p1 = plt.plot(ind, df_plots['ref_ratio']/df_plots['ref_ratio'], '-', color = 'black')
         p2 = plt.plot(ind, df_plots['fua_ratio']/df_plots['ref_ratio'], marks[indp])
         p3 = plt.plot(ind, df_plots['not_fua_ratio']/df_plots['ref_ratio'], marks[indp])
         plt.ylabel('{} performance ratio, $\\rho_{{s,{}}}$'.format(name, precursor))
@@ -329,7 +331,7 @@ if __name__ == '__main__':
     path_results = 'spaflextest3\\'
 
     path_figures = path_results
-    name = 'exposure' # have not checked if everything is correct for concentration
+    name = 'concentration' # have not checked if everything is correct for concentration
     precursor_lst = ['PPM', 'SOx', 'NOx', 'NH3']#, 'NMVOC']#, 'NMVOC']
 #    rootgrp = Dataset(path_model_cdf_test, 'r')
 #    precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
@@ -382,7 +384,8 @@ if __name__ == '__main__':
     targets = ['ref_ratio']
     N = len(sources)
     ind = np.arange(N)
-    marks = ['-o', '-v', '-s', '-*']
+    marks = ['o', 'v', 's', '*']
+#    marks = ['-o', '-v', '-s', '-*']
     for indp, precursor in enumerate(precursor_lst):
         df_res = pd.read_csv(path_results + 'df_res_{}.csv'.format(precursor), index_col=[0, 1])
         df_plots = pd.DataFrame(index=sources, columns=targets)
@@ -434,7 +437,7 @@ if __name__ == '__main__':
 #        ax = plt.minorticks_on()
         ax.tick_params(axis='x',which='minor',bottom='off')
         plt.xticks(ind, sources)
-        plt.plot(ind, df_plots['ref_ratio']/df_plots['ref_ratio'], marks[indp], color = '#000000', label = 'country ref')
+        plt.plot(ind, df_plots['ref_ratio']/df_plots['ref_ratio'],'-' , color = '#000000', label = 'flat red') #marks[indp]
         for inds, sec in enumerate(sect_aggr):
             plt.plot(ind, df_plots['{}'.format(sec)]/df_plots['ref_ratio'],
                  marks[indp], label='{}'.format(sec),

@@ -678,8 +678,8 @@ if __name__ == '__main__':
 
     ############################################### user input data
 
-    pollutant='NO2' #may be '25' or '10'
-    testarea='Covenant' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
+    pollutant='PM25' #may be '25' or '10'
+    testarea='Pariscity' #may be any area as long as the file testarea_targets.txt is present in input, contains a list of lat/lon
     aggr_zones='city' #may be 'city','nuts' or 'rect' (in this case the domain defined with ll and ur) 
 
     rect_coord={'ll':{'lat':47.9375,'lon':-2.2500},'ur':{'lat':53.0000,'lon':6.3750}}

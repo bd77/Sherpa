@@ -2,6 +2,7 @@
 """
 Created on Wed Jun  7 15:28:00 2017
 Scipt to test the national emissions reduction commitments
+Last version! 
 
 @author: peduzem
 """
@@ -372,9 +373,9 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
 #    ax = plt.minorticks_on()
     ax.tick_params(axis='x',which='minor',bottom='off')
     plt.xticks(ind, sources)
-    plt.plot(ind, results['sum']['ratio_co'], "-D" , color = 'black', label = 'country')
-    plt.plot(ind, results['sum']['ratio_de'], "-D" , color = 'purple', label = u'decreasing ${}_{{p,s}}$'.format(indicator))
-    plt.plot(ind, results['sum']['ratio_as'], "-D" , color = 'dodgerblue', label = u'increasing ${}_{{p,s}}$'.format(indicator))
+    plt.plot(ind, results['sum']['ratio_co'], "-" , color = 'black', label = 'flat red')
+    plt.plot(ind, results['sum']['ratio_de'], "D" , color = 'purple', label = u'decreasing ${}_{{p,s}}$'.format(indicator))
+    plt.plot(ind, results['sum']['ratio_as'], "D" , color = 'dodgerblue', label = u'increasing ${}_{{p,s}}$'.format(indicator))
     plt.legend(ncol=1, loc='best')
     plt.ylabel('{} performance ratio, $\\rho_{{NEC}}$'.format(name))
     fig.savefig(path_figures + 'NEC{}{}_ratio{}.png'.format(name, an_ty, opt),
@@ -392,9 +393,9 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
 #        ax = plt.minorticks_on()
     ax.tick_params(axis='x',which='minor',bottom='off')
     plt.xticks(ind, sources)
-    plt.plot(ind, results['sum']['countryred'], "-D" , color = 'black', label = 'country')
-    plt.plot(ind, results['sum']['case_de'], "-D" , color = 'purple', label = u'decreasing ${}_{{p,s}}$'.format(indicator))
-    plt.plot(ind, results['sum']['case_as'], "-D" , color = 'dodgerblue', label = u'increasing ${}_{{p,s}}$'.format(indicator))
+    plt.plot(ind, results['sum']['countryred'], "-" , color = 'black', label = 'flat red')
+    plt.plot(ind, results['sum']['case_de'], "D" , color = 'purple', label = u'decreasing ${}_{{p,s}}$'.format(indicator))
+    plt.plot(ind, results['sum']['case_as'], "D" , color = 'dodgerblue', label = u'increasing ${}_{{p,s}}$'.format(indicator))
     plt.legend(ncol=1, loc='best')
     plt.ylabel(u'{} performance, $\\Delta I_{{NEC}}/I$ \%'.format(name))
     fig.savefig(path_figures + 'NEC{}{}{}.png'.format(name, an_ty, opt),
