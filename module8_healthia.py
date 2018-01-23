@@ -119,7 +119,7 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
     # Linear approximation: f(x-x0) = f(x0)+ f'(x0)(x-x0)
     #                       RR = 1 + e^(beta*10)^(x0/10)*ln(e^(beta*10))*(x-x0)/10
     #                       RR = 1 + ln(e^(beta*10))*(x-x0)/10 = 1 + coef*x/10
-    # AF = (RR -1)/RR = coef / (1+ coef*x/10)
+    # AF = (RR -1)/RR = coef*x/10 / (1+ coef*x/10)
     
     # linear approximation
         lcoef = np.log(lrr)
