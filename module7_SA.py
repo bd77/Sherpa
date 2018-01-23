@@ -48,7 +48,7 @@ import time
 import os
 import sys
 
-
+from matplotlib.ticker import AutoMinorLocator 
 from scipy.spatial import distance
 from simpledbf import Dbf5
 
@@ -251,68 +251,65 @@ def write_dict_nc(dc_dic,lats,lons,unit,filenc):
 
     rootgrp.close()
 
-'''
-NAME
-    Spatial plot a column in a panda df
-PURPOSE
-    Spatial plot a column in a panda df, winfos covers grid_grads degrees
-PROGRAMMER(S)
-    Denise Pernigotti
-REVISION HISTORY
-
-REFERENCES
-
-'''
-from mpl_toolkits.basemap import Basemap
-import matplotlib.pyplot as plt
-#from pylab import *
-def plot_dict(dc_dic,idx,coord_emissions,grid_grads=3,unit='%'):
-    lat_emissions=np.unique(coord_emissions['lat'])
-    lon_emissions=np.unique(coord_emissions['lon'])
-    #grid_grads define the area for the plot
-    #x=int(idx.split('_')[0])-1
-    #y=int(idx.split('_')[1])-1
-    lat_0=coord_emissions.loc[idx,'lat']
-    lon_0=coord_emissions.loc[idx,'lon']
-    ll_lon=lon_0-grid_grads
-    ll_lat=lat_0-grid_grads
-    ur_lon=lon_0+grid_grads
-    ur_lat=lat_0+grid_grads
-    lon, lat = np.meshgrid(lon_emissions, lat_emissions)
-    dfmat=df2mat(dc_dic)
-    plt.close('all')
-    fig=plt.figure()
-    m = Basemap(resolution='i',projection='cyl',
-            llcrnrlon=ll_lon, llcrnrlat=ll_lat,
-            urcrnrlon=ur_lon, urcrnrlat=ur_lat,
-    #        llcrnrlon=min(lons), llcrnrlat=min(lats),
-    #        urcrnrlon=max(lons), urcrnrlat=max(lats),
-            area_thresh = 0.1,lat_0=lat_0,lon_0=lon_0)
-
-    m.drawcoastlines();
-    #m.drawstates()
-    m.drawcountries();
-    # draw filled contours.
-    x, y = m(lon, lat)
-    #clevs = [5,10,15,20,25,30,35,40,45,50,55,60]
-    #clevs=[0.9,1.1,1.9,2.1,2.9,3.1,3.9,4.1]
-    clevs=[0,1,2,3,4]
-    #cs = m.contour(x,y,dfmat,clevs);
-    cs = m.contour(x,y,dfmat,clevs,linewidths=1,colors=('r', 'green', 'blue','grey','black'));
-    # add colorbar.
-    #cbar = m.colorbar(cs,location='bottom',pad="5%")
-    #cbar.set_label(unit)
-    #drow target
-    x,y = m(lon_0, lat_0)
-    m.plot(x, y, 'x', markersize=6,color='k',fillstyle='none')
-    #plt.title(idx)
-    #plt.savefig(fileout)
-    #plt.close(fig)
-    #plt.show()
-    return fig
-
-
-from matplotlib.ticker import AutoMinorLocator # EMA this should be at the top
+#'''
+#NAME
+#    Spatial plot a column in a panda df
+#PURPOSE
+#    Spatial plot a column in a panda df, winfos covers grid_grads degrees
+#PROGRAMMER(S)
+#    Denise Pernigotti
+#REVISION HISTORY
+#
+#REFERENCES
+#
+#'''
+#from mpl_toolkits.basemap import Basemap
+#import matplotlib.pyplot as plt
+##from pylab import *
+#def plot_dict(dc_dic,idx,coord_emissions,grid_grads=3,unit='%'):
+#    lat_emissions=np.unique(coord_emissions['lat'])
+#    lon_emissions=np.unique(coord_emissions['lon'])
+#    #grid_grads define the area for the plot
+#    #x=int(idx.split('_')[0])-1
+#    #y=int(idx.split('_')[1])-1
+#    lat_0=coord_emissions.loc[idx,'lat']
+#    lon_0=coord_emissions.loc[idx,'lon']
+#    ll_lon=lon_0-grid_grads
+#    ll_lat=lat_0-grid_grads
+#    ur_lon=lon_0+grid_grads
+#    ur_lat=lat_0+grid_grads
+#    lon, lat = np.meshgrid(lon_emissions, lat_emissions)
+#    dfmat=df2mat(dc_dic)
+#    plt.close('all')
+#    fig=plt.figure()
+#    m = Basemap(resolution='i',projection='cyl',
+#            llcrnrlon=ll_lon, llcrnrlat=ll_lat,
+#            urcrnrlon=ur_lon, urcrnrlat=ur_lat,
+#    #        llcrnrlon=min(lons), llcrnrlat=min(lats),
+#    #        urcrnrlon=max(lons), urcrnrlat=max(lats),
+#            area_thresh = 0.1,lat_0=lat_0,lon_0=lon_0)
+#
+#    m.drawcoastlines();
+#    #m.drawstates()
+#    m.drawcountries();
+#    # draw filled contours.
+#    x, y = m(lon, lat)
+#    #clevs = [5,10,15,20,25,30,35,40,45,50,55,60]
+#    #clevs=[0.9,1.1,1.9,2.1,2.9,3.1,3.9,4.1]
+#    clevs=[0,1,2,3,4]
+#    #cs = m.contour(x,y,dfmat,clevs);
+#    cs = m.contour(x,y,dfmat,clevs,linewidths=1,colors=('r', 'green', 'blue','grey','black'));
+#    # add colorbar.
+#    #cbar = m.colorbar(cs,location='bottom',pad="5%")
+#    #cbar.set_label(unit)
+#    #drow target
+#    x,y = m(lon_0, lat_0)
+#    m.plot(x, y, 'x', markersize=6,color='k',fillstyle='none')
+#    #plt.title(idx)
+#    #plt.savefig(fileout)
+#    #plt.close(fig)
+#    #plt.show()
+#    return fig
 
 
 def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
