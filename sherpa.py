@@ -52,6 +52,12 @@ Calculate potencies for an emission reduction in a given area.
 6) Module 6: radius calculation
 -------------------------------
 
+7) Module 7: source a. 
+    
+-------------------------------
+
+8) Moulde 8: health impact assessment
+
 A target cell is selected. For this cell the concentration changes is calculated due to a defined emission reduction
 applied in each NUTS individually
 Input: -
@@ -69,10 +75,12 @@ from module3 import module3a, module3b
 from module4 import module4
 from module5 import module5
 from module6 import module6
+from module7_SA import module7
 from module8_healthia import module8_healthia
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
     path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
-    path_base_conc_cdf_test, path_healthbl_test, path_config_json_test
+    path_base_conc_cdf_test, path_healthbl_test, path_config_json_test, \
+    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir
 from sherpa_auxiliaries import is_number
 from sys import argv
 import os.path
@@ -131,9 +139,18 @@ if __name__ == '__main__':
         stop = time()
         print('Module 6 calculation time = %f' % (stop - start))
 #
+        # run module 7 test inputs    
+        start = time()
+        module7(path_emission_cdf_test, path_base_conc_cdf_test, 
+                path_model_cdf_test, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
+                target_list, path_result_cdf_test, 'city', 'png', True)
+        stop = time()
+        print('Module 7 calculation time = %f' % (stop - start))
+#        
         # run module 8 test inputs        
         start = time()
-        module8_healthia(path_healthbl_test, path_result_cdf_test, path_config_json_test, path_base_conc_cdf_test)
+        module8_healthia(path_healthbl_test, path_result_cdf_test,
+                         path_config_json_test, path_base_conc_cdf_test)
         stop = time()
         print('Module 8 calculation time = %f' % (stop - start))
 
@@ -240,6 +257,22 @@ if __name__ == '__main__':
             
             module6(path_emission_cdf, path_nuts_cdf, cell_lat, cell_lon, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_result_cdf)
 
+        # ---------#
+        # module 7 #
+        # ---------#
+        
+        elif module == 7:
+            path_emission_cdf = argv[2]     
+            path_base_conc_cdf = argv[3]
+            path_model_cdf = argv[4]
+            fua_intersect_dir = argv[5]
+            nuts_intersect_dir = argv[6]
+            dbf_dir = argv[7]
+            target_list = argv[8]
+            module7(path_emission_cdf, path_base_conc_cdf, 
+                path_model_cdf, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
+                target_list, path_result_cdf_test, 'city', 'png', True)
+ 
         # ---------#
         # module 8 #
         # ---------#
