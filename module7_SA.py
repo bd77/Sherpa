@@ -1069,8 +1069,7 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
         sys.exit("some receptors have latitude outside the domain")
 
     #grab true names for each area (Need the codec for the NUTS)
-    area_names_long_a={k: (Dbf5(codes_txt[k], codec='latin1').to_dataframe()[['NUTS_ID','NAME_ASCI']].set_index('NUTS_ID')) for k in codes_names.keys()} 
-    area_names_long={**area_names_long_a}#, **area_names_long_b}
+    area_names_long={k: (Dbf5(codes_txt[k], codec='latin1').to_dataframe()[['NUTS_ID','NAME_ASCI']].set_index('NUTS_ID')) for k in codes_names.keys()} 
   
     #reduce string length if needed
     area_names={}
