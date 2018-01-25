@@ -39,7 +39,7 @@ fua_intersect_dir = 'input/selection/gridnew/fua/'
 nuts_intersect_dir = 'input/selection/gridnew/nuts/'
 dbf_dir = 'input/selection/gridnew/'
 target_list = 'input/AM_targets.txt'
-
+path_natural_dir_test = 'input/pDUST-pSALT/'
 # list of precursors
 # order important, it's the order in the alpha and omega arrays
 # precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PM25', 'SOx']  
