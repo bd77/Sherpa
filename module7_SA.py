@@ -15,6 +15,10 @@ This part of the code should be updated.
 Inputs: 
     - emissions_nc: path to emissions nc file
     - concentration_nc: path to concentration nc file
+    - natural_dir: path to the directory of the natural concentrations: 
+        e.g. 
+        natural_dir: 'input/pDUST-pSALT/'
+        which contains 4 files named as follows: pDUST-25-basecase.nc
     - model_nc: path to model nc file
     - fua_intersect_dir: path to the directory where the grid_intersect.txt of fuas is located, 
                          e.g.:
@@ -463,8 +467,8 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
         # place latter only if there is enough space
         if dfdata_plot.loc['Total'][letlabind] >= 5 and np.isnan(xpos) == False:
             ax1.text(xpos, ypos, letter, va= 'center',  ha= 'center', fontsize=(ftx+2))
-    
-    plt.show()
+    plt.close()
+#    plt.show()
     return f
 
 def plot_polar(emi_sum, prec, wantedorder_present, ftx=8):  # Added by Ema for polar plot
@@ -571,8 +575,8 @@ def plot_polar(emi_sum, prec, wantedorder_present, ftx=8):  # Added by Ema for p
     ax.tick_params(axis='y', labelsize=ftx-2, zorder=4)
     ax.text(2,  ylim*1.3, titles_dct[prec], va='center',
                     ha='center', fontsize=(ftx+2), weight='bold')
-
-    plt.show()
+    plt.close()
+#    plt.show()
     return fig
 
 
@@ -604,7 +608,7 @@ def haversine_vec(lon1,lat1,lon_vec2,lat_vec2):
     d = np.sin(dlat * 0.5) ** 2 + np.cos(np.radians(lat1)) * np.cos(np.radians(lat_vec2)) * np.sin(dlon * 0.5) ** 2
     h = 2 * AVG_EARTH_RADIUS * np.arcsin(np.sqrt(d))
     return h # in kilometers
-
+#
 '''
 NAME
     Import info on grid points attribution to nuts or specific area type from ascii file
@@ -918,7 +922,7 @@ def array2df(array3D,dimnames):
     return dc_df
 
 
-def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_intersect_dir, dbf_dir, targets_txt,outdir,aggr_zones='city',outfig='png', normalize=True):
+def module7(emissions_nc,concentration_nc, natural_dir, model_nc, fua_intersect_dir, nuts_intersect_dir, dbf_dir, targets_txt,outdir,aggr_zones='city',outfig='png', normalize=True):
     '''
     NAME
         Module 7
@@ -937,9 +941,10 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
     
     '''
     ## DEBUG inputs: 
-#    emissions_nc = emissions
-#    concentration_nc = concentration
-#    model_nc = model 
+#    emissions_nc = emissions_in
+#    concentration_nc = concentration_in
+#     model_nc = model1 
+#    natural_dir = natural_in
 #    fua_intersect_dir = 'input/selection/gridnew/fua/'
 #    nuts_intersect_dir = 'input/selection/gridnew/nuts/'
 #    dbf_dir = 'd:/sherpa.git/sherpa/input/selection/gridnew/'
@@ -995,8 +1000,8 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
 
     if include_natural:
         pmsize=pollutant[-2:]
-        salt_nc = 'input/pDUST-pSALT/pSALT-'+pmsize+'-basecase.nc'  # EMA
-        dust_nc = 'input/pDUST-pSALT/pDUST-'+pmsize+'-basecase.nc'  # EMA
+        salt_nc = natural_dir + 'pSALT-'+pmsize+'-basecase.nc'  
+        dust_nc = natural_dir + 'pDUST-'+pmsize+'-basecase.nc'  
         salt= read_nc(salt_nc)
         dust= read_nc(dust_nc)
 
@@ -1014,14 +1019,20 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
         sys.exit("latitude and/or longitude are different in loaded matrices")
 
     #get inner radius and check if the flat weight option is activated
-    inner_radius = int(getattr(Dataset(model_nc,'r'), 'Radius of influence'))
+#    inner_radius = int(getattr(Dataset(model_nc,'r'), 'Radius of influence'))
+#    print(Dataset(model1).file_format) 
+#    getattr(Dataset(model1), 'Radius_of_influence')
+    for nameatt in Dataset(model_nc,'r').ncattrs():
+        if nameatt[0:6] == 'Radius':
+            radiusofinfluence = nameatt
+    inner_radius = int(getattr(Dataset(model_nc,'r'), radiusofinfluence))
     if 'flatWeight' in model.index.levels[0]:
         print('Flatweight approximation is ON with Radius of influence of '+str(inner_radius) +' grid cells')
-        if inner_radius >=200:
-            sys.exit("Something wrong, radius of influence is >=200 grid cells")
+#        if inner_radius >=200: # @todo EPE removed this condition, this needs to be checked (EPI?)
+#            sys.exit("Something wrong, radius of influence is >=200 grid cells")
     else:
-        if inner_radius is not 200:
-            sys.exit("Something wrong, flatweight approximation is deactivated but inner_radius is not 200 grid cells")
+#        if inner_radius is not 200:
+#            sys.exit("Something wrong, flatweight approximation is deactivated but inner_radius is not 200 grid cells")
         print('Flatweight approximation is OFF')
         inner_radius=False
 
@@ -1069,8 +1080,8 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
         sys.exit("some receptors have latitude outside the domain")
 
     #grab true names for each area (Need the codec for the NUTS)
-    area_names_long_a={k: (Dbf5(codes_txt[k], codec='latin1').to_dataframe()[['NUTS_ID','NAME_ASCI']].set_index('NUTS_ID')) for k in codes_names.keys()} 
-    area_names_long={**area_names_long_a}#, **area_names_long_b}
+    area_names_long={k: (Dbf5(codes_txt[k], codec='latin1').to_dataframe()[['NUTS_ID','NAME_ASCI']].set_index('NUTS_ID')) for k in codes_names.keys()} 
+#    area_names_long={**area_names_long_a}#, **area_names_long_b}
   
     #reduce string length if needed
     area_names={}
@@ -1265,7 +1276,7 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
 #        #plots
         fig={}
         fig[1]=plot_bar(dc_inc,wantedorder_present,totalname, normalize=normalize)
-        plt.close('all')
+#        plt.close('all')
         if aggr_zones=='city' or  aggr_zones=='fuaonly':
 #        if len(smallareas)>0:
 #            #fig[3]=plot_dict(dc_inc_flat,idx,coordinates.loc[emissions.columns,])
@@ -1275,7 +1286,7 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
 #                xlab = ''.join([p, ' emitted mass in ', emi_unitsplot])
                 fig[4+ip] = plot_polar(emi_sum, p, wantedorder_present)
 #                fig[4+ip] = plot_bar(emi_inc.loc[p][smallareas],wantedorder_present.loc[wantedorder_present['areaid'].isin(smallareas)],totalname,plot_opt='noperc',x_label=xlab,leg_loc='upper left')
-        plt.close('all')
+#        plt.close('all')
 #        dc_inc.columns=wantedorder_present['areaname']
         # EPE: retrieve cityname to save figs as in the atlas
         if aggr_zones=='city' or  aggr_zones=='fuaonly':      
@@ -1316,10 +1327,9 @@ def module7(emissions_nc,concentration_nc, model_nc, fua_intersect_dir, nuts_int
                 dct_names = {'GCITY_CODE': 'City',
                              'FUA_CODE': 'Greater city'} 
                 newlabels = [dct_names[label] for label in labels2]
-                axleg.legend(handles=handles1+handles2, labels=labels1+newlabels, fontsize=10, loc = 'center', frameon=False)
-                plt.show() 
+                axleg.legend(handles=handles1+handles2, labels=labels1+newlabels, fontsize=10, loc = 'center', frameon=False) 
                 figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight')
-                
+                plt.close('all')
     #summarize info on grid points
     reform = {(outerKey, innerKey): values for outerKey, innerDict in target_allinfo.items() for innerKey, values in innerDict.items()}
     target_allinfo=pd.DataFrame(reform).transpose()
@@ -1374,28 +1384,31 @@ if __name__ == '__main__':
         pollmodel='NO2eq_Y'
     elif pollutant not in ['PM10','PM25']:
         sys.exit(pollutant +'is not implemented in this module')
-    emissions='input/'+sherpa_version+'/1_base_emissions/BC_emi_'+pollutant+'_Y.nc'
-    concentration='input/'+sherpa_version+'/2_base_concentrations/BC_conc_'+pollconc+'.nc'
-    model='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'_20170322_potencyBased.nc'   # changed ema** #info on areas and percentage of grids in areas
+    emissions_in='input/'+sherpa_version+'/1_base_emissions/BC_emi_'+pollutant+'_Y.nc'
+    concentration_in='input/'+sherpa_version+'/2_base_concentrations/BC_conc_'+pollconc+'.nc'
+#    model1='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'.nc'   
+    model1='input/'+sherpa_version+'/3_source_receptors/SR_'+pollmodel+'_20170322_potencyBased.nc' 
+#    model2='input/20180122_sherpa_srr_chimere/SR_PM25_Y.nc'  
     fua_intersect_dir = 'input/selection/gridnew/fua/'
     nuts_intersect_dir = 'input/selection/gridnew/nuts/'
     dbf_dir = 'D:/sherpa.git/Sherpa/input/selection/gridnew/'
-#    selection_dir='input/selection'
+    natural_in = 'input/pDUST-pSALT/'
+# selection_dir='input/selection'
     target_list='input/'+testarea+'_targets.txt'
     outdir='output/'+sherpa_version+'/'+testarea
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     #directory for emissions and SR relationship only
-    print('SHERPA input will be searched in '+model)
-    print('with emissions in '+emissions)
-    print('with BC concentrations in conc variable in '+concentration)
+    print('SHERPA input will be searched in '+model1)
+    print('with emissions in '+emissions_in)
+    print('with BC concentrations in conc variable in '+concentration_in)
     print('while txt files for grid intersect of fua will be searced in local input directory ' + fua_intersect_dir)
     ############################################### input files definition
 
     # run module 7 with progress log
     #proglog_filename = 'output/proglog'
 #    start = time.perf_counter()
-    out_dc=module7(emissions, concentration, model, fua_intersect_dir, nuts_intersect_dir, dbf_dir, target_list,outdir,aggr_zones='city',outfig='png', normalize=True)
+    out_dc=module7(emissions_in, concentration_in, natural_in, model1, fua_intersect_dir, nuts_intersect_dir, dbf_dir, target_list,outdir,aggr_zones='city',outfig='png', normalize=True)
 
 ########################################## start revision for E-reporting  
      # pdf from htl template as in http://stackoverflow.com/questions/27387923/combine-existing-figures-into-one-pdf-of-figure-python
