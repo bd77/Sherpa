@@ -38,6 +38,7 @@ path_nuts3_cdf_test = 'input/EMI_RED_ATLAS_NUTS3.nc'
 path_emission_cdf_test = 'input\\20170322_v18_SrrResults_PotencyBased\\1_base_emissions\\BC_emi_PM25_Y.nc'
 path_base_conc_cdf_test = 'input\\20170322_v18_SrrResults_PotencyBased\\2_base_concentrations\\BC_conc_PM25_Y.nc'
 path_base_NO2conc_cdf_test = 'input\\20170322_v18_SrrResults_PotencyBased\\2_base_concentrations\\BC_conc_NO2_NO2eq_Y_mgm3.nc'
+
 path_dust_conc_cdf_test = 'input\\pDUST-pSALT\\pDUST-25-basecase.nc'
 path_salt_conc_cdf_test = 'input\\pDUST-pSALT\\pSALT-25-basecase.nc'
 
@@ -47,6 +48,7 @@ fua_intersect_dir = 'input/selection/gridnew/fua/'
 nuts_intersect_dir = 'input/selection/gridnew/nuts/'
 dbf_dir = 'input/selection/gridnew/'
 target_list = 'input/AM_targets.txt'
+path_natural_dir_test = 'input/pDUST-pSALT/'
 
 path_pop_mat_test = 'input\\population.mat'
 path_grid_txt = 'input\\selection\\grid_intersect'

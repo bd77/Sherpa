@@ -80,7 +80,7 @@ from module8_healthia import module8_healthia
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
     path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
     path_base_conc_cdf_test, path_healthbl_test, path_config_json_test, \
-    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir
+    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir, path_natural_dir_test
 from sherpa_auxiliaries import is_number
 from sys import argv
 import os.path
@@ -141,7 +141,7 @@ if __name__ == '__main__':
 #
         # run module 7 test inputs    
         start = time()
-        module7(path_emission_cdf_test, path_base_conc_cdf_test, 
+        module7(path_emission_cdf_test, path_base_conc_cdf_test, path_natural_dir_test,
                 path_model_cdf_test, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
                 target_list, path_result_cdf_test, 'city', 'png', True)
         stop = time()
@@ -264,12 +264,13 @@ if __name__ == '__main__':
         elif module == 7:
             path_emission_cdf = argv[2]     
             path_base_conc_cdf = argv[3]
-            path_model_cdf = argv[4]
-            fua_intersect_dir = argv[5]
-            nuts_intersect_dir = argv[6]
-            dbf_dir = argv[7]
-            target_list = argv[8]
-            module7(path_emission_cdf, path_base_conc_cdf, 
+            path_natural_dir = argv[4]
+            path_model_cdf = argv[5]
+            fua_intersect_dir = argv[6]
+            nuts_intersect_dir = argv[7]
+            dbf_dir = argv[8]
+            target_list = argv[9]
+            module7(path_emission_cdf, path_base_conc_cdf, path_natural_dir,
                 path_model_cdf, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
                 target_list, path_result_cdf_test, 'city', 'png', True)
  
