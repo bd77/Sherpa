@@ -1289,12 +1289,12 @@ def module7(emissions_nc,concentration_nc, natural_dir, model_nc, fua_intersect_
 #        plt.close('all')
 #        dc_inc.columns=wantedorder_present['areaname']
         # EPE: retrieve cityname to save figs as in the atlas
-        if aggr_zones=='city' or  aggr_zones=='fuaonly':      
-            namefile = area_names_long['GCITY_CODE']['NAME_ASCI'].loc[target_info.loc['GCITY_CODE','areaid']][:-5]
-        else:
-            namefile = area_names['NUTS_Lv3'].loc[target_info.loc['NUTS_Lv3','areaid']].replace(" ", "")
+#        if aggr_zones=='city' or  aggr_zones=='fuaonly':      
+#            namefile = area_names_long['GCITY_CODE']['NAME_ASCI'].loc[target_info.loc['GCITY_CODE','areaid']][:-5]
+#        else:
+#            namefile = area_names['NUTS_Lv3'].loc[target_info.loc['NUTS_Lv3','areaid']].replace(" ", "")
         for ids in list(receptors[receptors['target_idx']==idx].index):
-            fig[1].savefig(outdir+'\\'+ids+'_'+namefile+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
+            fig[1].savefig(outdir+'\\'+ids+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
 #            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_sec_bars.'+ outfig, dpi=1000, bbox_inches='tight')
 #            fig[2].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_prec_bars.'+outfig)
             if len(smallareas)>0:
@@ -1303,7 +1303,7 @@ def module7(emissions_nc,concentration_nc, natural_dir, model_nc, fua_intersect_
                     for ip,p in enumerate(precursors):
                         if fig[4+ip]:  # added by EMA
 #                         fig[4+ip].savefig((outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_spys.'+outfig), dpi=300, bbox_inches='tight')
-                            fig[4+ip].savefig((outdir+'\\'+ids+'_'+namefile+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight')
+                            fig[4+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight')
 
 #                    fig[4+ip].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+p+'_emi_bars.'+outfig)
               #dc_inc.to_html(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.html',classes='table')
