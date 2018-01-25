@@ -1081,6 +1081,7 @@ def module7(emissions_nc,concentration_nc, natural_dir, model_nc, fua_intersect_
 
     #grab true names for each area (Need the codec for the NUTS)
     area_names_long={k: (Dbf5(codes_txt[k], codec='latin1').to_dataframe()[['NUTS_ID','NAME_ASCI']].set_index('NUTS_ID')) for k in codes_names.keys()} 
+#    area_names_long={**area_names_long_a}#, **area_names_long_b}
   
     #reduce string length if needed
     area_names={}
