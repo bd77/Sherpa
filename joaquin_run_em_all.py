@@ -1,10 +1,10 @@
 '''
-Created on 27 June 2017
+Created on 26 January 2018 based on the Atlas run 'm all script
 
 ONE SCRIPT TO RUN THEM ALL
 - EMEP and CHIMERE based sherpa
-- NO2 and PM2.5
-- aggregated and disaggregated areas
+- PM2.5
+- joaquin areas
 - all snaps or per snap
 - all precursors or per precursor
 
@@ -28,27 +28,33 @@ import timeit
 # INPUT configuration
 # -------------------
 
-# use aggregated areas (city, comm, national, international) or all areas
-use_aggregated = True
-if use_aggregated == True:
-    area_aggregation_tag = 'aggAreas'
-    agg_reduc_area_path = ''
-else:
-    area_aggregation_tag = 'allAreas' # for the 257 areas 
+# working directory
+wd = 'D:/SHERPA/JOAQUIN validation/'
+receptor_file = wd + 'FUAs inside joaquin area.txt'
 
 # read file with city_lats and city_lons
-# cityname    nuts0    codeid    lat    lon
-fcity = open('D:/SHERPA/FUA112/city_list_fua151.txt', 'r')
+#asci_name;urau_code;nuts0;lon;lat
+fcity = open(receptor_file, 'r')
 fcity.readline()     # read header
 city_dict = {}
 while True:
     line = fcity.readline().rstrip()
     if len(line) == 0:
         break
-    [cityname, lat, lon, codeid, country_code] = line.split(';')
-    city_dict[cityname] = {'codeid': codeid, 'lat': float(lat), 'lon': float(lon), 'country_code': country_code}
+    [cityname, urau_code, nuts0, lon, lat] = line.split(';')
+    city_dict[cityname] = {'urau_code': urau_code, 'lat': float(lat), 'lon': float(lon), 'nuts0': nuts0}
 n_cities = len(city_dict)
 
+# list of source areas
+source_area_path = wd + 'area_netcdfs/'
+source_area_dict = {}
+for ctm in ['chimere', 'emep']:
+    source_area_dict[ctm] = {}
+    source_area_list = os.listdir(source_area_path + ctm)
+    for source_area_file in source_area_list:
+        source_area_name = source_area_file.replace('.nc','')
+        source_area_fullpath = source_area_path + ctm + '/' + source_area_file
+        source_area_dict[ctm][source_area_name] = source_area_fullpath
 
 # which reductions to apply: all, perPrecursor, perSNAP, perSNAPandPrecursor
 user_reduction_folder = 'D:/SHERPA/FUA112/reduction_input_files/'
@@ -64,7 +70,7 @@ precursor_tag = user_reduction_subfolder.split('_')[1]
 user_reduction_list = os.listdir(user_reduction_folder + user_reduction_subfolder)
 
 # read model information
-model_file = 'D:/SHERPA/FUA112/run_configuration/model_file.txt'
+model_file = wd + 'Sherpa/config_file.txt'
 fmod = open(model_file, 'r')
 line = fmod.readline().rstrip()      # read header
 model_dict = {}
@@ -89,16 +95,18 @@ print(model_dict)
 # --------------------
 
 date_tag = date.today().strftime('%Y%m%d')
-results_path = 'D:/SHERPA/FUA112/results/%s_%s_%s_%s/' % (date_tag, snap_tag, precursor_tag, area_aggregation_tag)
+results_path = wd + 'results/%s_%s_%s/' % (date_tag, snap_tag, precursor_tag)
 if not(os.path.exists(results_path)):
     os.makedirs(results_path) 
     print('Results directory %s created.' % (results_path))   
 
-results_file_format = '%s_%s_%s_%s_%s_%s.txt' # to be replaced with date_tag, model, pollutant, snap_tag, precursor_tag and area_aggregation_tag
+results_file_format = '%s_%s_%s_%s_%s.txt' # to be replaced with date_tag, model, pollutant, snap_tag, precursor_tag
 
 # loop over all models
 for model_name in model_dict.keys():
     
+    # get ctm
+    ctm = model_dict[model_name]['ctm']
     # pollutant
     pollutant_tag = model_dict[model_name]['pollutant']
     # define the emission cdf
@@ -110,13 +118,9 @@ for model_name in model_dict.keys():
     # cell surface netcdf
     path_cell_surface_cdf = model_dict[model_name]['cell_surface_cdf']
     
-    # and the reduction areas
-    reduc_area_agg_path = 'D:/SHERPA/FUA112/fua_area_cdfs/aggAreas_%s/' % (model_dict[model_name]['ctm'])
-    reduc_area_all_path = 'D:/SHERPA/FUA112/fua_area_cdfs/allAreas_%s/' % (model_dict[model_name]['ctm'])
-
     # check if the output file already exists to resume a calculation
     completed_runs = []
-    results_file_name = results_path + results_file_format % (date_tag, model_name, pollutant_tag, snap_tag, precursor_tag, area_aggregation_tag)
+    results_file_name = results_path + results_file_format % (date_tag, model_name, pollutant_tag, snap_tag, precursor_tag)
     if os.path.exists(results_file_name):
         
         # open the file in read only
@@ -138,7 +142,7 @@ for model_name in model_dict.keys():
         # open a new file to store all results and write the header
         fallres = open(results_file_name, 'w')
         fallres.write('Source apportionment for %d cities\n' % (n_cities))
-        fallres.write('commit eb21d3fb8ee65a2f44dc2b482efb077d3fdf8c40\n')
+        # fallres.write('commit eb21d3fb8ee65a2f44dc2b482efb077d3fdf8c40\n')
         fallres.write('emissions cdf = %s\n' % (path_emission_cdf))
         fallres.write('concentrations cdf = %s\n' % (path_base_conc_cdf))
         fallres.write('model folder = %s\n' % (path_model_cdf))
@@ -149,31 +153,10 @@ for model_name in model_dict.keys():
         
     for target_city in city_dict.keys(): 
 
-        # for the grouped snaps
-        # path_reduction_txt = 'D:/SHERPA/FUA/user_reduction_snap_precursor/' + snap
+        target_country = city_dict[target_city]['nuts0']
                 
-        target_country = city_dict[target_city]['country_code']
-        
-        # make a dictionary of source areas, name as key, path as value
-        source_area_dict = {}
-        if use_aggregated == True:
-            source_area_dict[target_city + '_City'] = reduc_area_all_path + target_city + '_City.nc'
-            if not(target_city in ['Liverpool', 'Riga']):        # these 2 don't have a commuting zone..
-                source_area_dict[target_city + '_Comm'] = reduc_area_all_path + target_city + '_Comm.nc'
-            source_area_dict[target_city + '_National'] = reduc_area_agg_path + target_city + '_National.nc'
-            source_area_dict[target_country + '_International'] = reduc_area_agg_path + target_country + '_International.nc'
-        else:
-            # get the list of areas from the content of a folder
-            source_area_list = os.listdir(reduc_area_all_path)
-            # remove extension '.nc' from area name
-            for i in range(len(source_area_list)):
-                source_area_dict[source_area_list[i].replace('.nc', '')] = reduc_area_all_path + source_area_list[i]
-        
-        for source_area in source_area_dict.keys():
+        for source_area in source_area_dict[ctm].keys():
             
-            # retrieve source area type (the part after the underscore)
-            source_area_type = source_area.split('_')[1]
-
             # loop over all combinations of snap, target cities and source areas 
             for user_reduction_file in user_reduction_list:
                 # extract SNAP sector and precursor
@@ -200,7 +183,7 @@ for model_name in model_dict.keys():
                         # example file format: user_reduction_snap1.txt
                         path_reduction_txt = user_reduction_folder + user_reduction_subfolder + '/' + user_reduction_file
     
-                        fua_area_cdf =  source_area_dict[source_area]
+                        source_area_cdf =  source_area_dict[ctm][source_area]
                         target_cell_lat = city_dict[target_city]['lat']
                         target_cell_lon = city_dict[target_city]['lon']
                         path_result_cdf = results_path + target_city + '/'
@@ -208,7 +191,7 @@ for model_name in model_dict.keys():
                             os.makedirs(path_result_cdf)
                         
                         # call module 6
-                        m6_dict = module6(path_emission_cdf, fua_area_cdf, target_cell_lat, target_cell_lon, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_cell_surface_cdf, path_result_cdf)
+                        m6_dict = module6(path_emission_cdf, source_area_cdf, target_cell_lat, target_cell_lon, path_reduction_txt, path_base_conc_cdf, path_model_cdf, path_cell_surface_cdf, path_result_cdf)
                                             
                         # open the result dictionary and write results to one file
                         fallres = open(results_file_name, 'a')
