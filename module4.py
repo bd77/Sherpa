@@ -74,7 +74,12 @@ def module4(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     
     # read baseline concentrations
     rootgrp = Dataset(path_base_conc_cdf, 'r')
-    conc = rootgrp.variables['conc'][:] 
+    conc = rootgrp.variables['conc'][:]
+
+    #ENR 20180126 - fix for NO2. in case of NO2, load NO2 and not NOx variable as baseline
+    if (path_model_cdf.find('NO2eq') > -1):
+        conc = rootgrp.variables['NO2'][:]
+
     # close model netcdf
     rootgrp.close()
     
