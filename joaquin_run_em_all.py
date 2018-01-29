@@ -18,7 +18,6 @@ are calculated
 
 @author: degraba
 '''
-import sys
 import os
 from datetime import date
 
@@ -89,7 +88,7 @@ while True:
     model_dict[model_name]['cell_surface_cdf'] = cell_surface_cdf
 fmod.close()
 
-print(model_dict)
+# print(model_dict)
 
 # OUTPUT configuration
 # --------------------
@@ -213,7 +212,9 @@ for model_name in model_dict.keys():
                
             
     # close the results file    
-    fallres.close()        
+    fallres.close() 
+# finish
+print('all done')       
     
  
 
