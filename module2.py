@@ -33,8 +33,15 @@ def module2(path_emission_cdf, path_nuts_cdf, path_reduction_txt, path_model_cdf
     longitude_array = rootgrp.variables['lon'][0, :]
     latitude_array = rootgrp.variables['lat'][:, 0]
     n_lon = len(longitude_array)  # len(rootgrp.dimensions['longitude'])
-    n_lat = len(latitude_array)  # len(rootgrp.dimensions['latitude'])   
-    inner_radius = int(getattr(rootgrp, 'Radius of influence'))
+    n_lat = len(latitude_array)  # len(rootgrp.dimensions['latitude'])
+
+    #####
+    # 20180129 - EP - generalization to read 'radius of influence' variable, both written in matlab or python
+    for nameatt in Dataset(path_model_cdf, 'r').ncattrs():
+        if nameatt[0:6] == 'Radius':
+            radiusofinfluence = nameatt
+    inner_radius = int(getattr(Dataset(path_model_cdf, 'r'), radiusofinfluence))
+    # inner_radius = int(getattr(rootgrp, 'Radius of influence'))
     
     alpha = rootgrp.variables['alpha'][:, :, :]    
     omega = rootgrp.variables['omega'][:, :, :] 
