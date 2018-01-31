@@ -63,7 +63,7 @@ import numpy as np
 import os as os
 import json
 
-
+#
 #from sherpa_globals import (path_result_cdf_test,
 #                            path_healthbl_test, path_config_json_test, path_base_conc_cdf_test,
 #                            )
@@ -228,55 +228,59 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
     # Saving results:        
     # default dictionary to save results:           
     dflt_dict = {
-    'd_dll': {
-            'aggregation': 'sum',
-            'ci': ['d_dll_lb', 'd_dll', 'd_dll_ub'],
-            'combo_box': 'delta days of life loss',
-            'long_description': ['delta days of life loss lower bound',
-                                 'delta days of life loss',
-                                 'delta days of life loss upper bound'],
-            'units': 'dll/year'},
-    'd_dll_pp': {
-            'aggregation': 'population weighted average',
-            'ci': ['d_dll_pp_lb', 'd_dll_pp', 'd_dll_pp_ub'],
-            'combo_box': 'delta days of life loss per person',
-            'long_description': 
-                ['delta days of life loss per person lower bound',
-                 'delta days of life loss per person',
-                 'delta days of life loss per person upper bound'],
-            'units': 'dll/(person year)'},
-    'd_mort': {
-            'aggregation': 'sum',
-            'ci': ['d_mort_lb', 'd_mort', 'd_mort_ub'],
-            'combo_box': 'delta mortality',
-            'long_description': ['delta mortality lower bound',
-                                 'delta mortality',
-                                 'delta mortality upper bound'],
-            'units': 'people/year'},
-    'v_dll': {
-            'aggregation': 'sum',
-            'ci': ['v_dll_lb', 'v_dll', 'v_dll_ub'],
-            'combo_box': 'days of life loss',
-            'long_description': ['days of life loss lower bound',
-                                 'days of life loss',
-                                 'days of life loss upper bound'],
-            'units': 'dll/year'},
-    'v_dll_pp': {
-            'aggregation': 'population weighted average',
-            'ci': ['v_dll_pp_lb', 'v_dll_pp', 'v_dll_pp_ub'],
-            'combo_box': 'days of life loss per person',
-            'long_description': ['days of life loss per person lower bound',
-                                 'days of life loss per person',
-                                 'days of life loss per person upper bound'],
-            'units': 'dll/(person year)'},
-  'v_mort': {
-          'aggregation': 'sum',
-          'ci': ['v_mort_lb', 'v_mort', 'v_mort_ub'],
-          'combo_box': 'mortality',
-          'long_description': ['mortality lower bound',
-                               'mortality',
-                               'mortality upper bound'],
-          'units': 'people/year'}}
+	"d_mort":{
+		"impact": "Mortality",
+		"data": "Delta",
+		"ci":["d_mort_lb", "d_mort", "d_mort_ub"],
+
+		"long_description":["delta mortality lower bound", "delta mortality", "delta mortality upper bound"],
+		"aggregation":"sum",
+		"units":"people/year"},
+	"v_mort":{
+		"impact": "Mortality",
+		"data": "Value",
+		"ci":["v_mort_lb", "v_mort", "v_mort_ub"],
+
+		"long_description":["mortality lower bound", "mortality", "mortality upper bound"],
+		"aggregation":"sum",
+		"units":"people/year"},
+	"d_dll":
+	{
+		"impact": "Days of life loss",
+		"data": "Delta",
+		"ci":["d_dll_lb", "d_dll", "d_dll_ub"],
+
+		"long_description":["delta days of life loss lower bound", "delta days of life loss", "delta days of life loss upper bound"],
+		"aggregation":"sum",
+		"units":"dll/year"},
+	"v_dll":
+	{
+		"impact": "Days of life loss",
+		"data": "Value",
+		"ci":["v_dll_lb", "v_dll", "v_dll_ub"],
+
+		"long_description":["days of life loss lower bound", "days of life loss", "days of life loss upper bound"],
+		"aggregation":"sum",
+		"units":"dll/year"},
+	"d_dll_pp":
+	{
+		"impact": "Days of life loss per person",
+		"data": "Delta",
+		"ci":["d_dll_pp_lb", "d_dll_pp", "d_dll_pp_ub"],
+
+		"long_description":["delta days of life loss per person lower bound", "delta days of life loss per person", "delta days of life loss per person upper bound"],
+		"aggregation":"population weighted average",
+		"units":"dll/(person year)"},
+	"v_dll_pp":
+	{
+		"impact": "Days of life loss per person",
+		"data": "Value",
+		"ci":["v_dll_pp_lb", "v_dll_pp", "v_dll_pp_ub"],
+
+		"long_description":["days of life loss per person lower bound", "days of life loss per person", "days of life loss per person upper bound"],
+		"aggregation":"population weighted average",
+		"units":"dll/(person year)"}
+    }
 
     # If it exists we use the json config file which is used also by the 
     # SHERPA interface
