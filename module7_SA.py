@@ -1235,25 +1235,4 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 
 if __name__ == '__main__':
 
-#    emissions_in ='./input/20170322_v18_SrrResults_PotencyBased/1_base_emissions/BC_emi_NO2_Y.nc' 
-#    concentration_in='./input/20170322_v18_SrrResults_PotencyBased/2_base_concentrations/BC_conc_NO2_NO2eq_Y_mgm3.nc'
-#    natural_in='./input/pDUST-pSALT/' 
-#    model1 = './input/20170322_v18_SrrResults_PotencyBased/3_source_receptors/SR_NO2eq_Y_20170322_potencyBased.nc' 
-#    fua_intersect_dir = './input/selection/gridnew/fua/'
-#    nuts_intersect_dir = './input/selection/gridnew/nuts/'
-#    dbf_dir='./input/selection/gridnew/' 
-#    target_list='./input/COM_targets.txt' 
-#    outdir='./output/20170322_v18_SrrResults_PotencyBased/Cities_CoM_coord_first_NOx/'
-    
-#    emissions_in ='./input/20170322_v18_SrrResults_PotencyBased/1_base_emissions/BC_emi_PM25_Y.nc' 
-#    concentration_in='./input/20170322_v18_SrrResults_PotencyBased/2_base_concentrations/BC_conc_PM25_Y.nc'
-#    natural_in='./input/pDUST-pSALT/' 
-#    model1 = './input/20170322_v18_SrrResults_PotencyBased/3_source_receptors/SR_PM25_Y_20170322_potencyBased.nc' 
-#    fua_intersect_dir = './input/selection/gridnew/fua/'
-#    nuts_intersect_dir = './input/selection/gridnew/nuts/'
-#    dbf_dir='./input/selection/gridnew/' 
-#    target_list='./input/AM_targets.txt' 
-#    outdir='./output/20170322_v18_SrrResults_PotencyBased/AM/'
-#      
-#    module7(emissions_in, concentration_in, natural_in, model1, fua_intersect_dir, nuts_intersect_dir, dbf_dir, target_list, outdir, 'nuts', 'NOx', outfig='png', normalize=True)
     pass
