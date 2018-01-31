@@ -80,7 +80,7 @@ from module8_healthia import module8_healthia
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
     path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
     path_base_conc_cdf_test, path_healthbl_test, path_config_json_test, \
-    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir, path_natural_dir_test
+    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir, path_natural_dir_test, aggr_zones
 from sherpa_auxiliaries import is_number
 from sys import argv
 import os.path
@@ -143,7 +143,7 @@ if __name__ == '__main__':
         start = time()
         module7(path_emission_cdf_test, path_base_conc_cdf_test, path_natural_dir_test,
                 path_model_cdf_test, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
-                target_list, path_result_cdf_test, 'city', 'png', True)
+                target_list, path_result_cdf_test, aggr_zones, 'PM25')
         stop = time()
         print('Module 7 calculation time = %f' % (stop - start))
 #        
@@ -160,8 +160,9 @@ if __name__ == '__main__':
 
         # check if all files (emissions, emission reduction, model) exist
         for i_input in range(2, len(argv)):
+            print('Reading ', i_input, 'which is ', argv[i_input] )             
             if not(os.path.exists(argv[i_input])) and not(is_number(argv[i_input])):
-                print('Error: %s does not exist!' % argv[i_input])
+                    print('WARNING: if %s is a file it does not exist!' % argv[i_input])
         
         # ---------#
         # module 1 #
@@ -260,8 +261,10 @@ if __name__ == '__main__':
         # ---------#
         # module 7 #
         # ---------#
+
         
         elif module == 7:
+
             path_emission_cdf = argv[2]     
             path_base_conc_cdf = argv[3]
             path_natural_dir = argv[4]
@@ -270,9 +273,12 @@ if __name__ == '__main__':
             nuts_intersect_dir = argv[7]
             dbf_dir = argv[8]
             target_list = argv[9]
+            path_result_cdf = argv[10]
+            aggr_zones_in = argv[11]
+            pollutant = argv[12]
             module7(path_emission_cdf, path_base_conc_cdf, path_natural_dir,
                 path_model_cdf, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
-                target_list, path_result_cdf_test, 'city', 'png', True)
+                target_list, path_result_cdf, aggr_zones_in, pollutant)
  
         # ---------#
         # module 8 #

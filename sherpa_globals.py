@@ -49,6 +49,7 @@ nuts_intersect_dir = 'input/selection/gridnew/nuts/'
 dbf_dir = 'input/selection/gridnew/'
 target_list = 'input/AM_targets.txt'
 path_natural_dir_test = 'input/pDUST-pSALT/'
+aggr_zones='nuts'
 
 path_pop_mat_test = 'input\\population.mat'
 path_grid_txt = 'input\\selection\\grid_intersect'
