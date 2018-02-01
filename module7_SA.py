@@ -1141,19 +1141,24 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 
         #plots
         fig={}
+        if aggr_zones=='fua' or  aggr_zones=='fuaonly':
+            az_name = 'fua'
+        else: 
+            az_name = 'nuts'
+        
         fig[1]=plot_bar(dc_inc,wantedorder_present,totalname, normalize=normalize)
         if aggr_zones=='fua' or  aggr_zones=='fuaonly':
             for ip,p in enumerate(precursors):
                 fig[2+ip] = plot_polar(emi_sum, p, wantedorder_present)
         for ids in list(receptors[receptors['target_idx']==idx].index):
-            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
+            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
 
             if len(smallareas)>0:
                 if aggr_zones=='fua' or  aggr_zones=='fuaonly':
                     for ip,p in enumerate(precursors):
-                        if fig[2+ip]:  # added by EMA
+                        if fig[2+ip]:  
                             fig[2+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight')
-            dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_total_table.csv')
+            dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_total_table.csv')
             dc_inc_all[ids]=dc_inc.transpose()
             target_allinfo[ids]=target_info.transpose()
             # EPE: make legend and save it
@@ -1179,7 +1184,7 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
                 newlabels=[]
                 
             axleg.legend(handles=handles1+handles2, labels=labels1+newlabels, fontsize=10, loc = 'center', frameon=False) 
-            figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+aggr_zones+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight')
+            figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight')
             plt.close('all')
 
     #summarize info on grid points

@@ -159,8 +159,7 @@ if __name__ == '__main__':
         module = int(argv[1])
 
         # check if all files (emissions, emission reduction, model) exist
-        for i_input in range(2, len(argv)):
-            print('Reading ', i_input, 'which is ', argv[i_input] )             
+        for i_input in range(2, len(argv)):    
             if not(os.path.exists(argv[i_input])) and not(is_number(argv[i_input])):
                     print('WARNING: if %s is a file it does not exist!' % argv[i_input])
         
