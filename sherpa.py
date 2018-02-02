@@ -80,7 +80,8 @@ from module8_healthia import module8_healthia
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
     path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
     path_base_conc_cdf_test, path_healthbl_test, path_config_json_test, \
-    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir, path_natural_dir_test, aggr_zones
+    fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir, path_natural_dir_test, aggr_zones, \
+    path_logo_test
 from sherpa_auxiliaries import is_number
 from sys import argv
 import os.path
@@ -129,7 +130,7 @@ if __name__ == '__main__':
         module5(path_emission_cdf_test, path_nuts0_cdf_test, path_reduction_txt_test, path_base_conc_cdf_test, path_model_cdf_test, path_result_cdf_test)
         stop = time()
         print('Module 5 calculation time = %f' % (stop - start))
-#
+
         # run module 6 test inputs
         start = time()
         # paris
@@ -138,15 +139,15 @@ if __name__ == '__main__':
         module6(path_emission_cdf_test, path_nuts2_cdf_test, target_cell_lat, target_cell_lon, 'input/user_reduction_snap7.txt', path_base_conc_cdf_test, path_model_cdf_test, path_result_cdf_test)
         stop = time()
         print('Module 6 calculation time = %f' % (stop - start))
-#
+
         # run module 7 test inputs    
         start = time()
         module7(path_emission_cdf_test, path_base_conc_cdf_test, path_natural_dir_test,
                 path_model_cdf_test, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
-                target_list, path_result_cdf_test, aggr_zones, 'PM25')
+                target_list, path_result_cdf_test, path_logo_test, aggr_zones, 'PM25')
         stop = time()
         print('Module 7 calculation time = %f' % (stop - start))
-#        
+        
         # run module 8 test inputs        
         start = time()
         module8_healthia(path_healthbl_test, path_result_cdf_test,
@@ -273,11 +274,13 @@ if __name__ == '__main__':
             dbf_dir = argv[8]
             target_list = argv[9]
             path_result_cdf = argv[10]
-            aggr_zones_in = argv[11]
-            pollutant = argv[12]
+            path_logo = argv[11]
+            aggr_zones_in = argv[12]
+            pollutant = argv[13]
+            
             module7(path_emission_cdf, path_base_conc_cdf, path_natural_dir,
                 path_model_cdf, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
-                target_list, path_result_cdf, aggr_zones_in, pollutant)
+                target_list, path_result_cdf, path_logo, aggr_zones_in, pollutant)
  
         # ---------#
         # module 8 #

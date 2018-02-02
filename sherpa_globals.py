@@ -49,6 +49,7 @@ nuts_intersect_dir = 'input/selection/gridnew/nuts/'
 dbf_dir = 'input/selection/gridnew/'
 target_list = 'input/AM_targets.txt'
 path_natural_dir_test = 'input/pDUST-pSALT/'
+path_logo_test = 'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png'
 aggr_zones='nuts'
 
 path_pop_mat_test = 'input\\population.mat'
