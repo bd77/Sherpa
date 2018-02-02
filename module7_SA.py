@@ -46,6 +46,7 @@ output: - polar polots for emissions
 '''
 
 import matplotlib.pyplot as plt
+import matplotlib.image as image
 import numpy as np
 import pandas as pd
 import re
@@ -243,7 +244,7 @@ def write_dict_nc(dc_dic,lats,lons,unit,filenc):
 
     rootgrp.close()
 
-def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
+def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
              x_label='Percentage of total mass', leg_loc='lower right', ftx=10, normalize=True):
     '''
     NAME
@@ -383,6 +384,13 @@ def plot_bar(dfdata, varplot, totalname, plot_opt='perc',
         # place latter only if there is enough space
         if dfdata_plot.loc['Total'][letlabind] >= 5 and np.isnan(xpos) == False:
             ax1.text(xpos, ypos, letter, va= 'center',  ha= 'center', fontsize=(ftx+2))
+    
+    # instert SHERPA logo
+    im = image.imread(path_logo)
+    newax = f.add_axes([0.68, 0.126, 0.2, 0.2], anchor='SE') #
+    newax.imshow(im, zorder=-1)
+    newax.axis('off')
+    
     plt.close()
 #    plt.show()
     return f
@@ -802,7 +810,7 @@ def df2mat(dfdata):
     dfmat=dfmat.as_matrix()
     return dfmat
 
-def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect_dir, nuts_intersect_dir, dbf_dir, targets_txt, outdir, aggr_zones_in, pollutant, outfig='png', normalize=True):
+def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect_dir, nuts_intersect_dir, dbf_dir, targets_txt, outdir, path_logo, aggr_zones_in, pollutant, outfig='png', normalize=True):
     '''
     NAME
         Module 7
@@ -839,9 +847,9 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     # Cehck consistency of pollutant and input files---------------------------
     if poll_name in emissions_nc and concentration_nc and natural_dir and model_nc: 
         print('OK: Pollutant name and input files are consistent')
-    else: 
+    else:        
         sys.exit('ERROR: pollutant name and input files are not consistend')
-        
+
 #    rect_txt = intersect_dir+'/gridint_rect' EPE: not sure what this is for now
     # EPE new grid intersect:
     grd_fua_txt = fua_intersect_dir + 'grid_intersect' 
@@ -1145,8 +1153,9 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
             az_name = 'fua'
         else: 
             az_name = 'nuts'
-        
-        fig[1]=plot_bar(dc_inc,wantedorder_present,totalname, normalize=normalize)
+
+        fig[1]=plot_bar(dc_inc,wantedorder_present, totalname, path_logo, normalize=normalize)
+            
         if aggr_zones=='fua' or  aggr_zones=='fuaonly':
             for ip,p in enumerate(precursors):
                 fig[2+ip] = plot_polar(emi_sum, p, wantedorder_present)
@@ -1240,4 +1249,15 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 
 if __name__ == '__main__':
 
+#    module7('./input/20170322_v18_SrrResults_PotencyBased/1_base_emissions/BC_emi_PM25_Y.nc',
+#               './input/20170322_v18_SrrResults_PotencyBased/2_base_concentrations/BC_conc_PM25_Y.nc',
+#               './input/pDUST-pSALT/',
+#               './input/20170322_v18_SrrResults_PotencyBased/3_source_receptors/SR_PM25_Y_20170322_potencyBased.nc',
+#               './input/selection/gridnew/fua/', 
+#               './input/selection/gridnew/nuts/',
+#               './input/selection/gridnew/',
+#               './input/AM_targets.txt',
+#               './output/20170322_v18_SrrResults_PotencyBased/AM/',
+#               'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
+#    
     pass
