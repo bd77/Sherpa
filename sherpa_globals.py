@@ -41,6 +41,7 @@ dbf_dir = 'input/selection/gridnew/'
 target_list = 'input/AM_targets.txt'
 path_natural_dir_test = 'input/pDUST-pSALT/'
 aggr_zones='fua'
+path_logo_test=''
 # list of precursors
 # order important, it's the order in the alpha and omega arrays
 # precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PM25', 'SOx']  
