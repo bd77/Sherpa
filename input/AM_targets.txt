@@ -1,0 +1,2 @@
+id	Station name	lon	lat
+UK09999	Liverpool	-2.9375	53.40625
