@@ -32,7 +32,7 @@ python sherpa.py 6 input/base_emissions/BC_emi_PM10_Y.nc input/EMI_RED_ATLAS_NUT
 
 python sherpa.py 6 input/base_emissions/BC_emi_NO2_Y.nc input/EMI_RED_ATLAS_NUTS2.nc 45 10 input/user_reduction_snap7.txt input/base_concentrations/BC_conc_NO2_NO2eq_Y_mgm3.nc input/source_receptors/SR_NO2eq_Y.nc output/
 
-python sherpa.py 7 input/base_emissions/BC_emi_PM25_Y.nc input/base_concentrations/BC_conc_PM25_Y.nc input/pDUST-pSALT/ input/source_receptors/SR_PM25_Y.nc input/selection/gridnew/fua/ input/selection/gridnew/nuts/ input/selection/gridnew/ input/AM_targets.txt output/ D:/WORK/projects/1_urbIam/1_CODE_MATLAB/SHERPA/SHERPA-GITHUB/SHERPA-GITHUB/Sherpa/input/sherpa_icon_name_256x256.png fua PM25
+python sherpa.py 7 input/base_emissions/BC_emi_PM25_Y.nc input/base_concentrations/BC_conc_PM25_Y.nc input/pDUST-pSALT/ input/source_receptors/SR_PM25_Y.nc input/selection/gridnew/fua/ input/selection/gridnew/nuts/ input/selection/gridnew/ input/AM_targets.txt output/ input/sherpa_icon_name_256x256.png fua PM25
 
 python sherpa.py 31 input/base_emissions/BC_emi_PM25_Y.nc input/London_region.nc input/user_reduction_mod3b.txt input/base_concentrations/BC_conc_PM25_Y.nc input/source_receptors/SR_PM25_Y.nc output/
 
