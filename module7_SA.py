@@ -44,6 +44,8 @@ output: - polar polots for emissions
 
 @author: Denise Pernigotti and Emanuela Peduzzi (EPE)
 '''
+import matplotlib 
+matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import matplotlib.image as image
@@ -317,7 +319,7 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
             areanames.loc['FUA_CODE'] = 'Greater city' 
     
     # Create the general blog and the "subplots" i.e. the bars
-    plt.close('all')
+#    plt.close('all')
     f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
     if plot_opt == 'perc':
         ax1.set_xlim([0, 100])
@@ -1033,7 +1035,9 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     dc_inc_all={}
     dc={}
     target_allinfo={}
-    #calculate diftsnces first in order to save calculation time, targets nedd to be in  memory limit of the machine (say at most about 10000)
+
+    #calculate diftsnces first in order to save calculation time, targets need to be in  memory limit of the machine (say at most about 10000)
+
     dists_array=distance.cdist(coordinates.loc[count_idx.index,['x','y']],coordinates.loc[emissions.columns,['x','y']], metric='euclidean')
 
     for ix,idx in enumerate(count_idx.index):
@@ -1159,14 +1163,18 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
         if aggr_zones=='fua' or  aggr_zones=='fuaonly':
             for ip,p in enumerate(precursors):
                 fig[2+ip] = plot_polar(emi_sum, p, wantedorder_present)
+      
         for ids in list(receptors[receptors['target_idx']==idx].index):
             fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
+            plt.close('all')
 
             if len(smallareas)>0:
                 if aggr_zones=='fua' or  aggr_zones=='fuaonly':
                     for ip,p in enumerate(precursors):
                         if fig[2+ip]:  
                             fig[2+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight')
+                            plt.close('all')
+
             dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_total_table.csv')
             dc_inc_all[ids]=dc_inc.transpose()
             target_allinfo[ids]=target_info.transpose()

@@ -56,8 +56,16 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     longitude_array = rootgrp.variables['lon'][0, :]
     latitude_array = rootgrp.variables['lat'][:, 0]
     n_lon = len(longitude_array)  
-    n_lat = len(latitude_array)  
-    inner_radius = int(getattr(rootgrp, 'Radius of influence'))
+    n_lat = len(latitude_array)
+
+    #####
+    #20180129 - EP - generalization to read 'radius of influence' variable, both written in matlab or python
+    for nameatt in Dataset(path_model_cdf, 'r').ncattrs():
+        if nameatt[0:6] == 'Radius':
+            radiusofinfluence = nameatt
+    inner_radius = int(getattr(Dataset(path_model_cdf, 'r'), radiusofinfluence))
+
+    # inner_radius = int(getattr(rootgrp, 'Radius of influence'))
     precursor_lst = getattr(rootgrp, 'Order_Pollutant').split(', ')
     alpha = rootgrp.variables['alpha'][:, :, :]    
     omega = rootgrp.variables['omega'][:, :, :] 
@@ -86,7 +94,7 @@ def module6(path_emission_cdf, path_area_cdf, target_cell_lat, target_cell_lon, 
     for i_code in range(len(nuts_codes_raw)):
         code = ''
         for letter in nuts_codes_raw[i_code]:
-            code = code + letter
+            code = code + str(letter.decode('utf-8'))
         nuts_codes.append(code)
     
     # convert latitude and longitude string in float

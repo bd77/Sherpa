@@ -147,7 +147,11 @@ if __name__ == '__main__':
                 target_list, path_result_cdf_test, path_logo_test, aggr_zones, 'PM25')
         stop = time()
         print('Module 7 calculation time = %f' % (stop - start))
+<<<<<<< HEAD
         
+=======
+#        
+>>>>>>> master
         # run module 8 test inputs        
         start = time()
         module8_healthia(path_healthbl_test, path_result_cdf_test,
@@ -281,7 +285,11 @@ if __name__ == '__main__':
             module7(path_emission_cdf, path_base_conc_cdf, path_natural_dir,
                 path_model_cdf, fua_intersect_dir, nuts_intersect_dir, dbf_dir, 
                 target_list, path_result_cdf, path_logo, aggr_zones_in, pollutant)
+<<<<<<< HEAD
  
+=======
+# 
+>>>>>>> master
         # ---------#
         # module 8 #
         # ---------#

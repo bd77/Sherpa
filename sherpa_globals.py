@@ -44,13 +44,6 @@ path_salt_conc_cdf_test = 'input\\pDUST-pSALT\\pSALT-25-basecase.nc'
 
 path_healthbl_test = 'input/impacts/healthbl_nc.nc'
 path_config_json_test = 'config/sharedvariables.json'
-fua_intersect_dir = 'input/selection/gridnew/fua/'
-nuts_intersect_dir = 'input/selection/gridnew/nuts/'
-dbf_dir = 'input/selection/gridnew/'
-target_list = 'input/AM_targets.txt'
-path_natural_dir_test = 'input/pDUST-pSALT/'
-path_logo_test = 'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png'
-aggr_zones='nuts'
 
 path_pop_mat_test = 'input\\population.mat'
 path_grid_txt = 'input\\selection\\grid_intersect'
@@ -62,6 +55,14 @@ path_tiff = 'input\\pop\\Qi_2015_mosaic.tif'
 path_healthbl = 'input\\impacts\\healthbl_nc.nc'
 path_healthbl0 = 'input\\impacts\\healthbl0_nc.nc'
 json_path = 'config\\sharedvariables.json'
+
+fua_intersect_dir = 'input/selection/gridnew/fua/'
+nuts_intersect_dir = 'input/selection/gridnew/nuts/'
+dbf_dir = 'input/selection/gridnew/'
+target_list = 'input/AM_targets.txt'
+path_natural_dir_test = 'input/pDUST-pSALT/'
+aggr_zones='fua'
+path_logo_test = 'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png'
 # list of precursors
 # order important, it's the order in the alpha and omega arrays
 # precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PM25', 'SOx']
