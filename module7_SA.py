@@ -47,6 +47,7 @@ output: - polar polots for emissions
 import matplotlib 
 matplotlib.use('Agg')
 
+import gc as gc
 import matplotlib.pyplot as plt
 import matplotlib.image as image
 import numpy as np
@@ -55,10 +56,10 @@ import re
 import sys
 
 from matplotlib.ticker import AutoMinorLocator 
+from matplotlib import figure
 from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
 from scipy.spatial import distance
 from simpledbf import Dbf5
-
 
 def figsize(scale):
     '''Squared figure 
@@ -153,9 +154,10 @@ def read_nc(nc_file):
             allvar[var]=pd.DataFrame(varnc.ravel())
             allvar[var].columns=[var]
         allvar[var].index=index_grid
-
+        varnc=None
     reform = {(outerKey, innerKey): values for outerKey, innerDict in allvar.items() for innerKey, values in innerDict.items()}
     df=pd.DataFrame(reform)
+    nc_data.close() # trying to see if this uses less memory
     return df.transpose()
 
 def name_short(name,lmax=12):
@@ -299,11 +301,11 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
           'External': '#cdcdb4', 'bottom': 'None'} 
   
     yaxisnames = {'CCITY_CODE': 'City',
-                  'FUA_CODE': 'Commuting Zone',
+                  'FUA_CODE': 'Commuting\n Zone',
                   'NUTS_Lv1': 'NUTS_Lv1', 
                   'NUTS_Lv2': 'NUTS_Lv2',
                   'NUTS_Lv3': 'NUTS_Lv3',
-                  'NUTS_Lv0': 'Rest of the country',
+                  'NUTS_Lv0': 'Rest of\n the country',
                   'ALL_NUTS_Lv0': 'Transboundary', 
                   'Total': 'Total'}
 
@@ -320,7 +322,8 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
     
     # Create the general blog and the "subplots" i.e. the bars
 #    plt.close('all')
-    f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
+    f = plt.figure(figsize=figsizer(0.9))
+    ax1 = f.add_subplot(111)
     if plot_opt == 'perc':
         ax1.set_xlim([0, 100])
     else:
@@ -425,9 +428,10 @@ def plot_polar(emi_sum, prec, wantedorder_present, ftx=8):
             mv.append(max(emi_sum[key].loc[prec].reindex(index)/1000))
             df.append([emi_sum[key].loc[prec].reindex(index)/1000])
                   
-    fig = plt.figure()
-    # create figure
-    fig = plt.figure(figsize=figsize(0.3), dpi=1000)
+#    fig = plt.figure()
+    # create figurefig = figure.Figure()
+    fig = plt.figure(figsize=figsize(0.3))
+#   fig = figure.Figure(figsize=figsize(0.3), dpi=10)
     ax = fig.add_subplot(111, projection="polar")
     ax.grid(True)
     ax.yaxis.grid(color='#aab0b7', lw=0.7)
@@ -499,7 +503,7 @@ def plot_polar(emi_sum, prec, wantedorder_present, ftx=8):
     ax.tick_params(axis='y', labelsize=ftx-2, zorder=4)
     ax.text(2,  ylim*1.3, titles_dct[prec], va='center',
                     ha='center', fontsize=(ftx+2), weight='bold')
-    plt.close()
+#    plt.close()
 #    plt.show()
     return fig
 
@@ -929,6 +933,7 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     del nuts_info_fuas['NUTS_Lv1']
     del nuts_info_fuas['NUTS_Lv0']  
     nuts_info.update(nuts_info_fuas)
+    del nuts_info_fuas
     # EPE, only one instance of read_nuts_area should have calcall=True, original 
     # version allowed to set nullnut='LAND000', but now this nut name does not exist 
     # anymore.
@@ -1032,15 +1037,16 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     receptors.index=receptors['id']
     receptors.drop('id', axis=1, inplace=True)
 
-    dc_inc_all={}
+#    dc_inc_all={}
     dc={}
     target_allinfo={}
 
     #calculate diftsnces first in order to save calculation time, targets need to be in  memory limit of the machine (say at most about 10000)
 
     dists_array=distance.cdist(coordinates.loc[count_idx.index,['x','y']],coordinates.loc[emissions.columns,['x','y']], metric='euclidean')
-
     for ix,idx in enumerate(count_idx.index):
+        print(ix, idx)
+        gc.collect()
         #For the selected point find all information on area  ids
         target_info=pd.concat(list(map(lambda areaid: find_target_info(areaid,nuts_info,idx),nuts_info.keys())),axis=1).transpose()
         target_info['areaname']=pd.Series(dict(zip(target_info.index,map(lambda x: ''.join(list(area_names[x].loc[target_info.loc[x,'areaid']])).title(),target_info.index))))
@@ -1122,14 +1128,14 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
         smallareas=list(set(area_present)-set(['ALL_NUTS_Lv0','NUTS_Lv0']))
 
         #avoid double counting of grid increments
-        narea_inc=dc_increments(narea,aggr_zones)
+#        narea_inc=dc_increments(narea,aggr_zones)
 
         if len(smallareas)>0:
         #make a copy with 0 and 1 only for plotting
             narea_bin=narea[smallareas].copy()
             narea_bin=narea_bin.mask(narea_bin>0.5,1)
             narea_bin=narea_bin.mask(narea_bin<=0.5,0)
-            narea_id=narea_bin.sum(axis=1)
+#            narea_id=narea_bin.sum(axis=1)
 
             #dc_inc_flat= pd.concat(list(map(lambda p: narea_inc[p]*(dc_inc[p].sum()),smallareas)),axis=1).sum(axis=1)
             #dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns)
@@ -1153,31 +1159,32 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 
         #plots
         fig={}
+        plt.close('all')
         if aggr_zones=='fua' or  aggr_zones=='fuaonly':
             az_name = 'fua'
         else: 
             az_name = 'nuts'
-
+#
         fig[1]=plot_bar(dc_inc,wantedorder_present, totalname, path_logo, normalize=normalize)
-            
+##        plt.close('all')    
         if aggr_zones=='fua' or  aggr_zones=='fuaonly':
             for ip,p in enumerate(precursors):
                 fig[2+ip] = plot_polar(emi_sum, p, wantedorder_present)
-      
+#                
+        dc[idx]=None # this is the magic line that avoids memory usage to grow at each iteration        
         for ids in list(receptors[receptors['target_idx']==idx].index):
-            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
-            plt.close('all')
-
+            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_conc.'+ outfig, dpi=10, transparent=True, bbox_inches='tight', pad_inches=0.20)              
+            
             if len(smallareas)>0:
                 if aggr_zones=='fua' or  aggr_zones=='fuaonly':
                     for ip,p in enumerate(precursors):
                         if fig[2+ip]:  
-                            fig[2+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight')
-                            plt.close('all')
-
+                            fig[2+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight', transparent=True, pad_inches=0.15)
+                            
+#                            plt.close(fig[2+ip])
             dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_total_table.csv')
-            dc_inc_all[ids]=dc_inc.transpose()
-            target_allinfo[ids]=target_info.transpose()
+#            dc_inc_all[ids]=dc_inc.transpose()
+            target_allinfo[ids]=target_info.transpose()          
             # EPE: make legend and save it
             figleg = plt.figure(figsize=figsize(0.1))#
             axleg = figleg.add_subplot()
@@ -1201,9 +1208,19 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
                 newlabels=[]
                 
             axleg.legend(handles=handles1+handles2, labels=labels1+newlabels, fontsize=10, loc = 'center', frameon=False) 
-            figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight')
-            plt.close('all')
-
+            figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_'+'_legend.'+outfig), dpi=10, bbox_inches='tight', transparent=True)
+##            figleg.clear()
+            figleg.clf()
+            plt.close(figleg)
+            for n_fig in np.arange(len(fig))+1:
+                fig[n_fig].clear()
+                fig[n_fig].clf()
+                plt.close(fig[n_fig])
+            plt.clf()
+            plt.close('all')          
+            del emi_sum 
+            del dc_inc
+            gc.collect()
     #summarize info on grid points
     reform = {(outerKey, innerKey): values for outerKey, innerDict in target_allinfo.items() for innerKey, values in innerDict.items()}
     target_allinfo=pd.DataFrame(reform).transpose()
@@ -1214,17 +1231,17 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     summary = summary.set_index(['id','area'])
     summary.to_csv(outdir+'\\AAA_summary_info.csv')
 
-    reform = {(outerKey, innerKey): values for outerKey, innerDict in dc_inc_all.items() for innerKey, values in innerDict.items()}
-    dc_inc_all=pd.DataFrame(reform).transpose()
-    #check total totals of explained mass on each receptor
-    total_pm=pd.concat([receptors[['station name','lon','lat','target_idx']],dc_inc_all.groupby(level=[0]).sum().loc[receptors.index,]],axis=1)
-    #COUNTaverage source contribution and its variability among receptors
-    summary_src={}
-    summary_src['count']=dc_inc_all.groupby(level=[1]).count().transpose()
-    summary_src['mean']=dc_inc_all.groupby(level=[1]).mean().transpose()
-    summary_src['sd']=dc_inc_all.groupby(level=[1]).std().transpose()
-    reform = {(innerKey,outerKey): values for outerKey, innerDict in summary_src.items() for innerKey, values in innerDict.items()}
-    summary_src=pd.DataFrame(reform).transpose()
+#    reform = {(outerKey, innerKey): values for outerKey, innerDict in dc_inc_all.items() for innerKey, values in innerDict.items()}
+#    dc_inc_all=pd.DataFrame(reform).transpose()
+#    #check total totals of explained mass on each receptor
+##    total_pm=pd.concat([receptors[['station name','lon','lat','target_idx']],dc_inc_all.groupby(level=[0]).sum().loc[receptors.index,]],axis=1)
+#    #COUNTaverage source contribution and its variability among receptors
+#    summary_src={}
+#    summary_src['count']=dc_inc_all.groupby(level=[1]).count().transpose()
+#    summary_src['mean']=dc_inc_all.groupby(level=[1]).mean().transpose()
+#    summary_src['sd']=dc_inc_all.groupby(level=[1]).std().transpose()
+#    reform = {(innerKey,outerKey): values for outerKey, innerDict in summary_src.items() for innerKey, values in innerDict.items()}
+#    summary_src=pd.DataFrame(reform).transpose()
 
 ##-----------------------------------------------------------------------------    
 #    # Extract data for the Covenant of Mayors analysis EPE
@@ -1266,6 +1283,17 @@ if __name__ == '__main__':
 #               './input/selection/gridnew/',
 #               './input/AM_targets.txt',
 #               './output/20170322_v18_SrrResults_PotencyBased/AM/',
-#               'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
+#               'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25') 
 #    
+    
+    module7('./input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc',
+           './input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc',
+           './input/pDUST-pSALT/',
+           './input/SR_PM25_Y.nc',            #'./input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc',
+           './input/selection/gridnew/fua/', 
+           './input/selection/gridnew/nuts/',
+           './input/selection/gridnew/',
+           './input/50_targets.txt',
+           './output/20151116_SR_no2_pm10_pm25/AM/',
+           'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
     pass
