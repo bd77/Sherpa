@@ -60,6 +60,8 @@ from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
 from scipy.spatial import distance
 from simpledbf import Dbf5
 
+from sherpa_auxiliaries import read_nc
+from sherpa_auxiliaries import read_nuts_area 
 
 def figsize(scale):
     '''Squared figure 
@@ -83,82 +85,6 @@ def figsizer(scale):
     fig_height = fig_width * golden_mean              # height in inches
     fig_size = [fig_width, fig_height]
     return fig_size
-
-
-
-def read_nc(nc_file):
-    '''
-    NAME
-        Reads SHERPA ncdf file with Python
-    PURPOSE
-        To read matrix data and put them in a multindexed dataframe
-    PROGRAMMER(S)
-        Denise Pernigotti
-    REVISION HISTORY
-    
-    REFERENCES
-    
-    '''
-    nc_data = Dataset(nc_file, 'r')
-    nc_dims = [dim for dim in nc_data.dimensions]
-    nc_vars = [var for var in nc_data.variables]
-    
-    #sometimes the latitude is written just with lat as in model data
-    latname=list(filter(lambda x: x in nc_vars, ['Lat','lat','latitude']))[0]
-    lats = nc_data.variables[latname][:]
-    lonname=list(filter(lambda x: x in nc_vars, ['Lon','lon','longitude']))[0]
-    lons = nc_data.variables[lonname][:]
-    
-    #if there are three dimensional arrays
-    if len(nc_dims)==3:
-        ncz=str(list(set(nc_dims)-set(['latitude','longitude']))[0])
-        nz=range(len(nc_data.dimensions[ncz]))
-        if ncz=='pollutant':
-            strpoll=nc_data.Order_Pollutant
-            nznames=strpoll.split(', ')
-        else:
-            nznames=[ncz +"{:02d}".format(x+1) for x in nz]
-
-    #create an index with lat and lon
-    if len(lats.shape)==2 and len(lons.shape)==2:
-        nrow=lats.shape[0]
-        ncol=lats.shape[1]
-        lon=lons.ravel()
-        lat=lats.ravel()
-    else:
-        nrow=len(lats)
-        ncol=len(lons)
-        lon=np.tile(lons,nrow)
-        lat=np.repeat(lats,ncol)
-
-    y=np.repeat(range(1, nrow+1),ncol)
-    x=np.tile(range(1, ncol+1),nrow)
-    row=list(map(str,y))
-    col=list(map(str,x))
-    index_grid=list(map(lambda x: '_'.join(x),list(zip(col,row))))
-
-    allvar={}
-    allvar['coord']=pd.DataFrame(lon,columns=['lon'])
-    allvar['coord']['lat']=lat
-    allvar['coord']['x']=x
-    allvar['coord']['y']=y
-    allvar['coord'].index=index_grid
-    nc_vars.remove(latname)
-    nc_vars.remove(lonname)
-    for var in nc_vars:
-        varnc = nc_data.variables[var][:]
-        if len(nc_dims)==3:
-            allvar[var]=pd.concat(map(lambda sn : pd.Series(varnc[sn].ravel()),nz),axis=1)
-            allvar[var].columns=nznames
-        else:
-            allvar[var]=pd.DataFrame(varnc.ravel())
-            allvar[var].columns=[var]
-        allvar[var].index=index_grid
-        varnc = None # EPE: trying to use less memory
-    reform = {(outerKey, innerKey): values for outerKey, innerDict in allvar.items() for innerKey, values in innerDict.items()}
-    df=pd.DataFrame(reform)
-    nc_data.close() # EPE: trying to use less memory
-    return df.transpose()
 
 def name_short(name,lmax=12):
     '''
@@ -536,85 +462,7 @@ def haversine_vec(lon1,lat1,lon_vec2,lat_vec2):
     return h # in kilometers
 #
 
-def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
-    '''
-    NAME
-        Import info on grid points attribution to nuts or specific area type from ascii file
-    PURPOSE
-        Import info on grid points attribution to nuts or specific area type from ascii file/s.
-        If the file is single then it must contain the column 'Area [km2]' relative to % of the area in the finest nut,
-        this datum will be set to each nut but it will then aggregated for larger nuts when nutsarea will be calculated
-        If the files are two, then each nut will have its own % area for each grid point, then the data will be merged here
-    PROGRAMMER(S)
-        Denise Pernigotti
-    REVISION HISTORY
-        WARNING by EPE: this function does not work andymore as originally 
-        intended because the gridintersect structure has changed
-        for example there is no nullnut anymore which has the same name for all 
-        cells! the 'rect' par has not been tested.
-    REFERENCES
-    
-    '''   
-    nuts_info_all={}
-    if(filenuts != 'rect'):
-        nuts_def= filenuts +'.txt'
-        nuts_info = pd.read_csv(nuts_def,delimiter="\t")
-        nuts_info=nuts_info.dropna(axis=1,how='all')
-        nutsnames=list(nuts_info.columns[~nuts_info.columns.isin(['POP','COL','ROW','AREA_km2','LAT','LON','CENTROID_X', 'CENTROID_Y', 'PERCENTAGE', 'POPULATION'])])
-        #optional 'nut' comprising all grid points
-        if calcall :
-        #nutsnames.insert(0, 'ALL')
-            nutsnames.insert(0, 'ALL_'+nutsnames[0])
-            nuts_info[nutsnames[0]]=nutsnames[0]
-        nuts_info['grid']=['_'.join(str(i) for i in z) for z in zip(nuts_info['COL'],nuts_info['ROW'])]
-        if 'AREA_km2' in nuts_info.columns:
-            nuts_area=pd.concat(map(lambda p: nuts_info['AREA_km2'],nutsnames),axis=1)
-            #nuts_area.index=nuts_info['grid']
-            nuts_area.columns=nutsnames
-           #nuts_info=nuts_info[nutsnames]
-        else:
-            sys.exit("missing infos on grid cells area per nut")
 
-        #aggregate data for each nut, create a dictionary
-        nut_info_nut={}
-        nut_info={}
-        nullnut_dct={'NUTS_Lv0':'0', # at this level there is no background
-                     'NUTS_Lv1':'1', 
-                     'NUTS_Lv2':'11',
-                     'NUTS_Lv3':'111'}
-        for nut in nutsnames:
-#            nut = 'NUTS_Lv0'
-            #create a multindex
-            index = pd.MultiIndex.from_tuples(list(zip(nuts_info[nut],nuts_info['grid'])), names=['nutname','grid'])
-            nut_info=pd.Series(list(nuts_area[nut]), index=index)
-            nut_info=nut_info.to_frame(name='area')
-            #aggregate data on these nuts if necessary
-            nut_info_nut=nut_info.groupby(level=[0,1]).sum()
-            #find total area
-            grid_area_tot=nut_info_nut.groupby(level=['grid']).sum()
-            nut_info_nut['parea']=nut_info_nut/grid_area_tot
-            nut_info_nut.loc[nut_info_nut['area']==0,'parea']=0.
-            #eventually remove the fillng code
-            if nullnut is True:
-                for nutkey in set(nut_info_nut.index.get_level_values(0)):
-                    if nutkey[2:]==nullnut_dct[nut]:
-#                        print(nutkey)
-                        nut_info_nut=nut_info_nut.drop(nutkey, level='nutname')
-            nuts_info_all[nut]=nut_info_nut
-       
-    else:
-        nuts_rect=nutsall
-        nuts_rect.index=nuts_rect.index.droplevel(level=0)
-        grid_inrect=nuts_rect.index
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']>=rect_coord['ll']['lon']]
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']<=rect_coord['ur']['lon']]
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']>=rect_coord['ll']['lat']]
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']<=rect_coord['ur']['lat']]
-        nuts_rect=nuts_rect.loc[list(grid_inrect)]
-        nuts_rect['nutname'] = 'rect'
-        nuts_rect.set_index('nutname', append=True, inplace=True)
-        nuts_info_all['rect']=nuts_rect.swaplevel(i=-2, j=-1, axis=0)
-    return nuts_info_all
 
 def find_target_info(areaid,areacells,x_y):
     '''
@@ -1046,7 +894,7 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     dists_array=distance.cdist(coordinates.loc[count_idx.index,['x','y']],coordinates.loc[emissions.columns,['x','y']], metric='euclidean')
 
     figc = plt.figure(figsize=figsizer(0.9))
-    figp = plt.figure(figsize=figsize(0.3))
+
     for ix,idx in enumerate(count_idx.index):
         gc.collect() #EPE: trying to use less memory
         #For the selected point find all information on area  ids
@@ -1285,26 +1133,16 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 
 if __name__ == '__main__':
 #
-#    module7('./input/20170322_v18_SrrResults_PotencyBased/1_base_emissions/BC_emi_PM25_Y.nc',
-#               './input/20170322_v18_SrrResults_PotencyBased/2_base_concentrations/BC_conc_PM25_Y.nc',
-#               './input/pDUST-pSALT/',
-#               './input/20170322_v18_SrrResults_PotencyBased/3_source_receptors/SR_PM25_Y_20170322_potencyBased.nc',
-#               './input/selection/gridnew/fua/', 
-#               './input/selection/gridnew/nuts/',
-#               './input/selection/gridnew/',
-#               './input/AM_targets.txt',
-#               './output/20170322_v18_SrrResults_PotencyBased/AM/',
-#               'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
-#    
-    module7('./input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc',
-           './input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc',
-           './input/pDUST-pSALT/',
-           './input/SR_PM25_Y.nc',            #'./input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc',
-           './input/selection/gridnew/fua/', 
-           './input/selection/gridnew/nuts/',
-           './input/selection/gridnew/',
-           './input/50_targets.txt',
-           './output/20151116_SR_no2_pm10_pm25/AM/',
-           'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
+
+#    module7('./input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc',
+#           './input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc',
+#           './input/pDUST-pSALT/',
+#           './input/SR_PM25_Y.nc',            #'./input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc',
+#           './input/selection/gridnew/fua/', 
+#           './input/selection/gridnew/nuts/',
+#           './input/selection/gridnew/',
+#           './input/50_targets.txt',
+#           './output/20151116_SR_no2_pm10_pm25/AM/',
+#           'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
     pass
 
