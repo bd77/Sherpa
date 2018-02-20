@@ -11,7 +11,7 @@ import numpy as np  # for scientific operators
 from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
 import pickle  # to save results direclty as python objects
 import pandas as pd
-from module7_custom import read_nuts_area
+from module7_custom_ep import read_nuts_area
 from sherpa_globals import path_model_cdf_test, path_grid_txt, gcities_txt, fua_txt, path_emission_cdf_test
 import os as os
 from sherpa_auxiliaries import (create_emission_dict)

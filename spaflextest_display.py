@@ -81,7 +81,7 @@ from sherpa_globals import (path_base_conc_cdf_test, path_salt_conc_cdf_test,
                             path_dust_conc_cdf_test, path_pop_mat_test,
                             path_mortbaseline, path_emission_cdf_test,
                             path_model_cdf_test, path_result_cdf_test)
-from module7_custom import read_nuts_area
+from module7_custom_ep import read_nuts_area
 
 #def plot_secregeffect(precursor_lst, name, sources, path_results, path_figures):
 #    """ Plots aggregated sectors efficiency ratios in FUA vs the efficiency
@@ -311,7 +311,7 @@ def plot_ratios_fuas(name, sources, precursor_lst, path_results, path_figures):
         p2 = plt.plot(ind, df_plots['fua_ratio']/df_plots['ref_ratio'], marks[indp])
         p3 = plt.plot(ind, df_plots['not_fua_ratio']/df_plots['ref_ratio'], marks[indp])
         plt.ylabel('{} performance ratio, $\\rho_{{s,{}}}$'.format(name, precursor))
-        plt.legend((p1[0], p2[0], p3[0]), ('country', 'FUA', 'Not FUA'), loc='best', ncol=1)
+        plt.legend((p1[0], p2[0], p3[0]), ('uni. red.', 'FUA', 'Non FUA'), loc='best', ncol=1)
 #        plt.savefig(path_figures + 'regionalratios{}_{}.png'.format(name, precursor),
 #                    bbox_inches = "tight", dpi=300)
         fig.savefig(path_figures + 'regionalratiostex{}_{}.pgf'.format(name, precursor))
@@ -437,7 +437,7 @@ if __name__ == '__main__':
 #        ax = plt.minorticks_on()
         ax.tick_params(axis='x',which='minor',bottom='off')
         plt.xticks(ind, sources)
-        plt.plot(ind, df_plots['ref_ratio']/df_plots['ref_ratio'],'-' , color = '#000000', label = 'flat red') #marks[indp]
+        plt.plot(ind, df_plots['ref_ratio']/df_plots['ref_ratio'],'-' , color = '#000000', label = 'uni. red.') #marks[indp]
         for inds, sec in enumerate(sect_aggr):
             plt.plot(ind, df_plots['{}'.format(sec)]/df_plots['ref_ratio'],
                  marks[indp], label='{}'.format(sec),

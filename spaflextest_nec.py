@@ -373,7 +373,7 @@ def nec_app(an_ty, opt, name, sources, path_results, path_figures, em_inv):
 #    ax = plt.minorticks_on()
     ax.tick_params(axis='x',which='minor',bottom='off')
     plt.xticks(ind, sources)
-    plt.plot(ind, results['sum']['ratio_co'], "-" , color = 'black', label = 'flat red')
+    plt.plot(ind, results['sum']['ratio_co'], "-" , color = 'black', label = 'uni. red.')
     plt.plot(ind, results['sum']['ratio_de'], "D" , color = 'purple', label = u'decreasing ${}_{{p,s}}$'.format(indicator))
     plt.plot(ind, results['sum']['ratio_as'], "D" , color = 'dodgerblue', label = u'increasing ${}_{{p,s}}$'.format(indicator))
     plt.legend(ncol=1, loc='best')
@@ -813,7 +813,7 @@ if __name__ == '__main__':
     marker = mlines.Line2D([], [], color='r', marker='None',
                           label='AQD limit', linestyle = 'solid')
     patches.append(marker)
-    marker = mlines.Line2D([], [], color='r', marker='None',
+    marker = mlines.Line2D([], [], color='g', marker='None',
                           label='WHO limit', linestyle = 'dashed')
     patches.append(marker)
     plt.legend(handles=patches, ncol=2, loc='best')
@@ -857,217 +857,217 @@ if __name__ == '__main__':
 #------------------------------------------------------------------------------
    
 
-
-    target_cell_lat = 40.40625
-    target_cell_lon = -3.6875
-
-    # convert latitude and longitude string in float
-    target_cell_lat = float(target_cell_lat)
-    target_cell_lon = float(target_cell_lon)
-    
-
-    
-    country = 'ES'
-    order = 'dec'
-    an_ty = an_tys[0]
-    output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
-    dc_path = output + 'delta_concentration.nc'
-    rootgrp = Dataset(dc_path, mode='r')
-    dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
-    bc_pm25_units = rootgrp.variables['delta_concentration'].units
-    rootgrp.close()
-    
-    dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
-    ac = conc - dconc
-    ac[i_lat_target, i_lon_target]
-
-#    cities['NUTS0'] = [city[:2] for city in cities['FUA_CODE']]
-#    citysel = cities.set_index('NUTS0').loc[sources]
+#
+#    target_cell_lat = 40.40625
+#    target_cell_lon = -3.6875
+#
+#    # convert latitude and longitude string in float
+#    target_cell_lat = float(target_cell_lat)
+#    target_cell_lon = float(target_cell_lon)
+#    
+#
+#    
+#    country = 'ES'
+#    order = 'dec'
+#    an_ty = an_tys[0]
+#    output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+#    dc_path = output + 'delta_concentration.nc'
+#    rootgrp = Dataset(dc_path, mode='r')
+#    dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
+#    bc_pm25_units = rootgrp.variables['delta_concentration'].units
+#    rootgrp.close()
+#    
+#    dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
+#    ac = conc - dconc
+#    ac[i_lat_target, i_lon_target]
+#
+##    cities['NUTS0'] = [city[:2] for city in cities['FUA_CODE']]
+##    citysel = cities.set_index('NUTS0').loc[sources]
 #    av_conc_new = {}
-#    av_conc = {}
-#    for city in citysel['FUA_CODE']:
-#        print(city)
-#        av_conc_new[city] = {}
+##    av_conc = {}
+##    for city in citysel['FUA_CODE']:
 ##        print(city)
-    
-    area_city = gridint_toarray('FUA_CODE', 'parea', 'ES001L2')
-    area_city = gridint_toarray('GCITY_CODE', 'parea', 'ES001C1')
-    av_conc = (np.sum((conc * area_city * surf / 100) / np.sum(area_city * surf / 100)))
-    print(av_conc)
-    
-    for an_ty in an_tys:
-        av_conc_new[city][an_ty] = {}
-        for order in ords:
-            output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
-#    output = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,'dec',an_ty,opt)
-            dc_path = output + 'delta_concentration.nc'
-            rootgrp = Dataset(dc_path, mode='r')
-            dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
-# bc_pm25_units = rootgrp.variables['conc'].units
-            rootgrp.close()
-            dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
-            ac = bc_pm25_conc - dconc
-            av_conc_new[city][an_ty][order] = (np.sum((ac * area_city * surf / 100) /
-            np.sum(area_city * surf / 100)))
-            print(av_conc_new[city][an_ty][order])
-    cities = pd.read_csv(
-                   path_results + 'cities.csv', index_col=[0])
-    plt.clf()
-    fig= plt.figure(figsize=figsize(1))
-    ax = fig.add_subplot(111)
-    ax.minorticks_on()
-#    fig, ax = plt.subplots(figsize=(14, 8))
-    ax.set_ylim([0,30])
-#    ax = plt.minorticks_on()
-    ax.tick_params(axis='x',which='minor',bottom='off')
-    ind = np.arange(len(cities['cityname'].values))
-#    ax.set_xticklabels(list(cities['cityname'].values), rotation=90)
-    plt.xticks(ind, cities['cityname'].values, rotation=90)
-    who_x = ind
-    who_y = np.ones(len(ind))* 10
-    aqd_y = np.ones(len(ind))* 20 # to check
-    plt.plot(who_x, who_y, color='r', linestyle = 'dashed', label = 'WHO limit')
-    plt.plot(who_x, aqd_y, color='r', linestyle = 'solid', label = 'AQD limit')
-    patches = []
-    for ind, x in enumerate(cities.index):
-        print(ind, av_conc[x])
-        plt.plot(ind, av_conc[x],'o',color = 'r')
-        plt.plot(ind, av_conc_new[x]['sec']['dec'],'D', color = 'b')
-        plt.plot(ind, av_conc_new[x]['sec']['inc'], 'D',  mfc='none', color ='b')
-        plt.plot(ind, av_conc_new[x]['spa']['dec'],'v', color = 'g')
-        plt.plot(ind, av_conc_new[x]['spa']['inc'], 'v',  mfc='none', color ='g')
-    plt.ylabel('Average concentration [$\mu$ g/m$^3$]')
-    marker = mlines.Line2D([], [], color='b', marker='D',
-                          label='sec. dec.', linestyle = 'None')
-    patches.append(marker)
-    marker = mlines.Line2D([], [], color='b', marker='D', mfc='none',
-                          label='sec. inc.', linestyle = 'None')
-    patches.append(marker)
-    marker = mlines.Line2D([], [], color='g', marker='v',
-                          label='spa. dec.', linestyle = 'None')
-    patches.append(marker)
-    marker = mlines.Line2D([], [], color='g', marker='v', mfc='none',
-                          label='spa. inc.', linestyle = 'None')
-    patches.append(marker)
-    marker = mlines.Line2D([], [], color='r', marker='o',
-                          label='base case', linestyle = 'None')
-    patches.append(marker)
-    marker = mlines.Line2D([], [], color='r', marker='None',
-                          label='AQD limit', linestyle = 'solid')
-    patches.append(marker)
-    marker = mlines.Line2D([], [], color='r', marker='None',
-                          label='WHO limit', linestyle = 'dashed')
-    patches.append(marker)
-    plt.legend(handles=patches, ncol=2, loc='best')
-    fig.savefig(path_figures + 'cities.png', bbox_inches = "tight", dpi=300)
-    fig.savefig(path_figures + 'cities.pgf', bbox_inches = "tight")
-    fig.savefig(path_figures + 'cities.pdf', bbox_inches = "tight")
-    plt.show()
-
-#    A= np.sum((1000 * conc * areacountry * surf / 100) / np.sum(areacountry * surf / 100))
-#    b= np.sum((1000 * bc_conc * areacountry * surf / 100) / np.sum(areacountry * surf / 100))
-#    C= np.sum((1000 * conc * areacountry * popall / 100) / np.sum(areacountry * popall / 100))
-#    D= np.sum((1000 * bc_conc * areacountry * popall / 100) / np.sum(areacountry * popall / 100))
-
-
-    # Draw gridded impacts
-    plt.close('all')
-    rootgrp = Dataset(path_model_cdf_test, 'r')
-    lon_array = rootgrp.variables['lon'][0, :]
-    lat_array = rootgrp.variables['lat'][:, 0]
-    rootgrp.close()
-    lon, lat = np.meshgrid(lon_array, lat_array)
-#    dfmat=df2mat(dc_dic)
-    fig= plt.figure(figsize=figsize(1))
-    m = Basemap(resolution='i',projection='cyl',
-            llcrnrlon=min(lon_array), llcrnrlat=min(lat_array),
-            urcrnrlon=max(lon_array), urcrnrlat=max(lat_array))#,
-    #        llcrnrlon=min(lons), llcrnrlat=min(lats),
-    #        urcrnrlon=max(lons), urcrnrlat=max(lats),
-#            area_thresh = 0.1,lat_0=lat_0,lon_0=lon_0)
-    m.drawcoastlines(linewidth=1.25);
-    #m.drawstates()
-    m.drawcountries(linewidth=1.25);
-    # draw filled contours.
-    x, y = m(lon, lat)
-    clevs = np.arange(5,55,5)#[5,10,15,20,25,30,35,40,45,50,55,60]
-#    cs = m.contourf(x,y,dfmat,clevs);
-    for an_ty in an_tys:
-        for order in ords:
-            grid_per_ch_tot = np.sum(grid_per_ch[country][an_ty][order] for country in ['ES', 'DE'])  # to check
-            cs = m.contourf(x,y,(grid_per_ch_tot[0]), clevs, cmap='jet', vmax=50, extend='max')
-            m.bluemarble()
-            m.drawcoastlines(linewidth=0.5);
-            m.drawcountries(linewidth=0.5);
-            cbar = m.colorbar(cs,location='right', pad="5%", label = 'impact reduction [\%]')
-            cbar.ax.tick_params(labelsize=7)
-            plt.savefig(path_figures + '{}{}{}{}.pdf'.format(name, an_ty, opt, order), bbox_inches = "tight", format='pdf')
-#    plt.savefig(path_figures + '{}{}{}{}.pgf'.format(name, an_ty, opt, order), format='pgf')
-            plt.show()
-
-    def f1(x):
-        return '%.2f' % x
-
-    def f2(x):
-        return '%.2f' % x
-
-
-    for precursor in precursors:
-        print(precursor)
-        print(redms2[precursor].to_latex(float_format=f1))
-
-    for precursor in precursors:
-        print(precursor)
-        print(df_releff[precursor].to_latex(float_format=f1))
-    for precursor in precursors:
-        print(precursor)
-        print(redms2[precursor].to_latex(float_format=f1))
-    for precursor in precursors:
-        print(precursor)
-#        print(redper.to_latex(float_format=f1))
-
-    precursors = ['PPM', 'NOx', 'SOx', 'NH3', 'NMVOC']  
-    # Absolute value of emission reduction by country and precursor
-    df_e_red_eu = pd.DataFrame(columns=precursors)
-    df_e_inv_eu = read_inventory(year, em_inv, precursors)
-    df_e_inv_eu10 = read_inventory(2010, em_inv, precursors)
-    # Dataframe with the emission reductins per country according to NEC
-    df_nec = pd.read_csv(path_results + 'NECdirective.csv', index_col=[0],
-                         header=[0, 1])
-    
-    print(df_e_inv_eu.loc[sources].to_latex(float_format=f1))
-    print(df_e_inv_eu10.loc[sources].to_latex(float_format=f1))
-#  DRAW FUAS
-    rootgrp = Dataset(path_model_cdf_test, 'r')
-    lon_array = rootgrp.variables['lon'][0, :]
-    lat_array = rootgrp.variables['lat'][:, 0]
-    rootgrp.close()
-    lon, lat = np.meshgrid(lon_array, lat_array)
-#    dfmat=df2mat(dc_dic)
-    plt.close('all')
-    fig= plt.figure(figsize=figsize(1))
-    m = Basemap(resolution='i',projection='cyl',
-            llcrnrlon=min(lon_array), llcrnrlat=min(lat_array),
-            urcrnrlon=max(lon_array), urcrnrlat=max(lat_array))#,
-    #        llcrnrlon=min(lons), llcrnrlat=min(lats),
-    #        urcrnrlon=max(lons), urcrnrlat=max(lats),
-#            area_thresh = 0.1,lat_0=lat_0,lon_0=lon_0)
-    m.drawcoastlines(linewidth=0.5);
-    m.drawcountries(linewidth=0.5);
-    x, y = m(lon, lat)
-    clevs = np.arange(5,105,5)#[5,10,15,20,25,30,35,40,45,50,55,60]
-    path_fua_country = 'D:\\sherpa.git\\Sherpa\\asstest\\workdirreg\\'
-    area = np.zeros((1, len(lat_array), len(lon_array)))
-    for country in sources:
-        rootgrp = Dataset(path_fua_country + 'area_fuas_{}.nc'.format(country), 'r')
-        area_co=rootgrp.variables['AREA'][:]
-        area = area + area_co
-    cs = m.contourf(x,y,(area[0]), clevs)#, cmap='jet', vmax=50, extend='max')
-    m.shadedrelief()
-#    m.bluemarble(ax=None, scale=1)
-    cbar = m.colorbar(cs,location='right', pad="5%", label = 'cell area [\%]')
-    cbar.ax.tick_params(labelsize=7)
-    plt.savefig(path_figures + 'fuas3.pdf', bbox_inches = "tight", format='pdf')
-    plt.show()
+##        av_conc_new[city] = {}
+###        print(city)
+#    
+#    area_city = gridint_toarray('FUA_CODE', 'parea', 'ES001L2')
+#    area_city = gridint_toarray('GCITY_CODE', 'parea', 'ES001C1')
+#    av_conc = (np.sum((conc * area_city * surf / 100) / np.sum(area_city * surf / 100)))
+#    print(av_conc)
+#    
+#    for an_ty in an_tys:
+#        av_conc_new[city][an_ty] = {}
+#        for order in ords:
+#            output = path_results + 'NEC_{}{}{}{}{}\\'.format(country,name,order,an_ty,opt)
+##    output = path_results + '\\NEC_{}{}{}{}{}\\'.format(country,name,'dec',an_ty,opt)
+#            dc_path = output + 'delta_concentration.nc'
+#            rootgrp = Dataset(dc_path, mode='r')
+#            dc_pm25_conc = rootgrp.variables['delta_concentration'][:]
+## bc_pm25_units = rootgrp.variables['conc'].units
+#            rootgrp.close()
+#            dconc = np.where(np.isnan(dc_pm25_conc), 0, (dc_pm25_conc))
+#            ac = bc_pm25_conc - dconc
+#            av_conc_new[city][an_ty][order] = (np.sum((ac * area_city * surf / 100) /
+#            np.sum(area_city * surf / 100)))
+#            print(av_conc_new[city][an_ty][order])
+#    cities = pd.read_csv(
+#                   path_results + 'cities.csv', index_col=[0])
+#    plt.clf()
+#    fig= plt.figure(figsize=figsize(1))
+#    ax = fig.add_subplot(111)
+#    ax.minorticks_on()
+##    fig, ax = plt.subplots(figsize=(14, 8))
+#    ax.set_ylim([0,30])
+##    ax = plt.minorticks_on()
+#    ax.tick_params(axis='x',which='minor',bottom='off')
+#    ind = np.arange(len(cities['cityname'].values))
+##    ax.set_xticklabels(list(cities['cityname'].values), rotation=90)
+#    plt.xticks(ind, cities['cityname'].values, rotation=90)
+#    who_x = ind
+#    who_y = np.ones(len(ind))* 10
+#    aqd_y = np.ones(len(ind))* 20 # to check
+#    plt.plot(who_x, who_y, color='r', linestyle = 'dashed', label = 'WHO limit')
+#    plt.plot(who_x, aqd_y, color='r', linestyle = 'solid', label = 'AQD limit')
+#    patches = []
+#    for ind, x in enumerate(cities.index):
+#        print(ind, av_conc[x])
+#        plt.plot(ind, av_conc[x],'o',color = 'r')
+#        plt.plot(ind, av_conc_new[x]['sec']['dec'],'D', color = 'b')
+#        plt.plot(ind, av_conc_new[x]['sec']['inc'], 'D',  mfc='none', color ='b')
+#        plt.plot(ind, av_conc_new[x]['spa']['dec'],'v', color = 'g')
+#        plt.plot(ind, av_conc_new[x]['spa']['inc'], 'v',  mfc='none', color ='g')
+#    plt.ylabel('Average concentration [$\mu$ g/m$^3$]')
+#    marker = mlines.Line2D([], [], color='b', marker='D',
+#                          label='sec. dec.', linestyle = 'None')
+#    patches.append(marker)
+#    marker = mlines.Line2D([], [], color='b', marker='D', mfc='none',
+#                          label='sec. inc.', linestyle = 'None')
+#    patches.append(marker)
+#    marker = mlines.Line2D([], [], color='g', marker='v',
+#                          label='spa. dec.', linestyle = 'None')
+#    patches.append(marker)
+#    marker = mlines.Line2D([], [], color='g', marker='v', mfc='none',
+#                          label='spa. inc.', linestyle = 'None')
+#    patches.append(marker)
+#    marker = mlines.Line2D([], [], color='r', marker='o',
+#                          label='base case', linestyle = 'None')
+#    patches.append(marker)
+#    marker = mlines.Line2D([], [], color='r', marker='None',
+#                          label='AQD limit', linestyle = 'solid')
+#    patches.append(marker)
+#    marker = mlines.Line2D([], [], color='g', marker='None',
+#                          label='WHO limit', linestyle = 'dashed')
+#    patches.append(marker)
+#    plt.legend(handles=patches, ncol=2, loc='best')
+#    fig.savefig(path_figures + 'cities.png', bbox_inches = "tight", dpi=300)
+#    fig.savefig(path_figures + 'cities.pgf', bbox_inches = "tight")
+#    fig.savefig(path_figures + 'cities.pdf', bbox_inches = "tight")
+#    plt.show()
+#
+##    A= np.sum((1000 * conc * areacountry * surf / 100) / np.sum(areacountry * surf / 100))
+##    b= np.sum((1000 * bc_conc * areacountry * surf / 100) / np.sum(areacountry * surf / 100))
+##    C= np.sum((1000 * conc * areacountry * popall / 100) / np.sum(areacountry * popall / 100))
+##    D= np.sum((1000 * bc_conc * areacountry * popall / 100) / np.sum(areacountry * popall / 100))
+#
+#
+#    # Draw gridded impacts
+#    plt.close('all')
+#    rootgrp = Dataset(path_model_cdf_test, 'r')
+#    lon_array = rootgrp.variables['lon'][0, :]
+#    lat_array = rootgrp.variables['lat'][:, 0]
+#    rootgrp.close()
+#    lon, lat = np.meshgrid(lon_array, lat_array)
+##    dfmat=df2mat(dc_dic)
+#    fig= plt.figure(figsize=figsize(1))
+#    m = Basemap(resolution='i',projection='cyl',
+#            llcrnrlon=min(lon_array), llcrnrlat=min(lat_array),
+#            urcrnrlon=max(lon_array), urcrnrlat=max(lat_array))#,
+#    #        llcrnrlon=min(lons), llcrnrlat=min(lats),
+#    #        urcrnrlon=max(lons), urcrnrlat=max(lats),
+##            area_thresh = 0.1,lat_0=lat_0,lon_0=lon_0)
+#    m.drawcoastlines(linewidth=1.25);
+#    #m.drawstates()
+#    m.drawcountries(linewidth=1.25);
+#    # draw filled contours.
+#    x, y = m(lon, lat)
+#    clevs = np.arange(5,55,5)#[5,10,15,20,25,30,35,40,45,50,55,60]
+##    cs = m.contourf(x,y,dfmat,clevs);
+#    for an_ty in an_tys:
+#        for order in ords:
+#            grid_per_ch_tot = np.sum(grid_per_ch[country][an_ty][order] for country in ['ES', 'DE'])  # to check
+#            cs = m.contourf(x,y,(grid_per_ch_tot[0]), clevs, cmap='jet', vmax=50, extend='max')
+#            m.bluemarble()
+#            m.drawcoastlines(linewidth=0.5);
+#            m.drawcountries(linewidth=0.5);
+#            cbar = m.colorbar(cs,location='right', pad="5%", label = 'impact reduction [\%]')
+#            cbar.ax.tick_params(labelsize=7)
+#            plt.savefig(path_figures + '{}{}{}{}.pdf'.format(name, an_ty, opt, order), bbox_inches = "tight", format='pdf')
+##    plt.savefig(path_figures + '{}{}{}{}.pgf'.format(name, an_ty, opt, order), format='pgf')
+#            plt.show()
+#
+#    def f1(x):
+#        return '%.2f' % x
+#
+#    def f2(x):
+#        return '%.2f' % x
+#
+#
+#    for precursor in precursors:
+#        print(precursor)
+#        print(redms2[precursor].to_latex(float_format=f1))
+#
+#    for precursor in precursors:
+#        print(precursor)
+#        print(df_releff[precursor].to_latex(float_format=f1))
+#    for precursor in precursors:
+#        print(precursor)
+#        print(redms2[precursor].to_latex(float_format=f1))
+#    for precursor in precursors:
+#        print(precursor)
+##        print(redper.to_latex(float_format=f1))
+#
+#    precursors = ['PPM', 'NOx', 'SOx', 'NH3', 'NMVOC']  
+#    # Absolute value of emission reduction by country and precursor
+#    df_e_red_eu = pd.DataFrame(columns=precursors)
+#    df_e_inv_eu = read_inventory(year, em_inv, precursors)
+#    df_e_inv_eu10 = read_inventory(2010, em_inv, precursors)
+#    # Dataframe with the emission reductins per country according to NEC
+#    df_nec = pd.read_csv(path_results + 'NECdirective.csv', index_col=[0],
+#                         header=[0, 1])
+#    
+#    print(df_e_inv_eu.loc[sources].to_latex(float_format=f1))
+#    print(df_e_inv_eu10.loc[sources].to_latex(float_format=f1))
+##  DRAW FUAS
+#    rootgrp = Dataset(path_model_cdf_test, 'r')
+#    lon_array = rootgrp.variables['lon'][0, :]
+#    lat_array = rootgrp.variables['lat'][:, 0]
+#    rootgrp.close()
+#    lon, lat = np.meshgrid(lon_array, lat_array)
+##    dfmat=df2mat(dc_dic)
+#    plt.close('all')
+#    fig= plt.figure(figsize=figsize(1))
+#    m = Basemap(resolution='i',projection='cyl',
+#            llcrnrlon=min(lon_array), llcrnrlat=min(lat_array),
+#            urcrnrlon=max(lon_array), urcrnrlat=max(lat_array))#,
+#    #        llcrnrlon=min(lons), llcrnrlat=min(lats),
+#    #        urcrnrlon=max(lons), urcrnrlat=max(lats),
+##            area_thresh = 0.1,lat_0=lat_0,lon_0=lon_0)
+#    m.drawcoastlines(linewidth=0.5);
+#    m.drawcountries(linewidth=0.5);
+#    x, y = m(lon, lat)
+#    clevs = np.arange(5,105,5)#[5,10,15,20,25,30,35,40,45,50,55,60]
+#    path_fua_country = 'D:\\sherpa.git\\Sherpa\\asstest\\workdirreg\\'
+#    area = np.zeros((1, len(lat_array), len(lon_array)))
+#    for country in sources:
+#        rootgrp = Dataset(path_fua_country + 'area_fuas_{}.nc'.format(country), 'r')
+#        area_co=rootgrp.variables['AREA'][:]
+#        area = area + area_co
+#    cs = m.contourf(x,y,(area[0]), clevs)#, cmap='jet', vmax=50, extend='max')
+#    m.shadedrelief()
+##    m.bluemarble(ax=None, scale=1)
+#    cbar = m.colorbar(cs,location='right', pad="5%", label = 'cell area [\%]')
+#    cbar.ax.tick_params(labelsize=7)
+#    plt.savefig(path_figures + 'fuas3.pdf', bbox_inches = "tight", format='pdf')
+#    plt.show()
 
 

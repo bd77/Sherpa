@@ -358,87 +358,96 @@ def tiftogridgeneral(path_tiff):
     except(RuntimeError, AttributeError):
         pass
     
-def read_nc(nc_file):
-    '''
-    NAME
-        Reads SHERPA ncdf file with Python
-    PURPOSE
-        To read matrix data and put them in a multindexed dataframe
-    PROGRAMMER(S)
-        Denise Pernigotti
-    REVISION HISTORY
-    
-    REFERENCES
-    
-    '''
-    #nc_file='input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
-    #nc_file='input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
-    nc_data = Dataset(nc_file, 'r')
-    nc_dims = [dim for dim in nc_data.dimensions]
-    nc_vars = [var for var in nc_data.variables]
-    #sometimes the latitude is written just with lat as in model data
-    latname=list(filter(lambda x: x in nc_vars, ['Lat','lat','latitude']))[0]
-    #latname=list(filter (lambda x: 'lat' in x, nc_vars))[0]
-    lats = nc_data.variables[latname][:]
-    lonname=list(filter(lambda x: x in nc_vars, ['Lon','lon','longitude']))[0]
-    #lonname=list(filter (lambda x: 'lon' in x, nc_vars))[0]
-    lons = nc_data.variables[lonname][:]
-    #if there are three dimensional arrays
-    if len(nc_dims)==3:
-        ncz=str(list(set(nc_dims)-set(['latitude','longitude']))[0])
-        nz=range(len(nc_data.dimensions[ncz]))
-        if ncz=='pollutant':
-            strpoll=nc_data.Order_Pollutant
-            nznames=strpoll.split(', ')
-        else:
-            nznames=[ncz +"{:02d}".format(x+1) for x in nz]
-            #nznames=[ncz + s for s in map(str,range(1,len(nc_data.dimensions[ncz])+1))]
-    #create an index with lat and lon
-    #latrep=map(str, np.repeat(lats,len(lons)))
-    #lonrep=map(str, np.tile(lons,len(lats)))
-    #trasform variables arrays in vectors
-    #allvar={'lat_lon':map(lambda (x,y): x+'_'+y, zip(latrep, lonrep))}
-    #create lat and lon info
-    if len(lats.shape)==2 and len(lons.shape)==2:
-        nrow=lats.shape[0]
-        ncol=lats.shape[1]
-        lon=lons.ravel()
-        lat=lats.ravel()
-    else:
-        nrow=len(lats)
-        ncol=len(lons)
-        lon=np.tile(lons,nrow)
-        lat=np.repeat(lats,ncol)
-
-    y=np.repeat(range(1, nrow+1),ncol)
-    x=np.tile(range(1, ncol+1),nrow)
-    row=list(map(str,y))
-    col=list(map(str,x))
-    index_grid=list(map(lambda x: '_'.join(x),list(zip(col,row))))
-
-    allvar={}
-    allvar['coord']=pd.DataFrame(lon,columns=['lon'])
-    allvar['coord']['lat']=lat
-    allvar['coord']['x']=x
-    allvar['coord']['y']=y
-    allvar['coord'].index=index_grid
-    nc_vars.remove(latname)
-    nc_vars.remove(lonname)
-    for var in nc_vars:
-        varnc=nc_data.variables[var][:]
-        if len(nc_dims)==3:
-            allvar[var]=pd.concat(map(lambda sn : pd.Series(varnc[sn].ravel()),nz),axis=1)
-            allvar[var].columns=nznames
-        else:
-            allvar[var]=pd.DataFrame(varnc.ravel())
-            allvar[var].columns=[var]
-        allvar[var].index=index_grid
-        #allvarnc[var]=allvarnc[var].transpose()
-        #index_var = pd.MultiIndex.from_tuples(zip(np.repeat(var,len(nz)),nznames), names=['vars', ncz])
-        #allvar[var].columns=index_var
-    reform = {(outerKey, innerKey): values for outerKey, innerDict in allvar.items() for innerKey, values in innerDict.items()}
-    df=pd.DataFrame(reform)
-    return df.transpose()
+#def read_nc(nc_file):
+#    '''
+#    NAME
+#        Reads SHERPA ncdf file with Python
+#    PURPOSE
+#        To read matrix data and put them in a multindexed dataframe
+#    PROGRAMMER(S)
+#        Denise Pernigotti
+#    REVISION HISTORY
+#    
+#    REFERENCES
+#    
+#    '''
+#    #nc_file='input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
+#    #nc_file='input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
+##    nc_file = 'D:/programs/sherpa/app/data/temp/delta_emission.nc'
+#    nc_data = Dataset(nc_file, 'r')
+#    nc_dims = [dim for dim in nc_data.dimensions]
+#    nc_vars = [var for var in nc_data.variables]
+#    #sometimes the latitude is written just with lat as in model data
+#    latname=list(filter(lambda x: x in nc_vars, ['Lat','lat','latitude']))[0]
+#    #latname=list(filter (lambda x: 'lat' in x, nc_vars))[0]
+#    lats = nc_data.variables[latname][:]
+#    lonname=list(filter(lambda x: x in nc_vars, ['Lon','lon','longitude']))[0]
+#    #lonname=list(filter (lambda x: 'lon' in x, nc_vars))[0]
+#    lons = nc_data.variables[lonname][:]
+#    #if there are three dimensional arrays
+#    if len(nc_dims)==3:
+#        ncz=str(list(set(nc_dims)-set(['latitude','longitude']))[0])
+#        nz=range(len(nc_data.dimensions[ncz]))
+#        if ncz=='pollutant':
+#            strpoll=nc_data.Order_Pollutant
+#            nznames=strpoll.split(', ')
+#        else:
+#            nznames=[ncz +"{:02d}".format(x+1) for x in nz]
+#            #nznames=[ncz + s for s in map(str,range(1,len(nc_data.dimensions[ncz])+1))]
+#    #create an index with lat and lon
+#    #latrep=map(str, np.repeat(lats,len(lons)))
+#    #lonrep=map(str, np.tile(lons,len(lats)))
+#    #trasform variables arrays in vectors
+#    #allvar={'lat_lon':map(lambda (x,y): x+'_'+y, zip(latrep, lonrep))}
+#    #create lat and lon info
+#    if len(lats.shape)==2 and len(lons.shape)==2:
+#        nrow=lats.shape[0]
+#        ncol=lats.shape[1]
+#        lon=lons.ravel()
+#        lat=lats.ravel()
+#    else:
+#        nrow=len(lats)
+#        ncol=len(lons)
+#        lon=np.tile(lons,nrow)
+#        lat=np.repeat(lats,ncol)
+#
+#    y=np.repeat(range(1, nrow+1),ncol)
+#    x=np.tile(range(1, ncol+1),nrow)
+#    row=list(map(str,y))
+#    col=list(map(str,x))
+#    index_grid=list(map(lambda x: '_'.join(x),list(zip(col,row))))
+#
+#    allvar={}
+#    allvar['coord']=pd.DataFrame(lon,columns=['lon'])
+#    allvar['coord']['lat']=lat
+#    allvar['coord']['x']=x
+#    allvar['coord']['y']=y
+#    allvar['coord'].index=index_grid
+#    nc_vars.remove(latname)
+#    nc_vars.remove(lonname)
+#    # added by EPE to deal with the delta_emissions file created byt 
+#    # the GUI which has an extra variable 
+#    # @todo this condition can be removed in the future if the GUI 
+#    # is fixed (20180219)
+#    if 'Nsnaps' in nc_vars: 
+#        nc_vars.remove('Nsnaps')
+#        
+#    for var in nc_vars:
+#        varnc=nc_data.variables[var][:]
+#        if len(nc_dims)==3:
+#            allvar[var]=pd.concat(map(lambda sn : pd.Series(varnc[sn].ravel()),nz),axis=1)
+#            allvar[var].columns=nznames
+#        else:
+#            allvar[var]=pd.DataFrame(varnc.ravel())
+#            allvar[var].columns=[var]
+#        allvar[var].index=index_grid
+#        #allvarnc[var]=allvarnc[var].transpose()
+#        #index_var = pd.MultiIndex.from_tuples(zip(np.repeat(var,len(nz)),nznames), names=['vars', ncz])
+#        #allvar[var].columns=index_var
+#    nc_data.close()
+#    reform = {(outerKey, innerKey): values for outerKey, innerDict in allvar.items() for innerKey, values in innerDict.items()}
+#    df=pd.DataFrame(reform)
+#    return df.transpose()
 
 def read_nuts_area(filenuts,calcall=False,nullnut=None,nutsall=None):
     '''
