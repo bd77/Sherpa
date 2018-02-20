@@ -46,6 +46,7 @@ output: - polar polots for emissions
 '''
 import matplotlib 
 matplotlib.use('Agg')
+import gc as gc
 import matplotlib.pyplot as plt
 import matplotlib.image as image
 import numpy as np
@@ -59,6 +60,8 @@ from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
 from scipy.spatial import distance
 from simpledbf import Dbf5
 
+from sherpa_auxiliaries import read_nc
+from sherpa_auxiliaries import read_nuts_area 
 
 def figsize(scale):
     '''Squared figure 
@@ -82,81 +85,6 @@ def figsizer(scale):
     fig_height = fig_width * golden_mean              # height in inches
     fig_size = [fig_width, fig_height]
     return fig_size
-
-
-
-def read_nc(nc_file):
-    '''
-    NAME
-        Reads SHERPA ncdf file with Python
-    PURPOSE
-        To read matrix data and put them in a multindexed dataframe
-    PROGRAMMER(S)
-        Denise Pernigotti
-    REVISION HISTORY
-    
-    REFERENCES
-    
-    '''
-    nc_data = Dataset(nc_file, 'r')
-    nc_dims = [dim for dim in nc_data.dimensions]
-    nc_vars = [var for var in nc_data.variables]
-    
-    #sometimes the latitude is written just with lat as in model data
-    latname=list(filter(lambda x: x in nc_vars, ['Lat','lat','latitude']))[0]
-    lats = nc_data.variables[latname][:]
-    lonname=list(filter(lambda x: x in nc_vars, ['Lon','lon','longitude']))[0]
-    lons = nc_data.variables[lonname][:]
-    
-    #if there are three dimensional arrays
-    if len(nc_dims)==3:
-        ncz=str(list(set(nc_dims)-set(['latitude','longitude']))[0])
-        nz=range(len(nc_data.dimensions[ncz]))
-        if ncz=='pollutant':
-            strpoll=nc_data.Order_Pollutant
-            nznames=strpoll.split(', ')
-        else:
-            nznames=[ncz +"{:02d}".format(x+1) for x in nz]
-
-    #create an index with lat and lon
-    if len(lats.shape)==2 and len(lons.shape)==2:
-        nrow=lats.shape[0]
-        ncol=lats.shape[1]
-        lon=lons.ravel()
-        lat=lats.ravel()
-    else:
-        nrow=len(lats)
-        ncol=len(lons)
-        lon=np.tile(lons,nrow)
-        lat=np.repeat(lats,ncol)
-
-    y=np.repeat(range(1, nrow+1),ncol)
-    x=np.tile(range(1, ncol+1),nrow)
-    row=list(map(str,y))
-    col=list(map(str,x))
-    index_grid=list(map(lambda x: '_'.join(x),list(zip(col,row))))
-
-    allvar={}
-    allvar['coord']=pd.DataFrame(lon,columns=['lon'])
-    allvar['coord']['lat']=lat
-    allvar['coord']['x']=x
-    allvar['coord']['y']=y
-    allvar['coord'].index=index_grid
-    nc_vars.remove(latname)
-    nc_vars.remove(lonname)
-    for var in nc_vars:
-        varnc=nc_data.variables[var][:]
-        if len(nc_dims)==3:
-            allvar[var]=pd.concat(map(lambda sn : pd.Series(varnc[sn].ravel()),nz),axis=1)
-            allvar[var].columns=nznames
-        else:
-            allvar[var]=pd.DataFrame(varnc.ravel())
-            allvar[var].columns=[var]
-        allvar[var].index=index_grid
-
-    reform = {(outerKey, innerKey): values for outerKey, innerDict in allvar.items() for innerKey, values in innerDict.items()}
-    df=pd.DataFrame(reform)
-    return df.transpose()
 
 def name_short(name,lmax=12):
     '''
@@ -246,7 +174,7 @@ def write_dict_nc(dc_dic,lats,lons,unit,filenc):
 
     rootgrp.close()
 
-def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
+def plot_bar(f, dfdata, varplot, totalname, path_logo, plot_opt='perc',
              x_label='Percentage of total mass', leg_loc='lower right', ftx=10, normalize=True):
     '''
     NAME
@@ -299,11 +227,11 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
           'External': '#cdcdb4', 'bottom': 'None'} 
   
     yaxisnames = {'CCITY_CODE': 'City',
-                  'FUA_CODE': 'Commuting Zone',
+                  'FUA_CODE': 'Commuting\n Zone',
                   'NUTS_Lv1': 'NUTS_Lv1', 
                   'NUTS_Lv2': 'NUTS_Lv2',
                   'NUTS_Lv3': 'NUTS_Lv3',
-                  'NUTS_Lv0': 'Rest of the country',
+                  'NUTS_Lv0': 'Rest of\n the country',
                   'ALL_NUTS_Lv0': 'Transboundary', 
                   'Total': 'Total'}
 
@@ -320,7 +248,8 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
     
     # Create the general blog and the "subplots" i.e. the bars
 #    plt.close('all')
-    f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
+#    f, ax1 = plt.subplots(1, figsize=figsizer(0.9))
+    ax1 = f.add_subplot(111)
     if plot_opt == 'perc':
         ax1.set_xlim([0, 100])
     else:
@@ -364,8 +293,10 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
                  color=colors[varnames[ivar]])
 
     # set the y ticks with names
-    plt.yticks(tick_pos, areanames, size=ftx, rotation=0)
+#    plt.yticks(tick_pos, areanames, size=ftx, rotation=0)
 
+    ax1.set_yticks(tick_pos)
+    ax1.set_yticklabels(areanames, size=ftx, rotation=0)
     # set minor x ticks - added EMA
     minorLocator = AutoMinorLocator()
     ax1.xaxis.set_minor_locator(minorLocator)
@@ -374,7 +305,8 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
     ax1.set_xlabel(x_label, fontsize=ftx)
 
     # Set a buffer around the edge
-    plt.ylim([min(tick_pos)-bar_width, max(tick_pos)+bar_width])
+    ax1.set_ylim([min(tick_pos)-bar_width, max(tick_pos)+bar_width])
+#    plt.ylim([min(tick_pos)-bar_width, max(tick_pos)+bar_width])
     
     # Place initial letter on top bar    
     ypos = len(dfdata_plot.index.values)
@@ -393,7 +325,7 @@ def plot_bar(dfdata, varplot, totalname, path_logo, plot_opt='perc',
     newax.imshow(im, zorder=-1)
     newax.axis('off')
     
-    plt.close()
+#    plt.close()
 #    plt.show()
     return f
 
@@ -425,9 +357,9 @@ def plot_polar(emi_sum, prec, wantedorder_present, ftx=8):
             mv.append(max(emi_sum[key].loc[prec].reindex(index)/1000))
             df.append([emi_sum[key].loc[prec].reindex(index)/1000])
                   
-    fig = plt.figure()
+#    fig = plt.figure()
     # create figure
-    fig = plt.figure(figsize=figsize(0.3), dpi=1000)
+    fig = plt.figure(figsize=figsize(0.3))#, dpi=1000)
     ax = fig.add_subplot(111, projection="polar")
     ax.grid(True)
     ax.yaxis.grid(color='#aab0b7', lw=0.7)
@@ -499,7 +431,7 @@ def plot_polar(emi_sum, prec, wantedorder_present, ftx=8):
     ax.tick_params(axis='y', labelsize=ftx-2, zorder=4)
     ax.text(2,  ylim*1.3, titles_dct[prec], va='center',
                     ha='center', fontsize=(ftx+2), weight='bold')
-    plt.close()
+#    plt.close()
 #    plt.show()
     return fig
 
@@ -530,85 +462,7 @@ def haversine_vec(lon1,lat1,lon_vec2,lat_vec2):
     return h # in kilometers
 #
 
-def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
-    '''
-    NAME
-        Import info on grid points attribution to nuts or specific area type from ascii file
-    PURPOSE
-        Import info on grid points attribution to nuts or specific area type from ascii file/s.
-        If the file is single then it must contain the column 'Area [km2]' relative to % of the area in the finest nut,
-        this datum will be set to each nut but it will then aggregated for larger nuts when nutsarea will be calculated
-        If the files are two, then each nut will have its own % area for each grid point, then the data will be merged here
-    PROGRAMMER(S)
-        Denise Pernigotti
-    REVISION HISTORY
-        WARNING by EPE: this function does not work andymore as originally 
-        intended because the gridintersect structure has changed
-        for example there is no nullnut anymore which has the same name for all 
-        cells! the 'rect' par has not been tested.
-    REFERENCES
-    
-    '''   
-    nuts_info_all={}
-    if(filenuts != 'rect'):
-        nuts_def= filenuts +'.txt'
-        nuts_info = pd.read_csv(nuts_def,delimiter="\t")
-        nuts_info=nuts_info.dropna(axis=1,how='all')
-        nutsnames=list(nuts_info.columns[~nuts_info.columns.isin(['POP','COL','ROW','AREA_km2','LAT','LON','CENTROID_X', 'CENTROID_Y', 'PERCENTAGE', 'POPULATION'])])
-        #optional 'nut' comprising all grid points
-        if calcall :
-        #nutsnames.insert(0, 'ALL')
-            nutsnames.insert(0, 'ALL_'+nutsnames[0])
-            nuts_info[nutsnames[0]]=nutsnames[0]
-        nuts_info['grid']=['_'.join(str(i) for i in z) for z in zip(nuts_info['COL'],nuts_info['ROW'])]
-        if 'AREA_km2' in nuts_info.columns:
-            nuts_area=pd.concat(map(lambda p: nuts_info['AREA_km2'],nutsnames),axis=1)
-            #nuts_area.index=nuts_info['grid']
-            nuts_area.columns=nutsnames
-           #nuts_info=nuts_info[nutsnames]
-        else:
-            sys.exit("missing infos on grid cells area per nut")
 
-        #aggregate data for each nut, create a dictionary
-        nut_info_nut={}
-        nut_info={}
-        nullnut_dct={'NUTS_Lv0':'0', # at this level there is no background
-                     'NUTS_Lv1':'1', 
-                     'NUTS_Lv2':'11',
-                     'NUTS_Lv3':'111'}
-        for nut in nutsnames:
-#            nut = 'NUTS_Lv0'
-            #create a multindex
-            index = pd.MultiIndex.from_tuples(list(zip(nuts_info[nut],nuts_info['grid'])), names=['nutname','grid'])
-            nut_info=pd.Series(list(nuts_area[nut]), index=index)
-            nut_info=nut_info.to_frame(name='area')
-            #aggregate data on these nuts if necessary
-            nut_info_nut=nut_info.groupby(level=[0,1]).sum()
-            #find total area
-            grid_area_tot=nut_info_nut.groupby(level=['grid']).sum()
-            nut_info_nut['parea']=nut_info_nut/grid_area_tot
-            nut_info_nut.loc[nut_info_nut['area']==0,'parea']=0.
-            #eventually remove the fillng code
-            if nullnut is True:
-                for nutkey in set(nut_info_nut.index.get_level_values(0)):
-                    if nutkey[2:]==nullnut_dct[nut]:
-#                        print(nutkey)
-                        nut_info_nut=nut_info_nut.drop(nutkey, level='nutname')
-            nuts_info_all[nut]=nut_info_nut
-       
-    else:
-        nuts_rect=nutsall
-        nuts_rect.index=nuts_rect.index.droplevel(level=0)
-        grid_inrect=nuts_rect.index
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']>=rect_coord['ll']['lon']]
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lon']<=rect_coord['ur']['lon']]
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']>=rect_coord['ll']['lat']]
-        grid_inrect=grid_inrect[coordinates.loc[grid_inrect,'lat']<=rect_coord['ur']['lat']]
-        nuts_rect=nuts_rect.loc[list(grid_inrect)]
-        nuts_rect['nutname'] = 'rect'
-        nuts_rect.set_index('nutname', append=True, inplace=True)
-        nuts_info_all['rect']=nuts_rect.swaplevel(i=-2, j=-1, axis=0)
-    return nuts_info_all
 
 def find_target_info(areaid,areacells,x_y):
     '''
@@ -929,6 +783,7 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     del nuts_info_fuas['NUTS_Lv1']
     del nuts_info_fuas['NUTS_Lv0']  
     nuts_info.update(nuts_info_fuas)
+    del nuts_info_fuas # EPE: trying to use less memory
     # EPE, only one instance of read_nuts_area should have calcall=True, original 
     # version allowed to set nullnut='LAND000', but now this nut name does not exist 
     # anymore.
@@ -938,7 +793,7 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 ##    nuts_info.keys()
 #
     #read list of receptors and check its consistency
-    receptors=pd.read_csv(targets_txt,delimiter="\t",encoding = "ISO-8859-1")
+    receptors=pd.read_csv(targets_txt,delimiter="\t",encoding = "ISO-8859-1", dtype={'id': str})
     receptors.columns=[x.lower() for x in  receptors.columns]
     #check if information in receptors are ok and without duplicates
     required_info=['id','station name','lon','lat']
@@ -1038,7 +893,10 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     #calculate diftsnces first in order to save calculation time, targets need to be in  memory limit of the machine (say at most about 10000)
     dists_array=distance.cdist(coordinates.loc[count_idx.index,['x','y']],coordinates.loc[emissions.columns,['x','y']], metric='euclidean')
 
+    figc = plt.figure(figsize=figsizer(0.9))
+
     for ix,idx in enumerate(count_idx.index):
+        gc.collect() #EPE: trying to use less memory
         #For the selected point find all information on area  ids
         target_info=pd.concat(list(map(lambda areaid: find_target_info(areaid,nuts_info,idx),nuts_info.keys())),axis=1).transpose()
         target_info['areaname']=pd.Series(dict(zip(target_info.index,map(lambda x: ''.join(list(area_names[x].loc[target_info.loc[x,'areaid']])).title(),target_info.index))))
@@ -1120,14 +978,14 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
         smallareas=list(set(area_present)-set(['ALL_NUTS_Lv0','NUTS_Lv0']))
 
         #avoid double counting of grid increments
-        narea_inc=dc_increments(narea,aggr_zones)
+#        narea_inc=dc_increments(narea,aggr_zones)
 
         if len(smallareas)>0:
         #make a copy with 0 and 1 only for plotting
             narea_bin=narea[smallareas].copy()
             narea_bin=narea_bin.mask(narea_bin>0.5,1)
             narea_bin=narea_bin.mask(narea_bin<=0.5,0)
-            narea_id=narea_bin.sum(axis=1)
+#            narea_id=narea_bin.sum(axis=1)
 
             #dc_inc_flat= pd.concat(list(map(lambda p: narea_inc[p]*(dc_inc[p].sum()),smallareas)),axis=1).sum(axis=1)
             #dc_inc_flat= dc_inc_flat.reindex(index=dc[idx].columns)
@@ -1149,34 +1007,45 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
                         + salt.loc['pSALT-'+pmsize,idx].values) * 100./concentration[idx]           
             dc_inc=dc_inc.append(natural)
 
-        #plots
-        fig={}
         if aggr_zones=='fua' or  aggr_zones=='fuaonly':
             az_name = 'fua'
         else: 
             az_name = 'nuts'
-
-        fig[1]=plot_bar(dc_inc,wantedorder_present, totalname, path_logo, normalize=normalize)
-            
-        if aggr_zones=='fua' or  aggr_zones=='fuaonly':
-            for ip,p in enumerate(precursors):
-                fig[2+ip] = plot_polar(emi_sum, p, wantedorder_present)
+        
+        dc[idx]=None # this is the magic line that avoids memory usage to grow at each iteration      
+        #plots
+        fig={}      
+       
+   
+#        if aggr_zones=='fua' or  aggr_zones=='fuaonly':
+#            for ip,p in enumerate(precursors):
+                
                 
         for ids in list(receptors[receptors['target_idx']==idx].index):
-            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_conc.'+ outfig, dpi=1000, bbox_inches='tight')
-            plt.close('all')
-            if len(smallareas)>0:
-                if aggr_zones=='fua' or  aggr_zones=='fuaonly':
-                    for ip,p in enumerate(precursors):
-                        if fig[2+ip]:  
-                            fig[2+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight')
-                            plt.close('all')
+            fig[1]=plot_bar(figc, dc_inc,wantedorder_present, totalname, path_logo, normalize=normalize)
+#            plt.show(fig[1]) 
+            fig[1].savefig(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_conc.'+ outfig, dpi=1000, transparent=True, bbox_inches='tight', pad_inches=0.20)                        
+            plt.close(fig[1])
+            gc.collect()
+#            if len(smallareas)>0:
+            if aggr_zones=='fua' or  aggr_zones=='fuaonly':
+                for ip,p in enumerate(precursors):                
+                    fig[2+ip] = plot_polar(emi_sum, p, wantedorder_present)
+#                    plt.show(fig[2+ip])
+                    fig[2+ip].savefig((outdir+'\\'+ids+'_'+p+'_emi.'+outfig), dpi=300, bbox_inches='tight', transparent=True, pad_inches=0.15)
+#                    axfig=fig[2+ip].gca()
+#                    fig[2+ip].clf()
+#                    axfig.cla()
+                    plt.close(fig[2+ip])
+                    gc.collect()
+                    
             dc_inc.to_csv(outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_total_table.csv')
             dc_inc_all[ids]=dc_inc.transpose()
             target_allinfo[ids]=target_info.transpose()
+ 
             # EPE: make legend and save it
-            figleg = plt.figure(figsize=figsize(0.1))#
-            axleg = figleg.add_subplot()
+            fig['leg'] = plt.figure(figsize=figsize(0.1))#
+            axleg = fig['leg'].add_subplot()
             axleg = plt.subplot()
             axleg.set_axis_off()
             ax1 = fig[1].get_axes()
@@ -1195,10 +1064,21 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
             else: 
                 handles2=[]
                 newlabels=[]
-                
+#                
             axleg.legend(handles=handles1+handles2, labels=labels1+newlabels, fontsize=10, loc = 'center', frameon=False) 
-            figleg.savefig((outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight')
-            plt.close('all')
+            fig['leg'].savefig((outdir+'\\'+ids+'_'+pollutant+'_'+az_name+'_'+'_legend.'+outfig), dpi=300, bbox_inches='tight', transparent=True)      
+            plt.close(fig['leg'])   
+            gc.collect()
+        del emi_sum # EPE:  trying to use less memory
+        del dc_inc # EPE:  trying to use less memory
+        for n_fig in fig.keys():
+#            print('figure key', n_fig)
+            axfig=fig[n_fig].gca()
+            fig[n_fig].clf()
+            axfig.cla()
+            plt.close(fig[n_fig]) 
+            plt.close()
+            gc.collect()
 
     #summarize info on grid points
     reform = {(outerKey, innerKey): values for outerKey, innerDict in target_allinfo.items() for innerKey, values in innerDict.items()}
@@ -1210,17 +1090,17 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     summary = summary.set_index(['id','area'])
     summary.to_csv(outdir+'\\AAA_summary_info.csv')
 
-    reform = {(outerKey, innerKey): values for outerKey, innerDict in dc_inc_all.items() for innerKey, values in innerDict.items()}
-    dc_inc_all=pd.DataFrame(reform).transpose()
-    #check total totals of explained mass on each receptor
-    total_pm=pd.concat([receptors[['station name','lon','lat','target_idx']],dc_inc_all.groupby(level=[0]).sum().loc[receptors.index,]],axis=1)
-    #COUNTaverage source contribution and its variability among receptors
-    summary_src={}
-    summary_src['count']=dc_inc_all.groupby(level=[1]).count().transpose()
-    summary_src['mean']=dc_inc_all.groupby(level=[1]).mean().transpose()
-    summary_src['sd']=dc_inc_all.groupby(level=[1]).std().transpose()
-    reform = {(innerKey,outerKey): values for outerKey, innerDict in summary_src.items() for innerKey, values in innerDict.items()}
-    summary_src=pd.DataFrame(reform).transpose()
+#    reform = {(outerKey, innerKey): values for outerKey, innerDict in dc_inc_all.items() for innerKey, values in innerDict.items()}
+#    dc_inc_all=pd.DataFrame(reform).transpose()
+#    #check total totals of explained mass on each receptor
+#    total_pm=pd.concat([receptors[['station name','lon','lat','target_idx']],dc_inc_all.groupby(level=[0]).sum().loc[receptors.index,]],axis=1)
+#    #COUNTaverage source contribution and its variability among receptors
+#    summary_src={}
+#    summary_src['count']=dc_inc_all.groupby(level=[1]).count().transpose()
+#    summary_src['mean']=dc_inc_all.groupby(level=[1]).mean().transpose()
+#    summary_src['sd']=dc_inc_all.groupby(level=[1]).std().transpose()
+#    reform = {(innerKey,outerKey): values for outerKey, innerDict in summary_src.items() for innerKey, values in innerDict.items()}
+#    summary_src=pd.DataFrame(reform).transpose()
 
 ##-----------------------------------------------------------------------------    
 #    # Extract data for the Covenant of Mayors analysis EPE
@@ -1253,15 +1133,16 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 
 if __name__ == '__main__':
 #
-#    module7('./input/20170322_v18_SrrResults_PotencyBased/1_base_emissions/BC_emi_PM25_Y.nc',
-#               './input/20170322_v18_SrrResults_PotencyBased/2_base_concentrations/BC_conc_PM25_Y.nc',
-#               './input/pDUST-pSALT/',
-#               './input/20170322_v18_SrrResults_PotencyBased/3_source_receptors/SR_PM25_Y_20170322_potencyBased.nc',
-#               './input/selection/gridnew/fua/', 
-#               './input/selection/gridnew/nuts/',
-#               './input/selection/gridnew/',
-#               './input/AM_targets.txt',
-#               './output/20170322_v18_SrrResults_PotencyBased/AM/',
-#               'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
-#    
+
+#    module7('./input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc',
+#           './input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc',
+#           './input/pDUST-pSALT/',
+#           './input/SR_PM25_Y.nc',            #'./input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc',
+#           './input/selection/gridnew/fua/', 
+#           './input/selection/gridnew/nuts/',
+#           './input/selection/gridnew/',
+#           './input/50_targets.txt',
+#           './output/20151116_SR_no2_pm10_pm25/AM/',
+#           'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
     pass
+
