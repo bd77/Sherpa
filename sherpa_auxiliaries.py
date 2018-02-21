@@ -9,6 +9,7 @@ from netCDF4 import Dataset
 import numpy as np
 from numpy import zeros, sqrt, array
 import pandas as pd
+import sys
 # create a dictionary with emission reductions per precursor and nuts
 #--------------------------------------------------------------------
 
