@@ -26,7 +26,7 @@ def aggregationbyarea(dct, grd_int_txt, out_path):
         
     '''
     start = time() 
-    dct=dct_e
+#    dct=dct_e
     # read the grid intersect (fua or nuts)    
     area=read_nuts_area(grd_int_txt, calcall=True)
     # levels (they are colled the same in fua and nuts)
