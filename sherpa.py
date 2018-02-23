@@ -77,11 +77,12 @@ from module5 import module5
 from module6 import module6
 from module7_SA import module7
 from module8_healthia import module8_healthia
+from module9_aggregattion import  aggregationbyarea
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
     path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
     path_base_conc_cdf_test, path_healthbl_test, path_config_json_test, \
     fua_intersect_dir, dbf_dir, target_list, nuts_intersect_dir, path_natural_dir_test, aggr_zones, \
-    path_logo_test
+    path_logo_test, aggrinp_txt
 from sherpa_auxiliaries import is_number
 from sys import argv
 import os.path
@@ -154,7 +155,14 @@ if __name__ == '__main__':
                          path_config_json_test, path_base_conc_cdf_test)
         stop = time()
         print('Module 8 calculation time = %f' % (stop - start))
+        
+        # run module 9 test inputs        
+        start = time()
+        aggregationbyarea(aggrinp_txt)
+        stop = time()
+        print('Module 9 calculation time = %f' % (stop - start))
 
+    
     else:
         # check which module has to be ran
         module = int(argv[1])
@@ -293,7 +301,14 @@ if __name__ == '__main__':
             if argv[5]:
                 path_base_conc_cdf = argv[5]           
             module8_healthia(path_healthbl, path_result_cdf, path_config_json, path_base_conc_cdf)
-    
+       
+        # ---------#
+        # module 9 #
+        # ---------#
+        
+        elif module == 9:
+            path_aggrinp_txt = argv[2]     
+            aggregationbyarea(aggrinp_txt)
      
         else:
             print('unknown module %d' % module)
