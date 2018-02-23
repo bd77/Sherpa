@@ -9,6 +9,7 @@ from netCDF4 import Dataset
 import numpy as np
 from numpy import zeros, sqrt, array
 import pandas as pd
+import sys
 # create a dictionary with emission reductions per precursor and nuts
 #--------------------------------------------------------------------
 
@@ -250,13 +251,17 @@ def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
         intended because the gridintersect structure has changed
         for example there is no nullnut  which has the same name for all 
         cells! the 'rect' par has not been tested.
+        EPE: added reading population. 
     REFERENCES
     
     '''   
+#    filenuts='D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect'
+#    filenuts='D:/sherpa.git/Sherpa/input/selection/gridnew/fua/grid_intersect'
     nuts_info_all={}
     if(filenuts != 'rect'):
         nuts_def= filenuts +'.txt'
-        nuts_info = pd.read_csv(nuts_def,delimiter="\t")
+        nuts_info = pd.read_csv(nuts_def,delimiter="\t") # EPE added dtype because of warning message
+#        pd.to_numeric(nuts_info['POPULATION'])
         nuts_info=nuts_info.dropna(axis=1,how='all')
         nutsnames=list(nuts_info.columns[~nuts_info.columns.isin(['POP','COL','ROW','AREA_km2','LAT','LON','CENTROID_X', 'CENTROID_Y', 'PERCENTAGE', 'POPULATION'])])
         #optional 'nut' comprising all grid points
@@ -269,6 +274,10 @@ def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
             nuts_area=pd.concat(map(lambda p: nuts_info['AREA_km2'],nutsnames),axis=1)
             #nuts_area.index=nuts_info['grid']
             nuts_area.columns=nutsnames
+        if 'POPULATION' in nuts_info.columns:
+            nuts_pop=pd.concat(map(lambda p: nuts_info['POPULATION'],nutsnames),axis=1)
+            #nuts_area.index=nuts_info['grid']
+            nuts_pop.columns=nutsnames
            #nuts_info=nuts_info[nutsnames]
         else:
             sys.exit("missing infos on grid cells area per nut")
@@ -276,21 +285,26 @@ def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
         #aggregate data for each nut, create a dictionary
         nut_info_nut={}
         nut_info={}
+#        nut_info_area={}
+#        nut_info_pop={}
         nullnut_dct={'NUTS_Lv0':'0', # at this level there is no background
                      'NUTS_Lv1':'1', 
                      'NUTS_Lv2':'11',
                      'NUTS_Lv3':'111'}
         for nut in nutsnames:
-#            nut = 'NUTS_Lv0'
             #create a multindex
             index = pd.MultiIndex.from_tuples(list(zip(nuts_info[nut],nuts_info['grid'])), names=['nutname','grid'])
-            nut_info=pd.Series(list(nuts_area[nut]), index=index)
-            nut_info=nut_info.to_frame(name='area')
+            nut_info_area=pd.Series(list(nuts_area[nut]), index=index)
+            nut_info_area=nut_info_area.to_frame(name='area')
+            nut_info_pop=pd.Series(list(nuts_pop[nut]), index=index)
+            nut_info_pop=nut_info_pop.to_frame(name='pop')       
+            nut_info=pd.concat([nut_info_area, nut_info_pop], axis=1)
+
             #aggregate data on these nuts if necessary
             nut_info_nut=nut_info.groupby(level=[0,1]).sum()
             #find total area
             grid_area_tot=nut_info_nut.groupby(level=['grid']).sum()
-            nut_info_nut['parea']=nut_info_nut/grid_area_tot
+            nut_info_nut['parea']=nut_info_nut['area']/grid_area_tot['area']
             nut_info_nut.loc[nut_info_nut['area']==0,'parea']=0.
             #eventually remove the fillng code
             if nullnut is True:
@@ -298,7 +312,7 @@ def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
                     if nutkey[2:]==nullnut_dct[nut]:
 #                        print(nutkey)
                         nut_info_nut=nut_info_nut.drop(nutkey, level='nutname')
-            nuts_info_all[nut]=nut_info_nut
+            nuts_info_all[nut]=nut_info_nut.reindex(columns =['area', 'parea', 'pop'])
        
     else:
         nuts_rect=nutsall
@@ -312,6 +326,7 @@ def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
         nuts_rect['nutname'] = 'rect'
         nuts_rect.set_index('nutname', append=True, inplace=True)
         nuts_info_all['rect']=nuts_rect.swaplevel(i=-2, j=-1, axis=0)
+   
     return nuts_info_all
 
 
