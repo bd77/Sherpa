@@ -63,6 +63,7 @@ target_list = 'input/AM_targets.txt'
 path_natural_dir_test = 'input/pDUST-pSALT/'
 aggr_zones='fua'
 path_logo_test = 'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png'
+aggrinp_txt = 'D:/programs/sherpa/app/data/temp/aggrinp.txt'
 # list of precursors
 # order important, it's the order in the alpha and omega arrays
 # precursor_lst = ['NOx', 'NMVOC', 'NH3', 'PM25', 'SOx']
