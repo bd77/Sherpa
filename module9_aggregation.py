@@ -5,16 +5,13 @@ This module is used to do all the aggregations for the GUI, as a postcompute.
 it produces equivalent files to the old fortran code (but emissions are in Mg)
 NB: emissions are a special case. 
 
-STILL MISSING: population weighted: 
+STILL MISSING: average over threshold
 @author: peduzem
 """
 import pandas as pd
 from time import time
 import json
 import ast 
-
-
-#import os as os 
 
 from sherpa_auxiliaries import read_nuts_area 
 from sherpa_auxiliaries import read_nc
