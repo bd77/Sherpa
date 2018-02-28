@@ -3,9 +3,10 @@
 Created on Fri Feb 16 16:32:03 2018
 This module is used to do all the aggregations for the GUI, as a postcompute. 
 it produces equivalent files to the old fortran code (but emissions are in Mg)
+
 NB: emissions are a special case. 
 
-STILL MISSING: population weighted: 
+STILL MISSING: average over threshold 
 @author: peduzem
 """
 import pandas as pd
@@ -23,11 +24,23 @@ def aggregationbyarea(aggrinp_txt):
     '''Function that aggregates results by area (for both nuts level and fuas)
     
     Inputs: 
-        dct: dictionary with the information 
-        grd_int_txt: path to the grid intersect file
-        out_path: path of the output directory
+        -aggrinp_txt: txt file with the information:
+        {
+        "delta": {
+                "path": "D:/programs/sherpa/app/data/temp/delta_concentration.nc",
+                "var": "delta_concentration",
+                "aggregation": "('avg','pop')"},
+        "bc": {
+             "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc",
+             "var": "conc",
+             "aggregation": "('avg','pop')"},
+     	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
+    	"output-dir":"D:/programs/sherpa/app/data/temp/"
+        }
+    
+
     Outpus:
-        txt files that contain the value
+        -txt files that contain the value
         'NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3' 
         
     '''
@@ -46,23 +59,29 @@ def aggregationbyarea(aggrinp_txt):
             'Nsnaps07':'MS7','Nsnaps08':'MS8', 'Nsnaps09':'MS9', 
             'Nsnaps10':'MS10'}
     grd_int=pd.DataFrame.from_csv(grd_int_txt+'.txt', sep='\t')
+    # if we are aggregating emission reductions we need to consider the 
+    # exact area defined by the user or reductions are smeared out on the grid. 
     if ast.literal_eval(dct['bc']['aggregation'])=='sume':
         nuts_lv = 'NUTS_Lv3'
-        tpl=ast.literal_eval(dct['bc']['var'])
+        # get tuple defining precursor and sector
+        tpl = ast.literal_eval(dct['bc']['var'])
         # read reduction file 
-        red=pd.read_table(out_path+'user_reduction.txt', index_col=['POLL'])
+        red = pd.read_table(out_path+'user_reduction.txt', index_col=['POLL'])
+        # define df for results
         res = pd.DataFrame(index=area[nuts_lv]['area'].index.levels[0],
                            columns=['bc','delta'])
+        # read nc file
         nc=read_nc(dct['bc']['path'])
-        # create a pd dataframe which has as columns the delta or base 
-        # case value
+        
+        # prepare df to store the gridded values of interest 
         nct=pd.DataFrame(columns=[tpl])
         # assign to the dataframe the tansposed matrix of
-        # the correscponding value 
+        # the corresponding value 
         nct[tpl]=nc.loc[tpl].transpose()
-
+        # get list of areas selected by the user (defined at nuts3 level)
         arealist=list(pd.read_table(out_path+'nuts3_selection.txt', 
                           header=None, sep='\n')[0])    
+        # macrosector name
         ms = dct_ms[tpl[1]]           
         for areait in arealist:
             df_areas = pd.DataFrame(area[nuts_lv]['area'].loc[areait])     
@@ -85,6 +104,7 @@ def aggregationbyarea(aggrinp_txt):
         nuts_lvs.remove('NUTS_Lv3')
         
         for nuts_lv in nuts_lvs :
+             # define df for results
             res = pd.DataFrame(index=area[nuts_lv]['area'].index.levels[0],
                                columns=['bc','delta'])
             nc=read_nc(dct['bc']['path'])
@@ -116,21 +136,19 @@ def aggregationbyarea(aggrinp_txt):
                                columns=['bc','delta'])
             # for the delta and base case value
             for key in ['bc','delta']:
-    #            key = 'bc'
                 # read the corresonding nc
-                nc=read_nc(dct[key]['path'])
-    
+                nc = read_nc(dct[key]['path'])   
                 # drop level if necessary (e.g. when reading delta_concentration)
-                tpl=dct[key]['var']
+                tpl = dct[key]['var']
                 if len(tpl)!=nc.index.nlevels:
-                       nc=nc.reset_index(level=0, drop=True)
+                       nc = nc.reset_index(level=0, drop=True)
     
                 # create a pd dataframe which has as columns the delta or base 
                 # case value
                 nct=pd.DataFrame(columns=[tpl])
                 # assign to the dataframe the tansposed matrix of
                 # the correscponding value 
-                nct[tpl]=nc.loc[tpl].transpose()#, nc.loc[dct[key]['var']].index[0]
+                nct[tpl]=nc.loc[tpl].transpose()
                 arealist = area[nuts_lv]['area'].index.levels[0]
     
                 aggr=ast.literal_eval(dct[key]['aggregation'])
@@ -166,9 +184,7 @@ def aggregationbyarea(aggrinp_txt):
                         value=areaxvar/areatot
                     else:
                         value= float('NaN')
-                    res[key].loc[areait]=value
-    #                print(value)
-            
+                    res[key].loc[areait]=value           
             
             print('Saving results')
             res['per']=(res['delta'])/res['bc']*100
