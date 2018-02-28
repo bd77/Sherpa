@@ -58,6 +58,8 @@ Calculate potencies for an emission reduction in a given area.
 
 8) Moulde 8: health impact assessment
 
+9) Module 9: aggregation - dipslay aggregated values in graphical interface
+    
 A target cell is selected. For this cell the concentration changes is calculated due to a defined emission reduction
 applied in each NUTS individually
 Input: -
@@ -77,7 +79,7 @@ from module5 import module5
 from module6 import module6
 from module7_SA import module7
 from module8_healthia import module8_healthia
-from module9_aggregattion import  aggregationbyarea
+from module9_aggregation import  module9_aggregation
 from sherpa_globals import path_emission_cdf_test, path_area_cdf_test, path_reduction_txt_test, \
     path_model_cdf_test, path_result_cdf_test, path_nuts0_cdf_test, path_nuts2_cdf_test, \
     path_base_conc_cdf_test, path_healthbl_test, path_config_json_test, \
@@ -158,7 +160,7 @@ if __name__ == '__main__':
         
         # run module 9 test inputs        
         start = time()
-        aggregationbyarea(aggrinp_txt)
+        module9_aggregation(aggrinp_txt)
         stop = time()
         print('Module 9 calculation time = %f' % (stop - start))
 
@@ -308,7 +310,7 @@ if __name__ == '__main__':
         
         elif module == 9:
             path_aggrinp_txt = argv[2]     
-            aggregationbyarea(aggrinp_txt)
+            module9_aggregation(path_aggrinp_txt)
      
         else:
             print('unknown module %d' % module)

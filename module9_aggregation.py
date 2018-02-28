@@ -19,7 +19,7 @@ import ast
 from sherpa_auxiliaries import read_nuts_area 
 from sherpa_auxiliaries import read_nc
 
-def aggregationbyarea(aggrinp_txt):
+def module9_aggregation(aggrinp_txt):
     '''Function that aggregates results by area (for both nuts level and fuas)
     
     Inputs: 
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     
     pass  
 #    aggrinp_txt='D:/programs/sherpa/app/data/temp/aggrinp.txt'
-#    aggregationbyarea(aggrinp_txt)
+#    module9_aggregation(aggrinp_txt)
 #    
 #    a= {
 #        "delta": {
