@@ -581,7 +581,3 @@ if __name__ == '__main__':
     
 #    main_healthimpact(path_base_conc_cdf_test, path_dust_conc_cdf_test, path_salt_conc_cdf_test, path_healthbl, path_result_cdf_test)
 
-    popall = tiftogridgeneral(path_tiff)
-    popall = np.where(np.isinf(popall), 0, popall)
-    popall = np.where(popall < 0, 0, popall)
-    write_nc(popall, '.\population2015.nc', 'pop', '#', path_model_cdf_test)
