@@ -20,7 +20,7 @@ import ast
 from sherpa_auxiliaries import read_nuts_area 
 from sherpa_auxiliaries import read_nc
 
-def aggregationbyarea(aggrinp_txt):
+def module9_aggregation(aggrinp_txt):
     '''Function that aggregates results by area (for both nuts level and fuas)
     
     Inputs: 
@@ -58,6 +58,9 @@ def aggregationbyarea(aggrinp_txt):
             'Nsnaps04':'MS4','Nsnaps05':'MS5','Nsnaps06':'MS6',
             'Nsnaps07':'MS7','Nsnaps08':'MS8', 'Nsnaps09':'MS9', 
             'Nsnaps10':'MS10'}
+    dct_units={'conc': '[\u03bcg/m\u00B3]', '[delta_concentration]':'[\u03bcg/m\u00B3]',
+               'v_dll_pp':"[dll/(person year)]",'d_dll_pp':'[dll/(person year)]', 
+               'v_mort': '[people/year]', 'd_mort': '[people/year]'}
     grd_int=pd.DataFrame.from_csv(grd_int_txt+'.txt', sep='\t')
     # if we are aggregating emission reductions we need to consider the 
     # exact area defined by the user or reductions are smeared out on the grid. 
@@ -93,7 +96,10 @@ def aggregationbyarea(aggrinp_txt):
         print('Saving results')
         res['per']=(res['delta'])/res['bc']*100
         res['value']=res['bc']-res['delta']
-        res[['value', 'delta', 'per']].to_csv(out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w')  
+       
+        res[['value', 'delta','per']].rename(
+                columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
+                        out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
 
         res.index.rename('NUTS_Lv3', inplace=True)
         new=grd_int.reset_index().drop_duplicates(subset='NUTS_Lv3').set_index('NUTS_Lv3')
@@ -124,7 +130,9 @@ def aggregationbyarea(aggrinp_txt):
             res['delta']=new.groupby([nuts_lv])['delta'].sum()
             res['per']=(res['delta'])/res['bc']*100
             res['value']=res['bc']-res['delta']
-            res[['value', 'delta', 'per']].to_csv(out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w')  
+            res[['value', 'delta','per']].rename(
+                columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
+                        out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
                        
 
     else: 
@@ -186,18 +194,22 @@ def aggregationbyarea(aggrinp_txt):
                         value= float('NaN')
                     res[key].loc[areait]=value           
             
+            units = dct_units[dct['bc']['var']]
             print('Saving results')
             res['per']=(res['delta'])/res['bc']*100
             res['value']=res['bc']-res['delta']
-            res[['value', 'delta', 'per']].to_csv(out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w')  
+            res[['value', 'delta', 'per']].rename(
+                columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
+                        out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
+                        encoding='utf-8')  
         end = time()
         print('Calculation time  for aggregation', end-start)
     
 if __name__ == '__main__': 
     
     pass  
-#    aggrinp_txt='D:/programs/sherpa/app/data/temp/aggrinp.txt'
-#    aggregationbyarea(aggrinp_txt)
+#    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation.txt'
+#    module9_aggregation(aggrinp_txt)
 #    
 #    a= {
 #        "delta": {
@@ -211,7 +223,7 @@ if __name__ == '__main__':
 #    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
 #    	"output-dir":"D:/programs/sherpa/app/data/temp/"
 #        }
-#    b= {
+#    dct= {
 #        "delta": {
 #            "path": "D:/programs/sherpa/app/data/temp/delta_concentration.nc",
 #            "var": "delta_concentration",
@@ -220,19 +232,19 @@ if __name__ == '__main__':
 #            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc",
 #            "var": "conc",
 #            "aggregation": "('avg','area')"},
-#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#    	"output-dir":"D:/programs/sherpa/app/data/temp/"
+#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
+#    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
 #        }
-#        
+##        
 #        
 #    
-#    c= {
+#    dct= {
 #        "bc": {
 #            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_emissions/BC_emi_PM25_Y.nc",
 #            "var": "('PPM','Nsnaps07')",
 #            "aggregation": "'sume'"},
-#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#    	"output-dir":"D:/programs/sherpa/app/data/temp/"
+#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
+#    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
 #        }
 #    
 #    b= {
