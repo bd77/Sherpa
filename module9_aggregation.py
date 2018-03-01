@@ -10,6 +10,7 @@ STILL MISSING: average over threshold
 @author: peduzem
 """
 import pandas as pd
+import numpy as np
 from time import time
 import json
 import ast 
@@ -44,7 +45,7 @@ def module9_aggregation(aggrinp_txt):
         'NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3' 
         
     '''
-#    aggrinp_txt='D:/programs/sherpa/app/data/temp/aggrinp.txt'
+#    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation2.txt'
     json_file = open(aggrinp_txt)
     json_str = json_file.read()
     dct = json.loads(json_str)
@@ -54,10 +55,22 @@ def module9_aggregation(aggrinp_txt):
     area=read_nuts_area(grd_int_txt, calcall=True)
     # levels (they are colled the same in fua and nuts)
     nuts_lvs= ['NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3']
-    dct_ms={'Nsnaps01':'MS1','Nsnaps02':'MS2','Nsnaps03':'MS3',
-            'Nsnaps04':'MS4','Nsnaps05':'MS5','Nsnaps06':'MS6',
-            'Nsnaps07':'MS7','Nsnaps08':'MS8', 'Nsnaps09':'MS9', 
-            'Nsnaps10':'MS10'}
+#    dct_ms={'Nsnaps01':'MS1','Nsnaps02':'MS2','Nsnaps03':'MS3',
+#            'Nsnaps04':'MS4','Nsnaps05':'MS5','Nsnaps06':'MS6',
+#            'Nsnaps07':'MS7','Nsnaps08':'MS8', 'Nsnaps09':'MS9', 
+#            'Nsnaps10':'MS10'}
+    dct_ms={'MS1': 'Nsnaps01',
+     'MS10': 'Nsnaps10',
+     'MS2': 'Nsnaps02',
+     'MS3': 'Nsnaps03',
+     'MS4': 'Nsnaps04',
+     'MS5': 'Nsnaps05',
+     'MS6': 'Nsnaps06',
+     'MS7': 'Nsnaps07',
+     'MS8': 'Nsnaps08',
+     'MS9': 'Nsnaps09',
+     'ALL': 'ALL'}
+    inv_dct_ms = {v: k for k, v in dct_ms.items()}
     dct_units={'conc': '[\u03bcg/m\u00B3]', '[delta_concentration]':'[\u03bcg/m\u00B3]',
                'v_dll_pp':"[dll/(person year)]",'d_dll_pp':'[dll/(person year)]', 
                'v_mort': '[people/year]', 'd_mort': '[people/year]'}
@@ -68,71 +81,83 @@ def module9_aggregation(aggrinp_txt):
         nuts_lv = 'NUTS_Lv3'
         # get tuple defining precursor and sector
         tpl = ast.literal_eval(dct['bc']['var'])
+        t=(tpl[0],dct_ms[tpl[1]])
         # read reduction file 
         red = pd.read_table(out_path+'user_reduction.txt', index_col=['POLL'])
         # define df for results
-        res = pd.DataFrame(index=area[nuts_lv]['area'].index.levels[0],
-                           columns=['bc','delta'])
+
+        
         # read nc file
         nc=read_nc(dct['bc']['path'])
         
         # prepare df to store the gridded values of interest 
-        nct=pd.DataFrame(columns=[tpl])
-        # assign to the dataframe the tansposed matrix of
-        # the corresponding value 
-        nct[tpl]=nc.loc[tpl].transpose()
+       
         # get list of areas selected by the user (defined at nuts3 level)
         arealist=list(pd.read_table(out_path+'nuts3_selection.txt', 
                           header=None, sep='\n')[0])    
         # macrosector name
-        ms = dct_ms[tpl[1]]           
-        for areait in arealist:
-            df_areas = pd.DataFrame(area[nuts_lv]['area'].loc[areait])     
-            df_areas['mult'] = df_areas['area'].multiply(nct.reindex(df_areas.index)[tpl])
-            areaxvar=df_areas[df_areas['mult'].notnull()]['mult'].sum()
-            res['bc'].loc[areait]=areaxvar               
-            res['delta'].loc[areait]=areaxvar*red[ms].loc[tpl[0]]/100  
+        ind_areas = area[nuts_lv]['area'].index.levels[0]
+        if t[1]!='ALL':
+            ms_list=[t[1]]
+
+        elif t[1]=='ALL': 
+            mss=list(dct_ms.values())
+            mss.remove('ALL')
+            ms_list=mss
+            
+        for ms in ms_list:
+            tpl_new=(t[0], ms)
+            nct=pd.DataFrame(columns=[(tpl_new)])
+            # assign to the dataframe the tansposed matrix of
+            # the corresponding value 
+            nct[tpl_new]=nc.loc[tpl_new].transpose()
+            ind_ms=[ms]*len(ind_areas)
+            ind=pd.MultiIndex.from_tuples(list(zip(ind_ms,ind_areas)), names=('sector', 'area'))
+            res = pd.DataFrame(index=ind,
+                           columns=['bc','delta'])
+            for areait in arealist:
+                df_areas = pd.DataFrame(area[nuts_lv]['area'].loc[areait])     
+                df_areas['mult'] = df_areas['area'].multiply(nct.reindex(df_areas.index)[tpl_new])
+                areaxvar=df_areas[df_areas['mult'].notnull()]['mult'].sum()
+                res['bc'].loc[ms,areait]=areaxvar               
+                res['delta'].loc[ms,areait]=areaxvar*red[inv_dct_ms[tpl_new[1]]].loc[tpl_new[0]]/100  
         
         print('Saving results')
+        if t[1]!='ALL':
+            res=res.loc[t[1]]
+        else:
+            res=res.sum(level=[1])
+            
         res['per']=(res['delta'])/res['bc']*100
         res['value']=res['bc']-res['delta']
        
         res[['value', 'delta','per']].rename(
                 columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
+                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
 
         res.index.rename('NUTS_Lv3', inplace=True)
         new=grd_int.reset_index().drop_duplicates(subset='NUTS_Lv3').set_index('NUTS_Lv3')
         new.drop(['ROW', 'COL', 'AREA_km2', 'POPULATION',  'CENTROID_X',  'CENTROID_Y'], axis=1, inplace=True)
         new['delta']=res['delta']
+        new['bc']=res['bc']
         
-        nuts_lvs= ['NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3']
+#        nuts_lvs= ['NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3']
         nuts_lvs.remove('NUTS_Lv3')
         
         for nuts_lv in nuts_lvs :
+#            nuts_lv = nuts_lvs[0]
              # define df for results
             res = pd.DataFrame(index=area[nuts_lv]['area'].index.levels[0],
                                columns=['bc','delta'])
-            nc=read_nc(dct['bc']['path'])
-            # create a pd dataframe which has as columns the delta or base 
-            # case value
-            nct=pd.DataFrame(columns=[tpl])
-            # assign to the dataframe the tansposed matrix of
-            # the correscponding value 
-            nct[tpl]=nc.loc[tpl].transpose()
-            arealist = area[nuts_lv]['area'].index.levels[0]
-            for areait in arealist:
-                df_areas = pd.DataFrame(area[nuts_lv]['area'].loc[areait])     
-                df_areas['mult'] = df_areas['area'].multiply(nct.reindex(df_areas.index)[tpl])
-                areaxvar=df_areas[df_areas['mult'].notnull()]['mult'].sum()
-                res['bc'].loc[areait]=areaxvar               
+             
             print('Saving results')
+            res['bc']=new.groupby([nuts_lv])['bc'].sum()
             res['delta']=new.groupby([nuts_lv])['delta'].sum()
             res['per']=(res['delta'])/res['bc']*100
             res['value']=res['bc']-res['delta']
             res[['value', 'delta','per']].rename(
                 columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
+                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
                        
 
     else: 
@@ -200,7 +225,7 @@ def module9_aggregation(aggrinp_txt):
             res['value']=res['bc']-res['delta']
             res[['value', 'delta', 'per']].rename(
                 columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv, header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
+                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
                         encoding='utf-8')  
         end = time()
         print('Calculation time  for aggregation', end-start)
@@ -208,8 +233,40 @@ def module9_aggregation(aggrinp_txt):
 if __name__ == '__main__': 
     
     pass  
-#    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation.txt'
+#    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation2.txt'
 #    module9_aggregation(aggrinp_txt)
+    
+#dct= {
+#    "bc": {
+#    "path": "D:/programs/sherpa/app/data/temp/value_emission.nc", 
+#    "var": "( 'NOx','MS1')", 
+#    "aggregation": "'sume'"
+#    }, 
+#    "delta": {
+#    "path": "D:/programs/sherpa/app/data/temp/delta_emission.nc", 
+#    "var": "( 'NOx','MS1')", 
+#    "aggregation": "'sume'"
+#    }, 
+#    "grid-intersect": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
+#    "output-dir": "D:/programs/sherpa/app/data/temp/"
+#    }
+#    
+#dct= {
+#"bc": {
+#"path": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/input/impacts/healthbl_nc.nc", 
+#"var": "v_dll_pp", 
+#"aggregation": "( 'avg','area')"
+#}, 
+#"delta": {
+#"path": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/input/impacts/healthbl_nc.nc", 
+#"var": "d_dll_pp", 
+#"aggregation": "( 'avg','area')"
+#}, 
+#"grid-intersect": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
+#"output-dir": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/temp/"
+#}
+#    
+    
 #    
 #    a= {
 #        "delta": {
@@ -223,40 +280,41 @@ if __name__ == '__main__':
 #    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
 #    	"output-dir":"D:/programs/sherpa/app/data/temp/"
 #        }
+
+##        
+#        
+#    
+# TESTED
 #    dct= {
+#        "bc": {
+#            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_emissions/BC_emi_PM25_Y.nc",
+#            "var": "('PPM','ALL')",
+#            "aggregation": "'sume'"},
+#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
+#    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
+#        }
+#        dct= {
 #        "delta": {
-#            "path": "D:/programs/sherpa/app/data/temp/delta_concentration.nc",
+#            "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/temp/delta_concentration.nc",
 #            "var": "delta_concentration",
 #            "aggregation": "('avg','area')"},
 #    	"bc": {
-#            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc",
+#            "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc",
 #            "var": "conc",
 #            "aggregation": "('avg','area')"},
 #    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
 #    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
 #        }
-##        
-#        
-#    
 #    dct= {
-#        "bc": {
-#            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_emissions/BC_emi_PM25_Y.nc",
-#            "var": "('PPM','Nsnaps07')",
-#            "aggregation": "'sume'"},
-#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
-#    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
-#        }
-#    
-#    b= {
 #    "delta": {
-#        "path": "D:/programs/sherpa/app/data/temp/healthimp.nc",
+#        "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/temp/healthimp.nc",
 #        "var": "d_mort",
 #        "aggregation": "'sum'"},
 #	"bc": {
-#        "path": "D:/programs/sherpa/app/data/temp/healthimp.nc",
+#        "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/temp/healthimp.nc",
 #        "var": "v_mort",
 #        "aggregation": "'sum'"},
 #	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#	"output-dir":"D:/programs/sherpa/app/data/temp/"
+#	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
 #    }
 #    
