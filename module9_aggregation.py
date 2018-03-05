@@ -42,7 +42,7 @@ def module9_aggregation(aggrinp_txt):
 
     Outpus:
         -txt files that contain the value
-        'NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3' 
+        'NUTS0', 'NUTS1','NUTS2', 'NUTS3' 
         
     '''
 #    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation2.txt'
@@ -55,10 +55,7 @@ def module9_aggregation(aggrinp_txt):
     area=read_nuts_area(grd_int_txt, calcall=True)
     # levels (they are colled the same in fua and nuts)
     nuts_lvs= ['NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3']
-#    dct_ms={'Nsnaps01':'MS1','Nsnaps02':'MS2','Nsnaps03':'MS3',
-#            'Nsnaps04':'MS4','Nsnaps05':'MS5','Nsnaps06':'MS6',
-#            'Nsnaps07':'MS7','Nsnaps08':'MS8', 'Nsnaps09':'MS9', 
-#            'Nsnaps10':'MS10'}
+
     dct_ms={'MS1': 'Nsnaps01',
      'MS10': 'Nsnaps10',
      'MS2': 'Nsnaps02',
@@ -149,7 +146,7 @@ def module9_aggregation(aggrinp_txt):
         nuts_lvs.remove('NUTS_Lv3')
         
         for nuts_lv in nuts_lvs :
-#            nuts_lv = nuts_lvs[0]
+
              # define df for results
             res = pd.DataFrame(index=area[nuts_lv]['area'].index.levels[0],
                                columns=['bc','delta'])
@@ -216,7 +213,7 @@ def module9_aggregation(aggrinp_txt):
                         areatot = 1
            
                     # this if statement is to take care of areas in the 
-                    # shape file which are outside the domain (e.g. Reunion)
+                    # shape file which are outside the domain 
                     if areatot is not 0: 
                         value=areaxvar/areatot
                     else:
