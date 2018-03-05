@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Feb 16 16:32:03 2018
+
 This module is used to do all the aggregations for the GUI, as a postcompute. 
-it produces equivalent files to the old fortran code (but emissions are in Mg)
+it produces equivalent files to the old fortran code (but emissions are in Mg, 
+and not densities)
 
 NB: emissions are a special case. 
 
@@ -42,7 +44,7 @@ def module9_aggregation(aggrinp_txt):
 
     Outpus:
         -txt files that contain the value
-        'NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3' 
+        'NUTS0', 'NUTS1','NUTS2', 'NUTS3' 
         
     '''
 #    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation2.txt'
@@ -55,10 +57,7 @@ def module9_aggregation(aggrinp_txt):
     area=read_nuts_area(grd_int_txt, calcall=True)
     # levels (they are colled the same in fua and nuts)
     nuts_lvs= ['NUTS_Lv0', 'NUTS_Lv1','NUTS_Lv2', 'NUTS_Lv3']
-#    dct_ms={'Nsnaps01':'MS1','Nsnaps02':'MS2','Nsnaps03':'MS3',
-#            'Nsnaps04':'MS4','Nsnaps05':'MS5','Nsnaps06':'MS6',
-#            'Nsnaps07':'MS7','Nsnaps08':'MS8', 'Nsnaps09':'MS9', 
-#            'Nsnaps10':'MS10'}
+
     dct_ms={'MS1': 'Nsnaps01',
      'MS10': 'Nsnaps10',
      'MS2': 'Nsnaps02',
@@ -71,10 +70,11 @@ def module9_aggregation(aggrinp_txt):
      'MS9': 'Nsnaps09',
      'ALL': 'ALL'}
     inv_dct_ms = {v: k for k, v in dct_ms.items()}
+    # @todo I have to try with U+00B5 and U+00B3
     dct_units={'conc': '[\u03bcg/m\u00B3]', '[delta_concentration]':'[\u03bcg/m\u00B3]',
                'v_dll_pp':"[dll/(person year)]",'d_dll_pp':'[dll/(person year)]', 
                'v_mort': '[people/year]', 'd_mort': '[people/year]'}
-    grd_int=pd.DataFrame.from_csv(grd_int_txt+'.txt', sep='\t')
+    grd_int=pd.read_csv(grd_int_txt+'.txt', sep='\t')
     # if we are aggregating emission reductions we need to consider the 
     # exact area defined by the user or reductions are smeared out on the grid. 
     if ast.literal_eval(dct['bc']['aggregation'])=='sume':
@@ -84,18 +84,16 @@ def module9_aggregation(aggrinp_txt):
         t=(tpl[0],dct_ms[tpl[1]])
         # read reduction file 
         red = pd.read_table(out_path+'user_reduction.txt', index_col=['POLL'])
-        # define df for results
-
         
         # read nc file
         nc=read_nc(dct['bc']['path'])
-        
-        # prepare df to store the gridded values of interest 
-       
+              
         # get list of areas selected by the user (defined at nuts3 level)
-        arealist=list(pd.read_table(out_path+'nuts3_selection.txt', 
-                          header=None, sep='\n')[0])    
-        # macrosector name
+        arealistall=list(pd.read_table(out_path+'nuts3_selection.txt', 
+                          header=None, sep='\n')[0]) 
+        # remove areas that are not in the domain 
+        arealist = set(arealistall) - (set(arealistall) - set(grd_int[nuts_lv]))
+        
         ind_areas = area[nuts_lv]['area'].index.levels[0]
         if t[1]!='ALL':
             ms_list=[t[1]]
@@ -133,7 +131,7 @@ def module9_aggregation(aggrinp_txt):
        
         res[['value', 'delta','per']].rename(
                 columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
+                        out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
 
         res.index.rename('NUTS_Lv3', inplace=True)
         new=grd_int.reset_index().drop_duplicates(subset='NUTS_Lv3').set_index('NUTS_Lv3')
@@ -145,7 +143,7 @@ def module9_aggregation(aggrinp_txt):
         nuts_lvs.remove('NUTS_Lv3')
         
         for nuts_lv in nuts_lvs :
-#            nuts_lv = nuts_lvs[0]
+
              # define df for results
             res = pd.DataFrame(index=area[nuts_lv]['area'].index.levels[0],
                                columns=['bc','delta'])
@@ -157,7 +155,7 @@ def module9_aggregation(aggrinp_txt):
             res['value']=res['bc']-res['delta']
             res[['value', 'delta','per']].rename(
                 columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
+                        out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
                        
 
     else: 
@@ -212,7 +210,7 @@ def module9_aggregation(aggrinp_txt):
                         areatot = 1
            
                     # this if statement is to take care of areas in the 
-                    # shape file which are outside the domain (e.g. Reunion)
+                    # shape file which are outside the domain 
                     if areatot is not 0: 
                         value=areaxvar/areatot
                     else:
@@ -225,7 +223,7 @@ def module9_aggregation(aggrinp_txt):
             res['value']=res['bc']-res['delta']
             res[['value', 'delta', 'per']].rename(
                 columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
+                        out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
                         encoding='utf-8')  
         end = time()
         print('Calculation time  for aggregation', end-start)
@@ -233,88 +231,3 @@ def module9_aggregation(aggrinp_txt):
 if __name__ == '__main__': 
     
     pass  
-#    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation2.txt'
-#    module9_aggregation(aggrinp_txt)
-    
-#dct= {
-#    "bc": {
-#    "path": "D:/programs/sherpa/app/data/temp/value_emission.nc", 
-#    "var": "( 'NOx','MS1')", 
-#    "aggregation": "'sume'"
-#    }, 
-#    "delta": {
-#    "path": "D:/programs/sherpa/app/data/temp/delta_emission.nc", 
-#    "var": "( 'NOx','MS1')", 
-#    "aggregation": "'sume'"
-#    }, 
-#    "grid-intersect": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#    "output-dir": "D:/programs/sherpa/app/data/temp/"
-#    }
-#    
-#dct= {
-#"bc": {
-#"path": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/input/impacts/healthbl_nc.nc", 
-#"var": "v_dll_pp", 
-#"aggregation": "( 'avg','area')"
-#}, 
-#"delta": {
-#"path": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/input/impacts/healthbl_nc.nc", 
-#"var": "d_dll_pp", 
-#"aggregation": "( 'avg','area')"
-#}, 
-#"grid-intersect": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#"output-dir": "D:/var/src/jrc/sherpa/front-end/target/jfx/native-windows-64bit/sherpa/app/data/temp/"
-#}
-#    
-    
-#    
-#    a= {
-#        "delta": {
-#            "path": "D:/programs/sherpa/app/data/temp/delta_concentration.nc",
-#            "var": "delta_concentration",
-#            "aggregation": "('avg','pop')"},
-#    	"bc": {
-#            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc",
-#            "var": "conc",
-#            "aggregation": "('avg','pop')"},
-#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#    	"output-dir":"D:/programs/sherpa/app/data/temp/"
-#        }
-
-##        
-#        
-#    
-# TESTED
-#    dct= {
-#        "bc": {
-#            "path": "D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/base_emissions/BC_emi_PM25_Y.nc",
-#            "var": "('PPM','ALL')",
-#            "aggregation": "'sume'"},
-#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
-#    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
-#        }
-#        dct= {
-#        "delta": {
-#            "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/temp/delta_concentration.nc",
-#            "var": "delta_concentration",
-#            "aggregation": "('avg','area')"},
-#    	"bc": {
-#            "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc",
-#            "var": "conc",
-#            "aggregation": "('avg','area')"},
-#    	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/grid_intersect",
-#    	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
-#        }
-#    dct= {
-#    "delta": {
-#        "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/temp/healthimp.nc",
-#        "var": "d_mort",
-#        "aggregation": "'sum'"},
-#	"bc": {
-#        "path": "D:/programs/sherpa-v.2.0-beta.2/app/data/temp/healthimp.nc",
-#        "var": "v_mort",
-#        "aggregation": "'sum'"},
-#	"grid-intersect":"D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/grid_intersect",
-#	"output-dir":"D:/programs/sherpa-v.2.0-beta.2/app/data/temp/"
-#    }
-#    
