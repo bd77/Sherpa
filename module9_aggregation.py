@@ -71,10 +71,11 @@ def module9_aggregation(aggrinp_txt):
      'MS9': 'Nsnaps09',
      'ALL': 'ALL'}
     inv_dct_ms = {v: k for k, v in dct_ms.items()}
+    # @todo I have to try with U+00B5 and U+00B3
     dct_units={'conc': '[\u03bcg/m\u00B3]', '[delta_concentration]':'[\u03bcg/m\u00B3]',
                'v_dll_pp':"[dll/(person year)]",'d_dll_pp':'[dll/(person year)]', 
                'v_mort': '[people/year]', 'd_mort': '[people/year]'}
-    grd_int=pd.DataFrame.from_csv(grd_int_txt+'.txt', sep='\t')
+    grd_int=pd.read_csv(grd_int_txt+'.txt', sep='\t')
     # if we are aggregating emission reductions we need to consider the 
     # exact area defined by the user or reductions are smeared out on the grid. 
     if ast.literal_eval(dct['bc']['aggregation'])=='sume':
@@ -93,8 +94,11 @@ def module9_aggregation(aggrinp_txt):
         # prepare df to store the gridded values of interest 
        
         # get list of areas selected by the user (defined at nuts3 level)
-        arealist=list(pd.read_table(out_path+'nuts3_selection.txt', 
-                          header=None, sep='\n')[0])    
+        arealistall=list(pd.read_table(out_path+'nuts3_selection.txt', 
+                          header=None, sep='\n')[0]) 
+        # remove areas that are not in the domain 
+        arealist = set(arealistall) - (set(arealistall) - set(grd_int[nuts_lv]))
+        
         # macrosector name
         ind_areas = area[nuts_lv]['area'].index.levels[0]
         if t[1]!='ALL':
@@ -133,7 +137,7 @@ def module9_aggregation(aggrinp_txt):
        
         res[['value', 'delta','per']].rename(
                 columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
+                        out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
 
         res.index.rename('NUTS_Lv3', inplace=True)
         new=grd_int.reset_index().drop_duplicates(subset='NUTS_Lv3').set_index('NUTS_Lv3')
@@ -157,7 +161,7 @@ def module9_aggregation(aggrinp_txt):
             res['value']=res['bc']-res['delta']
             res[['value', 'delta','per']].rename(
                 columns={'value':'value[Mg]', 'delta':'delta[Mg]', 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
+                        out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w',encoding='utf-8')  
                        
 
     else: 
@@ -225,7 +229,7 @@ def module9_aggregation(aggrinp_txt):
             res['value']=res['bc']-res['delta']
             res[['value', 'delta', 'per']].rename(
                 columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
-                        out_path+nuts_lv[0:4]+nuts_lv[-1], header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
+                        out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
                         encoding='utf-8')  
         end = time()
         print('Calculation time  for aggregation', end-start)
