@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Feb 16 16:32:03 2018
+
 This module is used to do all the aggregations for the GUI, as a postcompute. 
-it produces equivalent files to the old fortran code (but emissions are in Mg)
+it produces equivalent files to the old fortran code (but emissions are in Mg, 
+and not densities)
 
 NB: emissions are a special case. 
 
@@ -82,21 +84,16 @@ def module9_aggregation(aggrinp_txt):
         t=(tpl[0],dct_ms[tpl[1]])
         # read reduction file 
         red = pd.read_table(out_path+'user_reduction.txt', index_col=['POLL'])
-        # define df for results
-
         
         # read nc file
         nc=read_nc(dct['bc']['path'])
-        
-        # prepare df to store the gridded values of interest 
-       
+              
         # get list of areas selected by the user (defined at nuts3 level)
         arealistall=list(pd.read_table(out_path+'nuts3_selection.txt', 
                           header=None, sep='\n')[0]) 
         # remove areas that are not in the domain 
         arealist = set(arealistall) - (set(arealistall) - set(grd_int[nuts_lv]))
         
-        # macrosector name
         ind_areas = area[nuts_lv]['area'].index.levels[0]
         if t[1]!='ALL':
             ms_list=[t[1]]
