@@ -241,7 +241,7 @@ def module1(path_emission_cdf, path_area_cdf, path_reduction_txt, path_base_conc
     
         # create delta concentration data
         delta_conc_pol = rootgrp.createVariable('delta_concentration', 'f4', ('latitude', 'longitude',))
-        delta_conc_pol.units = 'ug/m3'
+        delta_conc_pol.units = u'\u03BC'+'g/m'+ u'\u00B3' # 'ug/m3' '\u03bcg/m\u00B3'  
         delta_conc_pol[:] = delta_conc
         
         rootgrp.close()
