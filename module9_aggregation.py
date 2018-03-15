@@ -47,7 +47,6 @@ def module9_aggregation(aggrinp_txt):
         'NUTS0', 'NUTS1','NUTS2', 'NUTS3' 
         
     '''
-#    aggrinp_txt='D:/programs/sherpa-v.2.0-beta.2/app/data/temp/aggregation2.txt'
     json_file = open(aggrinp_txt)
     json_str = json_file.read()
     dct = json.loads(json_str)
