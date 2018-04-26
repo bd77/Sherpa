@@ -179,10 +179,12 @@ def lifetable(df_table_h_mod, h_table, h_rest_table, e, country, keys, values, d
 if __name__ == '__main__':
    
     # input
-    country = 'United Kingdom'
+    country = 'Italy'
     l_int_age = '< 1 year' # minimum age of cohort to consider in the analysis '25 - 29'#
     age_impact = 30 # minimum age on which the health impact is applied
-    avg_exp = 15.78 # average exposure change 
+    avg_exp = 8.359
+
+    # average exposure change 
     
     # input files paths
     path_mortbaseline = 'D://sherpa.git//Sherpa//lifetables//extract2allcountries.csv' 
@@ -281,8 +283,9 @@ if __name__ == '__main__':
 #    df_table_h_mod.loc[:]=0.99
 
     df_table_h_mod.loc[age_impact:]=1-af[1]
+    df_table_h_mod.to_excel('D://sherpa.git//Sherpa//lifetables//h_mod.xls')
     life_years_millions, klife_years_per100k = lifetable(df_table_h_mod, h_table, h_rest_table, e, country, keys, values, dates, l_int_age)
-
+    
     print('Total life years gained/lost (millions)',life_years_millions-bl_life_years_millions )
     print('Life years gained (thousands)\n',
           'per 100 000 population:', klife_years_per100k-bl_klife_years_per100k )
