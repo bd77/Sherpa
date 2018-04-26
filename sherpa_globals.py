@@ -52,7 +52,7 @@ fua_txt = 'input\\selection\\grid_int_fua'
 path_mortbaseline = 'input\\impacts\\mortalitybaseline.xlsx'
 path_tiff0 = 'input\\pop\\7km_Qi_2010.tif' # population distribution according to LUISA
 path_tiff = 'input\\pop\\Qi_2015_mosaic.tif'
-path_healthbl = 'input\\impacts\\healthbl_nc.nc'
+path_healthbl = 'input\\impacts\\healthbl_nc2.nc'
 path_healthbl0 = 'input\\impacts\\healthbl0_nc.nc'
 json_path = 'config\\sharedvariables.json'
 

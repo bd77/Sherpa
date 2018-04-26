@@ -331,6 +331,7 @@ def write_nc(array, path_nc, name_var, unit_var, path_model_cdf_test, addnutsid=
     fh.close()
 
 def tiftogridgeneral(path_tiff):
+
     gdal.UseExceptions()
     ds = None
     try:
@@ -339,24 +340,57 @@ def tiftogridgeneral(path_tiff):
         ds = None
         # re-arrange emission inventory file for Sherpa's grid
         # initialize array
-        Amine = em  # Amine : matrix
-        for i in range(0, 382):
+#        Amine = em  # Amine : matrix
+        em = np.where(em < 0, 0, em)
+        em = np.where(np.isinf(em), 0, em)
+        Amine=np.zeros(np.shape(em))
+        for i in range(1, 384):
+#            i=1
             ind1 = 2*(i-1)  # included
             ind2 = 1+2*(i-1)+1  # excluded
             Amine[:, i-1] = (np.sum(em[:, ind1:ind2], axis=1))
+
         Amine[:, 382:384] = 0
         # Cancelling the extra columns and extra rows
         # (is there a better way to do this?**)
         for deli in range (0,144):
             Amine = np.delete(Amine, (0), axis=0) # delete first 144 rows
         for delj in range (0,398): # delete last 398 columns
-            Amine = np.delete(Amine, (383), axis=1)
+            Amine = np.delete(Amine, (384), axis=1)
         Amine_T = Amine[np.newaxis]
         Afinal=np.fliplr(Amine_T)
         arr=Afinal
         return arr
     except(RuntimeError, AttributeError):
         pass
+
+#def tiftogridgeneral(path_tiff):
+#    gdal.UseExceptions()
+#    ds = None
+#    try:
+#        ds = gdal.Open(path_tiff)
+#        em = np.array(ds.GetRasterBand(1).ReadAsArray())
+#        ds = None
+#        # re-arrange emission inventory file for Sherpa's grid
+#        # initialize array
+#        Amine = em  # Amine : matrix
+#        for i in range(0, 382):
+#            ind1 = 2*(i-1)  # included
+#            ind2 = 1+2*(i-1)+1  # excluded
+#            Amine[:, i-1] = (np.sum(em[:, ind1:ind2], axis=1))
+#        Amine[:, 382:384] = 0
+#        # Cancelling the extra columns and extra rows
+#        # (is there a better way to do this?**)
+#        for deli in range (0,144):
+#            Amine = np.delete(Amine, (0), axis=0) # delete first 144 rows
+#        for delj in range (0,398): # delete last 398 columns
+#            Amine = np.delete(Amine, (383), axis=1)
+#        Amine_T = Amine[np.newaxis]
+#        Afinal=np.fliplr(Amine_T)
+#        arr=Afinal
+#        return arr
+#    except(RuntimeError, AttributeError):
+#        pass
     
 #def read_nc(nc_file):
 #    '''

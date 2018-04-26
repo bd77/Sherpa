@@ -247,7 +247,7 @@ def read_nuts_area(filenuts, calcall=False, nullnut=False, nutsall=None):
     PROGRAMMER(S)
         Denise Pernigotti
     REVISION HISTORY
-        WARNING by EPE: this function does not work andymore as originally 
+        WARNING by EPE: this function does not work anymore as originally 
         intended because the gridintersect structure has changed
         for example there is no nullnut  which has the same name for all 
         cells! the 'rect' par has not been tested.

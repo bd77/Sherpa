@@ -8,7 +8,7 @@ Last version!
 """
 
 import matplotlib as mpl
-mpl.use('pgf')
+mpl.use('pgf', warn=False)
 
 # import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt

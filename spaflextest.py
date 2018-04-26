@@ -6,10 +6,7 @@ Script used to produce the data for the article
 @author: peduzem
 """
 
-# for importing matlab files
-#import scipy.io as sio
-#from PIL import Image
-#from osgeo import gdal, ogr, osr  #conda install -c conda-forge gdal
+
 from netCDF4 import  Dataset # for using netCDF files
 import numpy as np  # for scientific operators
 from time import time  # for module1
@@ -17,7 +14,6 @@ from os import remove
 import os as os
 import pandas as pd  # conda install pandas
 # for plotting
-# from mpl_toolkits.basemap import Basemap  #conda install -c conda-forge basemap
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 #import plotly.plotly as py
