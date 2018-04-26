@@ -206,6 +206,7 @@ def plot_bar(f, dfdata, varplot, totalname, path_logo, plot_opt='perc',
     if addsum.loc['Total'] > 100 and normalize==True:
         print('WARNING: rescaling to 100')
         dfdata_plot = dfdata * 100 /  addsum.loc['Total']
+        addsum = dfdata_plot.sum(axis=1)
     else:
         ncontrol_fill = 100 - addsum.loc['Total']
         dfdata_plot = dfdata
@@ -1132,17 +1133,16 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
 ##-----------------------------------------------------------------------------
 
 if __name__ == '__main__':
-#
 
-    module7('./input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc',
-           './input/20151116_SR_no2_pm10_pm25/BC_conc_PM25_Y.nc',
-           './input/pDUST-pSALT/',
-           './input/SR_PM25_Y.nc',            #'./input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc',
-           'D:/programs/sherpa/app/data/input/models/chimere_7km_fua/selection/', 
-           'D:/programs/sherpa/app/data/input/models/chimere_7km_nuts/selection/',
-           './input/selection/gridnew/',
-           './input/50_targets.txt',
-           './output/20151116_SR_no2_pm10_pm25/AM/',
-           'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
+#    module7('D:/programs/sherpa-2.0-RC.5-64bit/app/data/input/models/chimere_7km_fua/base_emissions/BC_emi_PM25_Y.nc',
+#           'D:/programs/sherpa-2.0-RC.5-64bit/app/data/input/models/chimere_7km_fua/base_concentrations/BC_conc_PM25_Y.nc',
+#           'D:/programs/sherpa-2.0-RC.5-64bit/app/data/input/models/chimere_7km_fua/pDUST-pSALT/',
+#           'D:/programs/sherpa-2.0-RC.5-64bit/app/data/input/models/chimere_7km_fua/source_receptors/SR_PM25_Y.nc',            #'./input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc',
+#           'D:/programs/sherpa-2.0-RC.5-64bit/app/data/input/models/chimere_7km_fua/selection/', 
+#           'D:/programs/sherpa-2.0-RC.5-64bit/app/data/input/models/chimere_7km_nuts/selection/',
+#           './input/selection/gridnew/',
+#           './input/milan.txt',
+#           './output/20151116_SR_no2_pm10_pm25/AM/',
+#           'D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png', 'fua','PM25')
     pass
 
