@@ -58,6 +58,8 @@ Calculate potencies for an emission reduction in a given area.
 
 8) Moulde 8: health impact assessment
 
+9) Module 9: aggregation - dipslay aggregated values in graphical interface
+    
 A target cell is selected. For this cell the concentration changes is calculated due to a defined emission reduction
 applied in each NUTS individually
 Input: -
@@ -308,7 +310,7 @@ if __name__ == '__main__':
         
         elif module == 9:
             path_aggrinp_txt = argv[2]     
-            module9_aggregation(aggrinp_txt)
+            module9_aggregation(path_aggrinp_txt)
      
         else:
             print('unknown module %d' % module)

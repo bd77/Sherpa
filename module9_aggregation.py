@@ -52,7 +52,6 @@ def module9_aggregation(aggrinp_txt):
     dct = json.loads(json_str)
     grd_int_txt = dct['grid-intersect']
     out_path =  dct['output-dir']
-
     start = time()    # read the grid intersect (fua or nuts)    
     area=read_nuts_area(grd_int_txt, calcall=True)
     # levels (they are colled the same in fua and nuts)
@@ -224,12 +223,11 @@ def module9_aggregation(aggrinp_txt):
             res[['value', 'delta', 'per']].rename(
                 columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
                         out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
-                        encoding='UTF-16LE')  
+                        encoding='utf-8')  
         end = time()
         print('Calculation time  for aggregation', end-start)
     
 if __name__ == '__main__': 
     
-#    module9_aggregation('D:/programs/sherpa-2.0-RC.2-64bit/app/data/temp/aggregation.txt')
-    
+
     pass  
