@@ -221,7 +221,7 @@ def module9_aggregation(aggrinp_txt):
             print('Saving results')
 
             print(dct['bc']['var'])
-            if dct['bc']['var'] == 'v_mort' or dct[key]['var'] == 'v_dll' or dct[key]['var']=='v_dll_pp':
+            if dct['bc']['var'] == 'v_mort' or dct['bc']['var'] == 'v_dll' or dct['bc']['var']=='v_dll_pp':
                 print('Quick and dirty fix of bug - see comments')
                 # I (EPE) made a mistake - when reading values to aggregate for the interface, the 
                 # label 'bc' actually refers to value... (the scenario), therefore only in this case
