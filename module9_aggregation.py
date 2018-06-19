@@ -42,7 +42,7 @@ def module9_aggregation(aggrinp_txt):
         }
     
 
-    Outpus:
+    Outputs:
         -txt files that contain the value
         'NUTS0', 'NUTS1','NUTS2', 'NUTS3' 
         
@@ -159,6 +159,7 @@ def module9_aggregation(aggrinp_txt):
 
     else: 
         for nuts_lv in nuts_lvs:
+            nuts_lv = 'NUTS_Lv0'
             # prepare pd dataframe for results (index are the names of the 
             # geographical units in each level and keys are the delta and the base
             # case values)
@@ -218,8 +219,20 @@ def module9_aggregation(aggrinp_txt):
             
             units = dct_units[dct['bc']['var']]
             print('Saving results')
+
+            print(dct['bc']['var'])
+            if dct['bc']['var'] == 'v_mort' or dct[key]['var'] == 'v_dll' or dct[key]['var']=='v_dll_pp':
+                print('Quick and dirty fix of bug - see comments')
+                # I (EPE) made a mistake - when reading values to aggregate for the interface, the 
+                # label 'bc' actually refers to value... (the scenario), therefore only in this case
+                # I need to substitue only for this case the values before saving results. 
+                res['value']=res['bc']
+                res['bc']=res['value']+res['delta']
+            else: 
+                res['value']=res['bc']-res['delta']
+
             res['per']=(res['delta'])/res['bc']*100
-            res['value']=res['bc']-res['delta']
+            
             res[['value', 'delta', 'per']].rename(
                 columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
                         out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w', 

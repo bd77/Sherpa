@@ -64,9 +64,9 @@ import os as os
 import json
 
 #
-#from sherpa_globals import (path_result_cdf_test,
-#                            path_healthbl_test, path_config_json_test, path_base_conc_cdf_test,
-#                            )
+from sherpa_globals import (path_result_cdf_test,
+                            path_healthbl_test, path_config_json_test, path_base_conc_cdf_test,
+                            )
 
 def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
 
@@ -77,7 +77,7 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
         - pop30plus = array with the distribution of the population over 30 \
                       years of age
         - pm25_conc = array with antrhopogenic concentration of PM2.5 \
-                      (delta or total)
+                      (total)
         - ar_drate = array with the distribution of baseline death rate \
                      (from all cause mortality)
         - ar_lyl = array with the average years of life lost per death \
@@ -170,7 +170,6 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
            (output of module1) 
     @author: peduzem
     """
-
     # value of concentration from dust and salt (i.e. natural)
     fh_pm25_natural = Dataset(path_healthbl, mode='r')
     pm25_natural = fh_pm25_natural.variables['conc'][:]
@@ -185,12 +184,13 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
     
     # SHERPA interface produces the scenario nc file..     
     path_value_nc = path_result_cdf + 'value_conc.nc'
-    # if it is not present the scenario concentration has tu be calculated 
+    # if it is not present the scenario concentration has to be calculated 
     # from the base concentration
     if not os.path.exists(path_value_nc):
-        if path_base_conc_cdf[0]:
+#        if path_base_conc_cdf[0]:
+        if path_base_conc_cdf:
             print('Calculating scenario value from base case concentration')
-            fh_pm25_base = Dataset(path_base_conc_cdf[0], mode='r')
+            fh_pm25_base = Dataset(path_base_conc_cdf, mode='r')
             pm25_base = fh_pm25_base.variables['conc'][:]
             fh_pm25_base.close()
             pm25_conc = pm25_base - d_pm25_conc           
@@ -220,10 +220,18 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
     # calculate impacts   
     sce_mort, sce_dll, sce_dll_spec = health_impact(pop30plus, sce_pm25_conc,
                                                     ar_drate, ar_lyl, approx='l')
-    delta_mort, delta_dll, delta_dll_spec = health_impact(pop30plus, 
-                                                          d_pm25_conc, 
-                                                          ar_drate, 
-                                                          ar_lyl, approx='l')
+    bc_pm25 = sce_pm25_conc + d_pm25_conc 
+    
+    bc_mort, bc_dll, bc_dll_spec = health_impact(pop30plus, bc_pm25,
+                                                    ar_drate, ar_lyl, approx='l')
+    delta_mort = bc_mort - sce_mort
+    delta_dll = bc_dll - sce_dll
+    delta_dll_spec = np.array(bc_dll_spec) - np.array(sce_dll_spec)
+
+#    delta_mort, delta_dll, delta_dll_spec = health_impact(pop30plus, 
+#                                                          d_pm25_conc, 
+#                                                          ar_drate, 
+#                                                          ar_lyl, approx='l')
 # -----------------------------------------------------------------------------
     # Saving results:        
     # default dictionary to save results:           
