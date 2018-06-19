@@ -64,9 +64,9 @@ import os as os
 import json
 
 #
-from sherpa_globals import (path_result_cdf_test,
-                            path_healthbl_test, path_config_json_test, path_base_conc_cdf_test,
-                            )
+#from sherpa_globals import (path_result_cdf_test,
+#                            path_healthbl_test, path_config_json_test, path_base_conc_cdf_test,
+#                            )
 
 def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
 
@@ -188,9 +188,9 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
     # from the base concentration
     if not os.path.exists(path_value_nc):
 #        if path_base_conc_cdf[0]:
-        if path_base_conc_cdf:
+        if path_base_conc_cdf[0]:
             print('Calculating scenario value from base case concentration')
-            fh_pm25_base = Dataset(path_base_conc_cdf, mode='r')
+            fh_pm25_base = Dataset(path_base_conc_cdf[0], mode='r')
             pm25_base = fh_pm25_base.variables['conc'][:]
             fh_pm25_base.close()
             pm25_conc = pm25_base - d_pm25_conc           
