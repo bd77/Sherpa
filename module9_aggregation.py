@@ -6,7 +6,7 @@ This module is used to do all the aggregations for the GUI, as a postcompute.
 it produces equivalent files to the old fortran code (but emissions are in Mg, 
 and not densities)
 
-NB: emissions are a special case. 
+NB: emissions are a special case, and also the values for mortality 
 
 STILL MISSING: average over threshold 
 @author: peduzem
@@ -41,7 +41,9 @@ def module9_aggregation(aggrinp_txt):
     	"output-dir":"D:/programs/sherpa/app/data/temp/"
         }
     
-
+    Warning for health impact: when pointing to base case it is actually pointing 
+    to the scenario results. This shoudl be improved. 
+    
     Outputs:
         -txt files that contain the value
         'NUTS0', 'NUTS1','NUTS2', 'NUTS3' 
@@ -159,7 +161,6 @@ def module9_aggregation(aggrinp_txt):
 
     else: 
         for nuts_lv in nuts_lvs:
-            nuts_lv = 'NUTS_Lv0'
             # prepare pd dataframe for results (index are the names of the 
             # geographical units in each level and keys are the delta and the base
             # case values)
@@ -226,6 +227,8 @@ def module9_aggregation(aggrinp_txt):
                 # I (EPE) made a mistake - when reading values to aggregate for the interface, the 
                 # label 'bc' actually refers to value... (the scenario), therefore only in this case
                 # I need to substitue only for this case the values before saving results. 
+                # likle this I do not need to change anything in the interface. 
+                # this should be fixed better in the future. 
                 res['value']=res['bc']
                 res['bc']=res['value']+res['delta']
             else: 
