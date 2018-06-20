@@ -108,6 +108,7 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
     lrr = 1.04
     mrr = 1.062
     hrr = 1.083
+    
     # From [4] Beta: 
     lbeta = 0.003922071315328133  # lower bound
     mbeta = 0.006015392281974714  # average value
@@ -131,6 +132,7 @@ def health_impact(pop30plus, pm25_conc, ar_drate, ar_lyl, approx='l'):
         mort = mort + (np.where(np.isnan(pm25_conc), 0, (
                      [(coef[i]*pm25_conc/10)/(1+coef[i]*pm25_conc/10)*pop30plus*ar_drate
                      for i in range(len(coef))]))) 
+    
     # exponential approximation
     elif approx == 'e':
     # AF = (RR -1)/RR = e^bx -1 / (e^bx) = 1 -e^(-bx) 
@@ -193,7 +195,7 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
             fh_pm25_base = Dataset(path_base_conc_cdf[0], mode='r')
             pm25_base = fh_pm25_base.variables['conc'][:]
             fh_pm25_base.close()
-            pm25_conc = pm25_base - d_pm25_conc           
+            pm25_conc = pm25_base - d_pm25_conc                      
         else: 
             print('Error')
     else: 
@@ -202,7 +204,15 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
         pm25_conc = fh_pm25_conc.variables['conc'][:]
         fh_pm25_conc.close()
     
-    # Anthropogenic concentration: scenario values minus natural concentration (to check)
+    # Anthropogenic concentration: scenario values minus natural concentration 
+    # -- there are different views on this. At the moment natural background is 
+    # substracted to the concentration. See for example: 
+    # -- [1]	H. Fintan, A. Hunt, H. Cowie, M. Holland, B. Miller, S. Pye, and
+    # -- P. Watkiss, “Service Contract for Carrying out Cost-Benefit Analysis
+    # -- of Air Quality Related Issues, in particular in the Clean Air for 
+    # -- Europe (CAFE) Programme,” 2005.
+    # -- [2]   The ALPHA Benefit Assessment Model, EC4MACS 2013
+
     sce_pm25_conc = pm25_conc - pm25_natural  
 
     # get baseline data from nc file
@@ -222,16 +232,13 @@ def module8_healthia(path_healthbl, path_result_cdf, path_config_json, *path_bas
                                                     ar_drate, ar_lyl, approx='l')
     bc_pm25 = sce_pm25_conc + d_pm25_conc 
     
+    # this could be improved (the valuse are always the same)
     bc_mort, bc_dll, bc_dll_spec = health_impact(pop30plus, bc_pm25,
                                                     ar_drate, ar_lyl, approx='l')
     delta_mort = bc_mort - sce_mort
     delta_dll = bc_dll - sce_dll
     delta_dll_spec = np.array(bc_dll_spec) - np.array(sce_dll_spec)
 
-#    delta_mort, delta_dll, delta_dll_spec = health_impact(pop30plus, 
-#                                                          d_pm25_conc, 
-#                                                          ar_drate, 
-#                                                          ar_lyl, approx='l')
 # -----------------------------------------------------------------------------
     # Saving results:        
     # default dictionary to save results:           
