@@ -687,7 +687,20 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
     '''
     # EPE rect_coord not used for the moment
 #    rect_coord=None
-      
+#    emissions_nc='input/20151116_SR_no2_pm10_pm25/BC_emi_PM25_Y.nc'
+#    concentration_nc='D:/programs/sherpa-v.2.0-64bit/app/data/input/models/chimere_7km_nuts/base_concentrations/BC_conc_PM25_Y.nc'
+#    natural_dir='input/pDUST-pSALT/'
+#    model_nc='input/20151116_SR_no2_pm10_pm25/SR_PM25_Y.nc'
+#    fua_intersect_dir='input/selection/gridnew/fua/'
+#    nuts_intersect_dir='input/selection/gridnew/nuts/'
+#    dbf_dir='input/selection/gridnew/'
+#    targets_txt='D:/programs/sherpa-v.2.0.1-64bit/app/data/temp/targets.txt'
+#    outdir='C:/Users/peduzem/Desktop/outm7/'
+#    path_logo='D:/sherpa.git/Sherpa/atlas2/sherpa_icon_name_256x256.png'
+#    aggr_zones_in='fuaonly'
+#    pollutant='PM25'
+#    outfig='png' 
+#    normalize=True
     ################ default user definition
     aggr_src=True #set to True for aggregatin sources as in the atlas
     # EPE: if pollutant is NOx there are no corresponding natural concentrations files
@@ -931,7 +944,12 @@ def module7(emissions_nc, concentration_nc, natural_dir, model_nc, fua_intersect
                 if nareasurf['CCITY_CODE'].sum() <= 300:
                     print('The city core is', nareasurf['CCITY_CODE'].sum(), '<= 300 km2, therefore the whole FUA is considered')
                     if aggr_zones_in == 'fua':
-                        aggr_zones ='fuaonly'         
+                        aggr_zones ='fuaonly'
+                # EPE - in the new version of the interface if it is possible to select a point
+                # if the point is selected is in the commuting zone, than I consider just the 
+                # the all FUA. 
+                if target_info['areaname'].loc['CCITY_CODE'][-3:]=='Cmm': 
+                        aggr_zones ='fuaonly'
         else: 
             aggr_zones = aggr_zones_in
             

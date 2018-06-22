@@ -221,9 +221,9 @@ def module9_aggregation(aggrinp_txt):
             units = dct_units[dct['bc']['var']]
             print('Saving results')
 
-            print(dct['bc']['var'])
+#            print(dct['bc']['var'])
             if dct['bc']['var'] == 'v_mort' or dct['bc']['var'] == 'v_dll' or dct['bc']['var']=='v_dll_pp':
-                print('Quick and dirty fix of bug - see comments')
+#                print('Quick and dirty fix of bug - see comments')
                 # I (EPE) made a mistake - when reading values to aggregate for the interface, the 
                 # label 'bc' actually refers to value... (the scenario), therefore only in this case
                 # I need to substitue only for this case the values before saving results. 
