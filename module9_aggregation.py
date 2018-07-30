@@ -24,6 +24,9 @@ from sherpa_auxiliaries import read_nuts_area
 from sherpa_auxiliaries import read_nc
 
 def module9_aggregation(aggrinp_txt):
+    # --------------------------------------------------------------------
+    aggrinp_txt='D:/programs/sherpa-v.2.0.1/app/data/temp/aggregation.txt' 
+    
     '''Function that aggregates results by area (for both nuts level and fuas)
     
     Inputs: 
@@ -42,7 +45,7 @@ def module9_aggregation(aggrinp_txt):
         }
     
     Warning for health impact: when pointing to base case it is actually pointing 
-    to the scenario results. This shoudl be improved. 
+    to the scenario results. This should be improved harmonized. 
     
     Outputs:
         -txt files that contain the value
@@ -69,7 +72,8 @@ def module9_aggregation(aggrinp_txt):
      'MS7': 'Nsnaps07',
      'MS8': 'Nsnaps08',
      'MS9': 'Nsnaps09',
-     'ALL': 'ALL'}
+     'ALL': 'Nsnaps11'}
+    
     inv_dct_ms = {v: k for k, v in dct_ms.items()}
     # @todo I have to try with U+00B5 and U+00B3
     dct_units={'conc': '[\u03bcg/m\u00B3]', '[delta_concentration]':'[\u03bcg/m\u00B3]',
@@ -90,19 +94,24 @@ def module9_aggregation(aggrinp_txt):
         nc=read_nc(dct['bc']['path'])
               
         # get list of areas selected by the user (defined at nuts3 level)
-        arealistall=list(pd.read_table(out_path+'nuts3_selection.txt', 
+        arealistsel=list(pd.read_table(out_path+'nuts3_selection.txt', 
                           header=None, sep='\n')[0]) 
+#        arealistall=set(list(area['NUTS_Lv3'].index.get_level_values('nutname'))) 
         # remove areas that are not in the domain 
-        arealist = set(arealistall) - (set(arealistall) - set(grd_int[nuts_lv]))
+        arealist = set(arealistsel) - (set(arealistsel) - set(grd_int[nuts_lv]))
+        arealistall = set(grd_int[nuts_lv])
+        areaelsewhere= set(arealistall)- set(arealistsel)
         
         ind_areas = area[nuts_lv]['area'].index.levels[0]
-        if t[1]!='ALL':
+        res = pd.DataFrame([])
+        
+        if t[1]!='Nsnaps11':#'ALL':        
             ms_list=[t[1]]
 
-        elif t[1]=='ALL': 
+        elif t[1]=='Nsnaps11':#'ALL': 
             mss=list(dct_ms.values())
-            mss.remove('ALL')
-            ms_list=mss
+            mss.remove('Nsnaps11')
+            ms_list=mss            
             
         for ms in ms_list:
             tpl_new=(t[0], ms)
@@ -112,8 +121,8 @@ def module9_aggregation(aggrinp_txt):
             nct[tpl_new]=nc.loc[tpl_new].transpose()
             ind_ms=[ms]*len(ind_areas)
             ind=pd.MultiIndex.from_tuples(list(zip(ind_ms,ind_areas)), names=('sector', 'area'))
-            res = pd.DataFrame(index=ind,
-                           columns=['bc','delta'])
+            res = res.append(pd.DataFrame(index=ind,
+                           columns=['bc','delta']))
             for areait in arealist:
                 df_areas = pd.DataFrame(area[nuts_lv]['area'].loc[areait])     
                 df_areas['mult'] = df_areas['area'].multiply(nct.reindex(df_areas.index)[tpl_new])
@@ -121,11 +130,31 @@ def module9_aggregation(aggrinp_txt):
                 res['bc'].loc[ms,areait]=areaxvar               
                 res['delta'].loc[ms,areait]=areaxvar*red[inv_dct_ms[tpl_new[1]]].loc[tpl_new[0]]/100  
         
+
+        ms=t[1]
+        tpl_new=(t[0], ms)
+        nct=pd.DataFrame(columns=[(tpl_new)])
+        # assign to the dataframe the tansposed matrix of
+        # the corresponding value 
+        nct[tpl_new]=nc.loc[tpl_new].transpose()
+        ind_ms=[ms]*len(ind_areas)
+        ind=pd.MultiIndex.from_tuples(list(zip(ind_ms,ind_areas)), names=('sector', 'area'))
+        res = res.append(pd.DataFrame(index=ind,
+                       columns=['bc','delta']))
+        
+        for areait in areaelsewhere:
+            df_areas = pd.DataFrame(area[nuts_lv]['area'].loc[areait])     
+            df_areas['mult'] = df_areas['area'].multiply(nct.reindex(df_areas.index)[tpl_new])
+            areaxvar=df_areas[df_areas['mult'].notnull()]['mult'].sum()
+            res['bc'].loc[ms,areait]=areaxvar               
+            res['delta'].loc[ms,areait]=0 
+  
+        
         print('Saving results')
-        if t[1]!='ALL':
+        if t[1]!='Nsnaps11':#'ALL':
             res=res.loc[t[1]]
         else:
-            res=res.sum(level=[1])
+            res=res.groupby(level=1).sum(axis=0)
             
         res['per']=(res['delta'])/res['bc']*100
         res['value']=res['bc']-res['delta']
@@ -161,6 +190,7 @@ def module9_aggregation(aggrinp_txt):
 
     else: 
         for nuts_lv in nuts_lvs:
+            
             # prepare pd dataframe for results (index are the names of the 
             # geographical units in each level and keys are the delta and the base
             # case values)
@@ -225,7 +255,7 @@ def module9_aggregation(aggrinp_txt):
             if dct['bc']['var'] == 'v_mort' or dct['bc']['var'] == 'v_dll' or dct['bc']['var']=='v_dll_pp':
 #                print('Quick and dirty fix of bug - see comments')
                 # I (EPE) made a mistake - when reading values to aggregate for the interface, the 
-                # label 'bc' actually refers to value... (the scenario), therefore only in this case
+                # label 'bc' actually refers to value... (the scenario), therefore 
                 # I need to substitue only for this case the values before saving results. 
                 # likle this I do not need to change anything in the interface. 
                 # this should be fixed better in the future. 
@@ -240,8 +270,11 @@ def module9_aggregation(aggrinp_txt):
                 columns={'value':'value'+units, 'delta':'delta'+units, 'per':'per[%]'}).to_csv(
                         out_path+nuts_lv[0:4]+nuts_lv[-1]+'.txt', header=True, index=True, sep='\t', na_rep='NaN', mode='w', 
                         encoding='utf-8')  
-        end = time()
-        print('Calculation time  for aggregation', end-start)
+    end = time()
+    print('Calculation time  for aggregation', end-start)
+    
+    
+
     
 if __name__ == '__main__': 
     
