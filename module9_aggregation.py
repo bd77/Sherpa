@@ -25,7 +25,7 @@ from sherpa_auxiliaries import read_nc
 
 def module9_aggregation(aggrinp_txt):
     # --------------------------------------------------------------------
-    aggrinp_txt='D:/programs/sherpa-v.2.0.1/app/data/temp/aggregation.txt' 
+#    aggrinp_txt='D:/programs/sherpa-v.2.0.1/app/data/temp/aggregation.txt' 
     
     '''Function that aggregates results by area (for both nuts level and fuas)
     
@@ -75,14 +75,16 @@ def module9_aggregation(aggrinp_txt):
      'ALL': 'Nsnaps11'}
     
     inv_dct_ms = {v: k for k, v in dct_ms.items()}
-    # @todo I have to try with U+00B5 and U+00B3
+
     dct_units={'conc': '[\u03bcg/m\u00B3]', '[delta_concentration]':'[\u03bcg/m\u00B3]',
                'v_dll_pp':"[dll/(person year)]",'d_dll_pp':'[dll/(person year)]', 
                'v_mort': '[people/year]', 'd_mort': '[people/year]'}
+    
     grd_int=pd.read_csv(grd_int_txt+'.txt', sep='\t')
     # if we are aggregating emission reductions we need to consider the 
     # exact area defined by the user or reductions are smeared out on the grid. 
     if ast.literal_eval(dct['bc']['aggregation'])=='sume':
+        # starting from the smallest nuts
         nuts_lv = 'NUTS_Lv3'
         # get tuple defining precursor and sector
         tpl = ast.literal_eval(dct['bc']['var'])
@@ -103,15 +105,11 @@ def module9_aggregation(aggrinp_txt):
         areaelsewhere= set(arealistall)- set(arealistsel)
         
         ind_areas = area[nuts_lv]['area'].index.levels[0]
+        # results dataframe
         res = pd.DataFrame([])
-        
-        if t[1]!='Nsnaps11':#'ALL':        
-            ms_list=[t[1]]
-
-        elif t[1]=='Nsnaps11':#'ALL': 
-            mss=list(dct_ms.values())
-            mss.remove('Nsnaps11')
-            ms_list=mss            
+        mss=list(dct_ms.values())
+        mss.remove('Nsnaps11')
+        ms_list=mss            
             
         for ms in ms_list:
             tpl_new=(t[0], ms)
@@ -130,8 +128,8 @@ def module9_aggregation(aggrinp_txt):
                 res['bc'].loc[ms,areait]=areaxvar               
                 res['delta'].loc[ms,areait]=areaxvar*red[inv_dct_ms[tpl_new[1]]].loc[tpl_new[0]]/100  
         
-
-        ms=t[1]
+        # get values for outside the selected domain (elsewhere)
+        ms='Nsnaps11'
         tpl_new=(t[0], ms)
         nct=pd.DataFrame(columns=[(tpl_new)])
         # assign to the dataframe the tansposed matrix of
@@ -151,10 +149,7 @@ def module9_aggregation(aggrinp_txt):
   
         
         print('Saving results')
-        if t[1]!='Nsnaps11':#'ALL':
-            res=res.loc[t[1]]
-        else:
-            res=res.groupby(level=1).sum(axis=0)
+        res=res.groupby(level=1).sum(axis=0)
             
         res['per']=(res['delta'])/res['bc']*100
         res['value']=res['bc']-res['delta']
