@@ -1,10 +1,11 @@
 '''
 Created on 26 January 2018 based on the Atlas run 'm all script
+Adapted on 8/8/2018 for the Westen Balkan atlas
 
 ONE SCRIPT TO RUN THEM ALL
 - EMEP and CHIMERE based sherpa
 - PM2.5
-- joaquin areas
+- Balkan areas
 - all snaps or per snap
 - all precursors or per precursor
 
@@ -28,11 +29,12 @@ import timeit
 # -------------------
 
 # working directory
-wd = 'D:/SHERPA/JOAQUIN validation/'
-receptor_file = wd + 'FUAs inside joaquin area.txt'
+wd = 'D:/SHERPA/WesternBalkans/'
+receptor_file = wd + 'balkan_cities.txt'
 
 # read file with city_lats and city_lons
-#asci_name;urau_code;nuts0;lon;lat
+#cityname;lat;lon;country
+#Burgas;42.53125;27.4375;BG
 fcity = open(receptor_file, 'r')
 fcity.readline()     # read header
 city_dict = {}
@@ -40,8 +42,8 @@ while True:
     line = fcity.readline().rstrip()
     if len(line) == 0:
         break
-    [cityname, urau_code, nuts0, lon, lat] = line.split(';')
-    city_dict[cityname] = {'urau_code': urau_code, 'lat': float(lat), 'lon': float(lon), 'nuts0': nuts0}
+    [cityname, lon, lat, nuts0] = line.split(';')
+    city_dict[cityname] = {'lat': float(lat), 'lon': float(lon), 'nuts0': nuts0}
 n_cities = len(city_dict)
 
 # list of source areas
@@ -57,10 +59,10 @@ for ctm in ['chimere', 'emep']:
 
 # which reductions to apply: all, perPrecursor, perSNAP, perSNAPandPrecursor
 user_reduction_folder = 'D:/SHERPA/FUA112/reduction_input_files/'
-# user_reduction_subfolder = 'allSNAP_allPrec'
+user_reduction_subfolder = 'allSNAP_allPrec'
 # user_reduction_subfolder = 'allSNAP_perPrec'
 # user_reduction_subfolder = 'perSNAP_allPrec'
-user_reduction_subfolder = 'perSNAP_perPrec'
+# user_reduction_subfolder = 'perSNAP_perPrec'
 
 # list of snap sectors (reduction of all precursors together)
 snap_tag = user_reduction_subfolder.split('_')[0]
@@ -94,7 +96,7 @@ fmod.close()
 # --------------------
 
 date_tag = date.today().strftime('%Y%m%d')
-results_path = wd + 'results/%s_%s_%s/' % (date_tag, snap_tag, precursor_tag)
+results_path = wd + 'Sherpa_results/%s_%s_%s/' % (date_tag, snap_tag, precursor_tag)
 if not(os.path.exists(results_path)):
     os.makedirs(results_path) 
     print('Results directory %s created.' % (results_path))   
@@ -153,8 +155,21 @@ for model_name in model_dict.keys():
     for target_city in city_dict.keys(): 
 
         target_country = city_dict[target_city]['nuts0']
-                
-        for source_area in source_area_dict[ctm].keys():
+        
+        international_area = target_country + '_International'
+        national_area = target_city + '_National'
+        city_area = target_city + '_City'
+        comm_area = target_city + '_Comm'
+        FUA_area = target_city + '_FUA'
+        
+        # some cites have no core city and commuting zone but only a greater city or FUA
+        # so there are 3 or 4 source areas
+        if city_area in source_area_dict[ctm].keys():
+            source_area_list = [international_area, national_area, comm_area, city_area]
+        else:
+            source_area_list = [international_area, national_area, FUA_area]
+        
+        for source_area in source_area_list:
             
             # loop over all combinations of snap, target cities and source areas 
             for user_reduction_file in user_reduction_list:
