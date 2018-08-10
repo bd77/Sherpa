@@ -159,7 +159,6 @@ def read_nc(nc_file):
     REFERENCES
     
     '''
-
     nc_data = Dataset(nc_file, 'r')
     nc_dims = [dim for dim in nc_data.dimensions]
     nc_vars = [var for var in nc_data.variables]
