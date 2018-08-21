@@ -3,8 +3,9 @@ Created on 27 June 2017
 
 ONE SCRIPT TO RUN THEM ALL
 - EMEP and CHIMERE based sherpa
-- NO2 and PM2.5
-- aggregated and disaggregated areas
+- PM2.5
+- 4 areas per city (city, commuting zone, national and international)
+- 3 areas for small cities
 - all snaps or per snap
 - all precursors or per precursor
 
@@ -18,7 +19,7 @@ are calculated
 
 @author: degraba
 '''
-import sys
+
 import os
 from datetime import date
 
@@ -28,34 +29,29 @@ import timeit
 # INPUT configuration
 # -------------------
 
-# use aggregated areas (city, comm, national, international) or all areas
-use_aggregated = True
-if use_aggregated == True:
-    area_aggregation_tag = 'aggAreas'
-    agg_reduc_area_path = ''
-else:
-    area_aggregation_tag = 'allAreas' # for the 257 areas 
+# working directory
+wd = 'D:/SHERPA/Chimere_Emep_Comparison/'
 
 # read file with city_lats and city_lons
 # cityname    nuts0    codeid    lat    lon
-fcity = open('D:/SHERPA/FUA112/city_list_fua151.txt', 'r')
+fcity = open(wd + 'city_list_fua150.txt', 'r')
 fcity.readline()     # read header
 city_dict = {}
 while True:
     line = fcity.readline().rstrip()
     if len(line) == 0:
         break
-    [cityname, lat, lon, codeid, country_code] = line.split(';')
-    city_dict[cityname] = {'codeid': codeid, 'lat': float(lat), 'lon': float(lon), 'country_code': country_code}
+    [cityname, lat, lon, country_code] = line.split(';')
+    city_dict[cityname] = {'lat': float(lat), 'lon': float(lon), 'country_code': country_code}
 n_cities = len(city_dict)
 
 
 # which reductions to apply: all, perPrecursor, perSNAP, perSNAPandPrecursor
-user_reduction_folder = 'D:/SHERPA/FUA112/reduction_input_files/'
-# user_reduction_subfolder = 'allSNAP_allPrec'
+user_reduction_folder = wd + 'reduction_input_files/'
+user_reduction_subfolder = 'allSNAP_allPrec'
 # user_reduction_subfolder = 'allSNAP_perPrec'
 # user_reduction_subfolder = 'perSNAP_allPrec'
-user_reduction_subfolder = 'perSNAP_perPrec'
+# user_reduction_subfolder = 'perSNAP_perPrec'
 
 # list of snap sectors (reduction of all precursors together)
 snap_tag = user_reduction_subfolder.split('_')[0]
@@ -64,7 +60,7 @@ precursor_tag = user_reduction_subfolder.split('_')[1]
 user_reduction_list = os.listdir(user_reduction_folder + user_reduction_subfolder)
 
 # read model information
-model_file = 'D:/SHERPA/FUA112/run_configuration/model_file.txt'
+model_file = wd + 'run_config_file.txt'
 fmod = open(model_file, 'r')
 line = fmod.readline().rstrip()      # read header
 model_dict = {}
@@ -89,12 +85,12 @@ print(model_dict)
 # --------------------
 
 date_tag = date.today().strftime('%Y%m%d')
-results_path = 'D:/SHERPA/FUA112/results/%s_%s_%s_%s/' % (date_tag, snap_tag, precursor_tag, area_aggregation_tag)
+results_path = wd + 'results/%s_%s_%s/' % (date_tag, snap_tag, precursor_tag)
 if not(os.path.exists(results_path)):
     os.makedirs(results_path) 
     print('Results directory %s created.' % (results_path))   
 
-results_file_format = '%s_%s_%s_%s_%s_%s.txt' # to be replaced with date_tag, model, pollutant, snap_tag, precursor_tag and area_aggregation_tag
+results_file_format = '%s_%s_%s_%s_%s.txt' # to be replaced with date_tag, model, pollutant, snap_tag and precursor_tag
 
 # loop over all models
 for model_name in model_dict.keys():
@@ -111,12 +107,11 @@ for model_name in model_dict.keys():
     path_cell_surface_cdf = model_dict[model_name]['cell_surface_cdf']
     
     # and the reduction areas
-    reduc_area_agg_path = 'D:/SHERPA/FUA112/fua_area_cdfs/aggAreas_%s/' % (model_dict[model_name]['ctm'])
-    reduc_area_all_path = 'D:/SHERPA/FUA112/fua_area_cdfs/allAreas_%s/' % (model_dict[model_name]['ctm'])
+    reduc_area_path = wd + 'area_netcdfs/%s/' % (model_dict[model_name]['ctm'])
 
     # check if the output file already exists to resume a calculation
     completed_runs = []
-    results_file_name = results_path + results_file_format % (date_tag, model_name, pollutant_tag, snap_tag, precursor_tag, area_aggregation_tag)
+    results_file_name = results_path + results_file_format % (date_tag, model_name, pollutant_tag, snap_tag, precursor_tag)
     if os.path.exists(results_file_name):
         
         # open the file in read only
@@ -138,7 +133,7 @@ for model_name in model_dict.keys():
         # open a new file to store all results and write the header
         fallres = open(results_file_name, 'w')
         fallres.write('Source apportionment for %d cities\n' % (n_cities))
-        fallres.write('commit eb21d3fb8ee65a2f44dc2b482efb077d3fdf8c40\n')
+        fallres.write('commit \n')
         fallres.write('emissions cdf = %s\n' % (path_emission_cdf))
         fallres.write('concentrations cdf = %s\n' % (path_base_conc_cdf))
         fallres.write('model folder = %s\n' % (path_model_cdf))
@@ -155,19 +150,25 @@ for model_name in model_dict.keys():
         target_country = city_dict[target_city]['country_code']
         
         # make a dictionary of source areas, name as key, path as value
+        # There are 2 possibilities: 4 areas (city, comm, national, international)
+        # or 3 areas (FUA, national, international)
         source_area_dict = {}
-        if use_aggregated == True:
-            source_area_dict[target_city + '_City'] = reduc_area_all_path + target_city + '_City.nc'
-            if not(target_city in ['Liverpool', 'Riga']):        # these 2 don't have a commuting zone..
-                source_area_dict[target_city + '_Comm'] = reduc_area_all_path + target_city + '_Comm.nc'
-            source_area_dict[target_city + '_National'] = reduc_area_agg_path + target_city + '_National.nc'
-            source_area_dict[target_country + '_International'] = reduc_area_agg_path + target_country + '_International.nc'
-        else:
-            # get the list of areas from the content of a folder
-            source_area_list = os.listdir(reduc_area_all_path)
-            # remove extension '.nc' from area name
-            for i in range(len(source_area_list)):
-                source_area_dict[source_area_list[i].replace('.nc', '')] = reduc_area_all_path + source_area_list[i]
+        city_area_cdf = reduc_area_path + target_city + '_City.nc'
+        comm_area_cdf = reduc_area_path + target_city + '_Comm.nc'
+        fua_area_cdf = reduc_area_path + target_city + '_FUA.nc'
+        national_area_cdf = reduc_area_path + target_city + '_National.nc'
+        international_area_cdf = reduc_area_path + target_country + '_International.nc'
+        
+        area_cdf_dict = {'City': city_area_cdf, \
+                         'Comm': comm_area_cdf, \
+                         'FUA': fua_area_cdf, \
+                         'National': national_area_cdf, \
+                         'International': international_area_cdf}
+        
+        for area in area_cdf_dict.keys():
+            # check if a city file exists
+            if os.path.exists(area_cdf_dict[area]):
+                source_area_dict[target_city + '_' + area] = area_cdf_dict[area]
         
         for source_area in source_area_dict.keys():
             
